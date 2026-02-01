@@ -1,0 +1,19 @@
+{
+  "name": "raum51/contao-zotero-bundle",
+  "type": "contao-bundle",
+  "description": "Contao 5 bundle to import & sync Zotero libraries and render list/reader modules.",
+  "license": "MIT",
+  "require": {
+    "php": "^8.1",
+    "contao/core-bundle": "^5.0",
+    "symfony/http-client": "^6.2|^7.0"
+  },
+  "autoload": {
+    "psr-4": {
+      "raum51\\\\ContaoZoteroBundle\\\\": "src/"
+    }
+  },
+  "extra": {
+    "contao-manager-plugin": "raum51\\\\ContaoZoteroBundle\\\\ContaoManager\\\\Plugin"
+  }
+}

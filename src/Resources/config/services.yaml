@@ -1,0 +1,42 @@
+
+services:
+  _defaults:
+    autowire: true
+    autoconfigure: true
+    public: false
+
+  raum51.contao_zotero.http_client:
+    class: Symfony\Contracts\HttpClient\HttpClientInterface
+    factory: ['Symfony\Component\HttpClient\HttpClient', 'create']
+
+  raum51.contao_zotero.api_client:
+    class: raum51\ContaoZoteroBundle\Service\ZoteroApiClient
+    arguments:
+      - '@raum51.contao_zotero.http_client'
+
+  raum51.contao_zotero.importer:
+    class: raum51\ContaoZoteroBundle\Service\ZoteroImporter
+
+  raum51.contao_zotero.synchronizer:
+    class: raum51\ContaoZoteroBundle\Service\ZoteroSynchronizer
+    arguments:
+      - '@raum51.contao_zotero.api_client'
+      - '@raum51.contao_zotero.importer'
+
+  raum51.contao_zotero.command.sync:
+    class: raum51\ContaoZoteroBundle\Command\ZoteroSyncCommand
+    arguments:
+      - '@contao.framework'
+      - '@raum51.contao_zotero.synchronizer'
+    tags: ['console.command']
+
+  # Frontend modules
+  raum51.contao_zotero.module.list:
+    class: raum51\ContaoZoteroBundle\FrontendModule\ZoteroListModule
+    tags:
+      - { name: contao.frontend_module, category: application, type: zotero_list, template: 'mod_zotero_list' }
+
+  raum51.contao_zotero.module.reader:
+    class: raum51\ContaoZoteroBundle\FrontendModule\ZoteroReaderModule
+    tags:
+      - { name: contao.frontend_module, category: application, type: zotero_reader, template: 'mod_zotero_detail' }

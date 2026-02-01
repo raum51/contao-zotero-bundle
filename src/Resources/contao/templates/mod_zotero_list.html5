@@ -1,0 +1,20 @@
+
+<?php /** @var array $this->items */ ?>
+<div class="zotero-list">
+  <?php if (empty($this->items)): ?>
+    <p>Keine Einträge gefunden.</p>
+  <?php else: ?>
+    <ul class="publications">
+      <?php foreach ($this->items as $row): ?>
+        <li>
+          <strong><?= htmlspecialchars($row['title']) ?></strong>
+          <?php if ($row['year']): ?> (<?= htmlspecialchars($row['year']) ?>)<?php endif; ?>
+          <?php if ($row['authors']): $authors = json_decode($row['authors'], true) ?: []; ?>
+            <div class="authors">von <?= htmlspecialchars(implode('; ', $authors)) ?></div>
+          <?php endif; ?>
+          <a href="?item=<?= urlencode($row['itemKey']) ?>" class="more">Details</a>
+        </li>
+      <?php endforeach; ?>
+    </ul>
+  <?php endif; ?>
+</div>

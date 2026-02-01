@@ -1,0 +1,35 @@
+
+<?php /** @var array|null $this->item */ ?>
+<div class="zotero-detail">
+  <?php if (!$this->item): ?>
+    <p>Kein Eintrag gewählt.</p>
+  <?php else: $row = $this->item; ?>
+    <h1><?= htmlspecialchars($row['title']) ?></h1>
+    <dl>
+      <?php if ($row['authors']): $authors = json_decode($row['authors'], true) ?: []; ?>
+        <dt>Autor*innen</dt>
+        <dd><?= htmlspecialchars(implode('; ', $authors)) ?></dd>
+      <?php endif; ?>
+      <?php if ($row['year']): ?>
+        <dt>Jahr</dt>
+        <dd><?= htmlspecialchars($row['year']) ?></dd>
+      <?php endif; ?>
+      <?php if ($row['publisher']): ?>
+        <dt>Publisher</dt>
+        <dd><?= htmlspecialchars($row['publisher']) ?></dd>
+      <?php endif; ?>
+      <?php if ($row['doi']): ?>
+        <dt>DOI</dt>
+        <dd><a href="https://doi.org/<?= urlencode($row['doi']) ?>" target="_blank" rel="noopener"><?= htmlspecialchars($row['doi']) ?></a></dd>
+      <?php endif; ?>
+      <?php if ($row['url']): ?>
+        <dt>URL</dt>
+        <dd><a href="<?= htmlspecialchars($row['url']) ?>" target="_blank" rel="noopener">Zur Quelle</a></dd>
+      <?php endif; ?>
+    </dl>
+    <?php if ($row['abstract']): ?>
+      <h2>Abstract</h2>
+      <p><?= nl2br(htmlspecialchars($row['abstract'])) ?></p>
+    <?php endif; ?>
+  <?php endif; ?>
+</div>
