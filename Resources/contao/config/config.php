@@ -9,5 +9,5 @@ declare(strict_types=1);
  * per Event contao.backend_menu_build gesteuert.
  */
 $GLOBALS['BE_MOD']['content']['bibliography'] = [
-    'tables' => ['tl_zotero_library'],
+    'tables' => ['tl_zotero_library', 'tl_zotero_collection', 'tl_zotero_item'],
 ];
