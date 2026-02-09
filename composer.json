@@ -1,0 +1,30 @@
+{
+    "name": "raum51/contao-zotero-bundle",
+    "type": "contao-bundle",
+    "description": "Zotero API-Integration für Contao: Items, Collections, Literaturnachweise, .bib-Export",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "raum51 e.U.",
+            "homepage": "https://raum51.at"
+        }
+    ],
+    "require": {
+        "php": ">=8.2",
+        "contao/core-bundle": "^5.6"
+    },
+    "conflict": {
+        "contao/manager-plugin": "<2.0 || >=3.0"
+    },
+    "require-dev": {
+        "contao/manager-plugin": "^2.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "Raum51\\ContaoZoteroBundle\\": "src/"
+        }
+    },
+    "extra": {
+        "contao-manager-plugin": "Raum51\\ContaoZoteroBundle\\ContaoManager\\Plugin"
+    }
+}

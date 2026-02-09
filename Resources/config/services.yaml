@@ -1,0 +1,8 @@
+services:
+    _defaults:
+        autowire: true
+        autoconfigure: true
+
+    Raum51\ContaoZoteroBundle\:
+        resource: '../../src/'
+        exclude: '../../src/{ContaoManager,DependencyInjection,Raum51ContaoZoteroBundle.php}'
