@@ -6,3 +6,6 @@ services:
     Raum51\ContaoZoteroBundle\:
         resource: '../../src/'
         exclude: '../../src/{ContaoManager,DependencyInjection,Raum51ContaoZoteroBundle.php}'
+
+    Raum51\ContaoZoteroBundle\Migration\CreateZoteroTablesMigration:
+        tags: [{ name: contao.migration }]
