@@ -141,7 +141,7 @@ final class CreateZoteroTablesMigration extends AbstractMigration
                 KEY pid (pid),
                 KEY collection_id (collection_id),
                 KEY item_id (item_id),
-                UNIQUE KEY idx_collection_item (collection_id, item_id)
+                UNIQUE KEY collection_id_item_id (collection_id, item_id)
             ) DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci ENGINE=InnoDB
         ");
     }
@@ -159,7 +159,7 @@ final class CreateZoteroTablesMigration extends AbstractMigration
                 KEY pid (pid),
                 KEY item_id (item_id),
                 KEY creator_map_id (creator_map_id),
-                UNIQUE KEY idx_item_creator (item_id, creator_map_id)
+                UNIQUE KEY item_id_creator_map_id (item_id, creator_map_id)
             ) DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci ENGINE=InnoDB
         ");
     }

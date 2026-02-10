@@ -17,6 +17,7 @@ $GLOBALS['TL_DCA']['tl_zotero_collection_item'] = [
                 'pid' => 'index',
                 'collection_id' => 'index',
                 'item_id' => 'index',
+                'collection_id,item_id' => 'unique',
             ],
         ],
     ],
