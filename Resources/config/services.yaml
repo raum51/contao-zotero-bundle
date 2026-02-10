@@ -9,6 +9,10 @@ services:
 
     Raum51\ContaoZoteroBundle\Migration\CreateZoteroTablesMigration:
         tags: [{ name: contao.migration }]
+    Raum51\ContaoZoteroBundle\Migration\AddLastSyncVersionMigration:
+        tags: [{ name: contao.migration }]
 
     Raum51\ContaoZoteroBundle\Command\TestZoteroClientCommand:
+        tags: [{ name: console.command }]
+    Raum51\ContaoZoteroBundle\Command\ZoteroSyncCommand:
         tags: [{ name: console.command }]

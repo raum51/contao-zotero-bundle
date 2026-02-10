@@ -56,7 +56,7 @@ $GLOBALS['TL_DCA']['tl_zotero_library'] = [
         ],
     ],
     'palettes' => [
-        'default' => '{title_legend},title;{zotero_legend},library_id,library_type,api_key;{citation_legend},citation_style,citation_locale;{sync_legend},sync_interval,last_sync_at,last_sync_status;{options_legend},download_attachments;{expert_legend},sorting',
+        'default' => '{title_legend},title;{zotero_legend},library_id,library_type,api_key;{citation_legend},citation_style,citation_locale;{sync_legend},sync_interval,last_sync_at,last_sync_status,last_sync_version;{options_legend},download_attachments;{expert_legend},sorting',
     ],
     'fields' => [
         'id' => [
@@ -134,6 +134,13 @@ $GLOBALS['TL_DCA']['tl_zotero_library'] = [
             'inputType' => 'text',
             'eval' => ['readonly' => true, 'maxlength' => 255, 'tl_class' => 'long'],
             'sql' => "varchar(255) NOT NULL default ''",
+        ],
+        'last_sync_version' => [
+            'label' => &$GLOBALS['TL_LANG']['tl_zotero_library']['last_sync_version'],
+            'exclude' => true,
+            'inputType' => 'text',
+            'eval' => ['readonly' => true, 'rgxp' => 'natural', 'tl_class' => 'w50'],
+            'sql' => 'int(10) unsigned NOT NULL default 0',
         ],
         'download_attachments' => [
             'label' => &$GLOBALS['TL_LANG']['tl_zotero_library']['download_attachments'],

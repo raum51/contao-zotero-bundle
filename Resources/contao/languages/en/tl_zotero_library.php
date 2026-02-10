@@ -23,5 +23,6 @@ $GLOBALS['TL_LANG']['tl_zotero_library'] = [
     'sync_interval' => ['Sync interval (seconds)', '0 = manual only'],
     'last_sync_at' => ['Last sync', 'Time of last successful sync'],
     'last_sync_status' => ['Last sync status', 'Success or error message'],
+    'last_sync_version' => ['Last sync version', 'Zotero library version for incremental sync'],
     'download_attachments' => ['Attachments downloadable', 'Allow downloads at library level'],
 ];
