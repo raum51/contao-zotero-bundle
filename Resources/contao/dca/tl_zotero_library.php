@@ -41,6 +41,11 @@ $GLOBALS['TL_DCA']['tl_zotero_library'] = [
                 'href' => 'act=edit',
                 'icon' => 'edit.svg',
             ],
+            'sync' => [
+                'href' => 'key=zotero_sync',
+                'icon' => 'sync.svg',
+                'label' => &$GLOBALS['TL_LANG']['tl_zotero_library']['sync'],
+            ],
             'collections' => [
                 'href' => 'table=tl_zotero_collection',
                 'icon' => 'folderC.svg',

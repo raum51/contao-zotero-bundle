@@ -25,6 +25,8 @@ $GLOBALS['TL_LANG']['tl_zotero_library'] = [
     'last_sync_status' => ['Letzter Sync-Status', 'Erfolg oder Fehlermeldung'],
     'last_sync_version' => ['Letzte Sync-Version', 'Zotero Library-Version für inkrementellen Sync'],
     'download_attachments' => ['Attachments herunterladbar', 'Downloads auf Library-Ebene erlauben'],
+    'sync' => ['Jetzt synchronisieren', 'Zotero-Synchronisation für diese Bibliothek starten'],
+    'reset_sync' => ['Synchronisation zurücksetzen und starten', 'Sync-Metadaten dieser Library zurücksetzen und sofort einen Voll-Sync ausführen'],
     'collections' => ['Sammlungen', 'Sammlungen dieser Bibliothek bearbeiten'],
     'items' => ['Einträge', 'Einträge (Publikationen) dieser Bibliothek bearbeiten'],
 ];

@@ -29,7 +29,7 @@ final class ZoteroSyncService
     /**
      * Sync ausführen (alle Libraries oder eine).
      *
-     * @return array{collections_created: int, collections_updated: int, items_created: int, items_updated: int, items_deleted: int, items_skipped: int, errors: list<string>}
+     * @return array{collections_created: int, collections_updated: int, items_created: int, items_updated: int, items_deleted: int, items_skipped: int, collection_items_created: int, collection_items_deleted: int, item_creators_created: int, item_creators_deleted: int, errors: list<string>}
      */
     public function sync(?int $libraryId = null): array
     {
@@ -41,6 +41,10 @@ final class ZoteroSyncService
             'items_updated' => 0,
             'items_deleted' => 0,
             'items_skipped' => 0,
+            'collection_items_created' => 0,
+            'collection_items_deleted' => 0,
+            'item_creators_created' => 0,
+            'item_creators_deleted' => 0,
             'errors' => [],
         ];
 
@@ -53,6 +57,10 @@ final class ZoteroSyncService
                 $total['items_updated'] += $result['items_updated'];
                 $total['items_deleted'] += $result['items_deleted'];
                 $total['items_skipped'] += $result['items_skipped'];
+                $total['collection_items_created'] += $result['collection_items_created'];
+                $total['collection_items_deleted'] += $result['collection_items_deleted'];
+                $total['item_creators_created'] += $result['item_creators_created'];
+                $total['item_creators_deleted'] += $result['item_creators_deleted'];
             } catch (\Throwable $e) {
                 $this->logger->error('Zotero Sync fehlgeschlagen', [
                     'library_id' => $library['id'],
@@ -91,7 +99,7 @@ final class ZoteroSyncService
     }
 
     /**
-     * @return array{collections_created: int, collections_updated: int, items_created: int, items_updated: int, items_deleted: int, items_skipped: int}
+     * @return array{collections_created: int, collections_updated: int, items_created: int, items_updated: int, items_deleted: int, items_skipped: int, collection_items_created: int, collection_items_deleted: int, item_creators_created: int, item_creators_deleted: int}
      */
     private function syncLibrary(array $library): array
     {
@@ -111,19 +119,25 @@ final class ZoteroSyncService
             'items_updated' => 0,
             'items_deleted' => 0,
             'items_skipped' => 0,
+            'collection_items_created' => 0,
+            'collection_items_deleted' => 0,
+            'item_creators_created' => 0,
+            'item_creators_deleted' => 0,
         ];
 
         // 1) Collections
         $collectionKeyToId = $this->syncCollections($prefix, $apiKey, $pid, $result);
 
-        // 2) Items (mit since für inkrementell)
-        $itemKeyToId = $this->syncItems($prefix, $apiKey, $pid, $citationStyle, $citationLocale, $lastVersion, $result);
+        // 2) Items (mit since für inkrementell; bei 0 lokalen Items Vollabzug, damit nach manueller Löschung wieder alle geholt werden)
+        $localItemCount = (int) $this->connection->fetchOne('SELECT COUNT(*) FROM tl_zotero_item WHERE pid = ?', [$pid]);
+        $effectiveSince = $localItemCount > 0 ? $lastVersion : 0;
+        $itemKeyToId = $this->syncItems($prefix, $apiKey, $pid, $citationStyle, $citationLocale, $effectiveSince, $result);
 
         // 3) Collection-Item-Verknüpfungen
-        $this->syncCollectionItems($prefix, $apiKey, $pid, $collectionKeyToId, $itemKeyToId);
+        $this->syncCollectionItems($prefix, $apiKey, $pid, $collectionKeyToId, $itemKeyToId, $result);
 
-        // 4) Item-Creator-Verknüpfungen (nur wo creator_map existiert)
-        $this->syncItemCreators($pid);
+        // 4) Item-Creator-Verknüpfungen (creator_map wird bei Bedarf angelegt, member_id=0)
+        $this->syncItemCreators($pid, $result);
 
         // 5) Library-Metadaten (last_sync_*, Version aus letztem Items-Request)
         $newVersion = $this->getLastModifiedVersionFromCache();
@@ -175,22 +189,29 @@ final class ZoteroSyncService
                 }
                 $keyToParentKey[$key] = (string) $parentKey;
 
-                $existing = $this->connection->fetchOne(
-                    'SELECT id FROM tl_zotero_collection WHERE pid = ? AND zotero_key = ?',
+                $existing = $this->connection->fetchAssociative(
+                    'SELECT id, title FROM tl_zotero_collection WHERE pid = ? AND zotero_key = ?',
                     [$pid, $key]
                 );
-                $tstamp = time();
-                if ($existing !== false) {
-                    $this->connection->update('tl_zotero_collection', [
-                        'tstamp' => $tstamp,
-                        'title' => $name,
-                    ], ['id' => $existing]);
-                    $result['collections_updated']++;
-                    $keyToId[$key] = (int) $existing;
+
+                if ($existing !== false && \is_array($existing)) {
+                    $updates = [];
+
+                    if ((string) $existing['title'] !== $name) {
+                        $updates['title'] = $name;
+                    }
+
+                    if ($updates !== []) {
+                        $updates['tstamp'] = time();
+                        $this->connection->update('tl_zotero_collection', $updates, ['id' => $existing['id']]);
+                        $result['collections_updated']++;
+                    }
+
+                    $keyToId[$key] = (int) $existing['id'];
                 } else {
                     $this->connection->insert('tl_zotero_collection', [
                         'pid' => $pid,
-                        'tstamp' => $tstamp,
+                        'tstamp' => time(),
                         'parent_id' => null,
                         'sorting' => 0,
                         'zotero_key' => $key,
@@ -336,10 +357,13 @@ final class ZoteroSyncService
     }
 
     /**
+     * Collection-Item-Verknüpfungen synchronisieren. Entfernt Verknüpfungen, die nicht mehr in der Collection sind.
+     *
      * @param array<string, int> $collectionKeyToId
      * @param array<string, int> $itemKeyToId
+     * @param array{collection_items_created: int, collection_items_deleted: int} $result
      */
-    private function syncCollectionItems(string $prefix, string $apiKey, int $pid, array $collectionKeyToId, array $itemKeyToId): void
+    private function syncCollectionItems(string $prefix, string $apiKey, int $pid, array $collectionKeyToId, array $itemKeyToId, array &$result): void
     {
         foreach ($collectionKeyToId as $collKey => $collectionId) {
             $path = $prefix . '/collections/' . $collKey . '/items';
@@ -347,34 +371,60 @@ final class ZoteroSyncService
             $this->ensureSuccessResponse($response, $path);
             $items = $this->decodeJson($response->getContent(false), $path);
             if (!\is_array($items)) {
+                // Keine Items in Collection: alle Verknüpfungen löschen
+                $deleted = $this->connection->delete('tl_zotero_collection_item', ['collection_id' => $collectionId]);
+                $result['collection_items_deleted'] += $deleted;
                 continue;
             }
+
+            // 1) Erwartete Item-IDs aus der API sammeln
+            $expectedItemIds = [];
             foreach ($items as $item) {
                 $itemKey = $item['key'] ?? trim((string) $item);
                 if ($itemKey === '' || !isset($itemKeyToId[$itemKey])) {
                     continue;
                 }
-                $itemId = $itemKeyToId[$itemKey];
-                $exists = $this->connection->fetchOne(
-                    'SELECT id FROM tl_zotero_collection_item WHERE collection_id = ? AND item_id = ?',
-                    [$collectionId, $itemId]
-                );
-                if ($exists === false) {
-                    $this->connection->insert('tl_zotero_collection_item', [
-                        'pid' => $collectionId,
-                        'tstamp' => time(),
-                        'collection_id' => $collectionId,
-                        'item_id' => $itemId,
-                    ]);
-                }
+                $expectedItemIds[] = $itemKeyToId[$itemKey];
+            }
+
+            // 2) Bestehende Verknüpfungen für diese Collection holen
+            $existingLinks = $this->connection->fetchAllAssociative(
+                'SELECT item_id FROM tl_zotero_collection_item WHERE collection_id = ?',
+                [$collectionId]
+            );
+            $existingItemIds = array_map(static fn (array $row) => (int) $row['item_id'], $existingLinks);
+
+            // 3) Verknüpfungen löschen, die nicht mehr erwartet werden
+            $toDelete = array_diff($existingItemIds, $expectedItemIds);
+            foreach ($toDelete as $itemId) {
+                $deleted = $this->connection->delete('tl_zotero_collection_item', [
+                    'collection_id' => $collectionId,
+                    'item_id' => $itemId,
+                ]);
+                $result['collection_items_deleted'] += $deleted;
+            }
+
+            // 4) Neue Verknüpfungen anlegen (die noch nicht existieren)
+            $toCreate = array_diff($expectedItemIds, $existingItemIds);
+            foreach ($toCreate as $itemId) {
+                $this->connection->insert('tl_zotero_collection_item', [
+                    'pid' => $collectionId,
+                    'tstamp' => time(),
+                    'collection_id' => $collectionId,
+                    'item_id' => $itemId,
+                ]);
+                $result['collection_items_created']++;
             }
         }
     }
 
     /**
-     * Verknüpfungen item <-> creator_map (nur wo creator_map existiert).
+     * Verknüpfungen item <-> creator_map. Creator-Map-Einträge werden bei Bedarf angelegt (member_id=0).
+     * Entfernt Verknüpfungen, die nicht mehr im Item vorhanden sind.
+     *
+     * @param array{item_creators_created: int, item_creators_deleted: int} $result
      */
-    private function syncItemCreators(int $pid): void
+    private function syncItemCreators(int $pid, array &$result): void
     {
         $items = $this->connection->fetchAllAssociative(
             'SELECT id, json_data FROM tl_zotero_item WHERE pid = ? AND json_data IS NOT NULL AND json_data != ?',
@@ -384,37 +434,89 @@ final class ZoteroSyncService
             $itemId = (int) $item['id'];
             $data = json_decode((string) $item['json_data'], true);
             if (!\is_array($data)) {
+                // Keine Creator-Daten: alle Verknüpfungen löschen
+                $deleted = $this->connection->delete('tl_zotero_item_creator', ['item_id' => $itemId]);
+                $result['item_creators_deleted'] += $deleted;
                 continue;
             }
             $creators = $data['creators'] ?? [];
+            $expectedCreatorMapIds = [];
+
+            // 1) Alle Creator aus json_data sammeln und Creator-Map-IDs finden/erstellen
             foreach ($creators as $creator) {
                 $firstName = trim((string) ($creator['firstName'] ?? ''));
                 $lastName = trim((string) ($creator['lastName'] ?? ''));
                 if ($lastName === '' && isset($creator['name'])) {
                     $lastName = trim((string) $creator['name']);
                 }
+                if ($firstName === '' && $lastName === '') {
+                    continue;
+                }
                 $creatorMapId = $this->connection->fetchOne(
-                    'SELECT id FROM tl_zotero_creator_map WHERE zotero_firstname = ? AND zotero_lastname = ? AND member_id > 0',
+                    'SELECT id FROM tl_zotero_creator_map WHERE zotero_firstname = ? AND zotero_lastname = ?',
                     [$firstName, $lastName]
                 );
                 if ($creatorMapId === false) {
-                    continue;
-                }
-                $creatorMapId = (int) $creatorMapId;
-                $exists = $this->connection->fetchOne(
-                    'SELECT id FROM tl_zotero_item_creator WHERE item_id = ? AND creator_map_id = ?',
-                    [$itemId, $creatorMapId]
-                );
-                if ($exists === false) {
-                    $this->connection->insert('tl_zotero_item_creator', [
-                        'pid' => $itemId,
+                    $this->connection->insert('tl_zotero_creator_map', [
                         'tstamp' => time(),
-                        'item_id' => $itemId,
-                        'creator_map_id' => $creatorMapId,
+                        'zotero_firstname' => $firstName,
+                        'zotero_lastname' => $lastName,
+                        'member_id' => 0,
                     ]);
+                    $creatorMapId = (int) $this->connection->lastInsertId();
+                } else {
+                    $creatorMapId = (int) $creatorMapId;
                 }
+                $expectedCreatorMapIds[] = $creatorMapId;
+            }
+
+            // 2) Alle bestehenden Verknüpfungen für dieses Item holen
+            $existingLinks = $this->connection->fetchAllAssociative(
+                'SELECT creator_map_id FROM tl_zotero_item_creator WHERE item_id = ?',
+                [$itemId]
+            );
+            $existingCreatorMapIds = array_map(static fn (array $row) => (int) $row['creator_map_id'], $existingLinks);
+
+            // 3) Verknüpfungen löschen, die nicht mehr erwartet werden
+            $toDelete = array_diff($existingCreatorMapIds, $expectedCreatorMapIds);
+            foreach ($toDelete as $creatorMapId) {
+                $deleted = $this->connection->delete('tl_zotero_item_creator', [
+                    'item_id' => $itemId,
+                    'creator_map_id' => $creatorMapId,
+                ]);
+                $result['item_creators_deleted'] += $deleted;
+            }
+
+            // 4) Neue Verknüpfungen anlegen (die noch nicht existieren)
+            $toCreate = array_diff($expectedCreatorMapIds, $existingCreatorMapIds);
+            foreach ($toCreate as $creatorMapId) {
+                $this->connection->insert('tl_zotero_item_creator', [
+                    'pid' => $itemId,
+                    'tstamp' => time(),
+                    'item_id' => $itemId,
+                    'creator_map_id' => $creatorMapId,
+                ]);
+                $result['item_creators_created']++;
             }
         }
+    }
+
+    /**
+     * Setzt die Sync-Metadaten einer Library zurück (last_sync_version=0 etc.).
+     * Nächster Sync holt dann wieder alle Items (Vollabzug).
+     */
+    public function resetSyncState(int $libraryId): void
+    {
+        $this->connection->update(
+            'tl_zotero_library',
+            [
+                'tstamp' => time(),
+                'last_sync_version' => 0,
+                'last_sync_at' => 0,
+                'last_sync_status' => '',
+            ],
+            ['id' => $libraryId]
+        );
     }
 
     private function updateLibrarySyncStatus(int $libraryId, ?int $newVersion): void
