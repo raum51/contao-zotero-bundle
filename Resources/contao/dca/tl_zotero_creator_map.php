@@ -13,7 +13,6 @@ $GLOBALS['TL_DCA']['tl_zotero_creator_map'] = [
         'sql' => [
             'keys' => [
                 'id' => 'primary',
-                'zotero_firstname_zotero_lastname' => 'unique zotero_firstname,zotero_lastname',
             ],
         ],
     ],

@@ -9,3 +9,5 @@ services:
 
     Raum51\ContaoZoteroBundle\Migration\CreateZoteroTablesMigration:
         tags: [{ name: contao.migration }]
+    Raum51\ContaoZoteroBundle\Migration\AddZoteroUniqueIndexesMigration:
+        tags: [{ name: contao.migration, priority: -1 }]
