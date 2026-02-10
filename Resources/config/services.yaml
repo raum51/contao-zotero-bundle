@@ -9,3 +9,6 @@ services:
 
     Raum51\ContaoZoteroBundle\Migration\CreateZoteroTablesMigration:
         tags: [{ name: contao.migration }]
+
+    Raum51\ContaoZoteroBundle\Command\TestZoteroClientCommand:
+        tags: [{ name: console.command }]
