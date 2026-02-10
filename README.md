@@ -9,36 +9,117 @@ Siehe Projekt-Blueprint im Contao-Projekt-Root: `CURSOR_BLUEPRINT.md`
 
 ---
 
-## Test-Command (ZoteroClient)
+## Console-Commands (contao:zotero:*)
 
-Der Command `contao:zotero:test-client` prüft die Verbindung zur Zotero API und den API-Key. Er dient außerdem dazu, die **Group-ID** für eine Zotero-Gruppenbibliothek zu ermitteln (für `tl_zotero_library` bei `library_type=group`).
+Alle Befehle im Projekt-Root ausführen (dort, wo `bin/console` liegt). Backend-Buttons „Jetzt synchronisieren“ und „Synchronisation zurücksetzen“ nutzen dieselbe Logik über den `ZoteroSyncService` (nicht den CLI-Command), sodass Verhalten und Ergebnis identisch sind.
 
-**Geplante Verwendung:**
+### contao:zotero:sync
 
-- **Key prüfen:** Einmaliger Aufruf mit deinem API-Key; bestätigt, dass Key und Client funktionieren.
-- **Group-ID für tl_zotero_library:** Mit `--list-groups` alle Gruppen des Keys anzeigen; die ausgegebene Group-ID trägst du im Backend unter Literaturverwaltung → Library als **Library-ID** ein (und wählst **library_type = group**).
+Synchronisiert Zotero-Bibliotheken (Collections, Items, Zitate, BibTeX) in die lokalen Tabellen.
 
-**Verwendung:**
+| Option | Kurz | Beschreibung |
+|--------|-----|--------------|
+| `--library=ID` | `-l` | Nur diese Library-ID synchronisieren (ohne Option: alle). |
+| `--reset` | `-r` | Sync-Metadaten vor dem Abruf zurücksetzen (Vollabzug, wie „Synchronisation zurücksetzen“ im Backend). |
+
+**Beispiele:**
 
 ```bash
+# Alle Libraries synchronisieren
+php bin/console contao:zotero:sync
+
+# Nur Library mit ID 11
+php bin/console contao:zotero:sync --library=11
+
+# Vollabzug: Sync zurücksetzen und dann alle Libraries syncen
+php bin/console contao:zotero:sync --reset
+
+# Vollabzug nur für Library 11
+php bin/console contao:zotero:sync --reset --library=11
+```
+
+Bei großen Bibliotheken kann der Sync im Backend zu Timeouts führen; dann den Sync per CLI ausführen (kein Request-Timeout, kein Browser-Abbruch).
+
+---
+
+## Logging (Kanal raum51_zotero)
+
+Das Bundle schreibt alle Sync- und API-Logs in den Monolog-Kanal **raum51_zotero**. So können Zotero-Logs getrennt von den allgemeinen App-Logs geführt werden.
+
+**Eigene Log-Datei für Zotero (optional):** In der Contao-Installation unter `config/packages/monolog.yaml` (oder in der Managed-Edition unter den Package-Configs) einen Handler für den Kanal anlegen:
+
+```yaml
+monolog:
+  channels: [raum51_zotero]
+  handlers:
+    zotero:
+      type: stream
+      path: "%kernel.logs_dir%/raum51_zotero.log"
+      level: info
+      channels: [raum51_zotero]
+```
+
+Ohne diese Konfiguration landen die Zotero-Logs im Standard-App-Log (z. B. `var/log/prod-*.log`). Mit dem Handler erscheinen sie zusätzlich in `var/log/raum51_zotero.log`.
+
+---
+
+### contao:zotero:test-client
+
+Prüft die Verbindung zur Zotero API und den API-Key. Dient außerdem dazu, die **Group-ID** für eine Zotero-Gruppenbibliothek zu ermitteln (für `tl_zotero_library` bei `library_type=group`).
+
+| Option | Beschreibung |
+|--------|--------------|
+| `--api-key=KEY` | Zotero-API-Key (erforderlich). Erstellen unter [Zotero – API Keys](https://www.zotero.org/settings/keys). |
+| `--list-groups` | Alle Gruppen des Keys anzeigen (Group-ID und Name). Group-ID in Literaturverwaltung → Library als **Library-ID** eintragen, **library_type** = group. |
+| `--path=PATH` | Beliebiger API-Pfad (z. B. `/users/USER_ID/items`) zum Testen. |
+
+**Beispiele:**
+
+```bash
+# Key validieren (User-ID und Rechte anzeigen)
 php bin/console contao:zotero:test-client --api-key=DEIN_ZOTERO_API_KEY
-```
 
-- Ohne weitere Optionen wird die **Key-Validierung** aufgerufen (`GET /keys/{key}`). Die Antwort enthält u. a. die Zotero-User-ID und die Rechte des Keys.
-- Einen API-Key erstellst du unter: [Zotero – API Keys](https://www.zotero.org/settings/keys).
-
-**Gruppen auflisten (Group-ID für library_id):**
-
-```bash
+# Gruppen auflisten (Group-ID für library_id)
 php bin/console contao:zotero:test-client --api-key=DEIN_KEY --list-groups
-```
 
-Zeigt alle Gruppen, auf die der Key Zugriff hat (Group-ID und Name). Die **Group-ID** kannst du in einer neuen Library unter Literaturverwaltung als **Library-ID** eintragen und **library_type** auf „group“ setzen.
-
-**Optional – beliebiger API-Pfad:**
-
-```bash
+# Items-Abruf testen
 php bin/console contao:zotero:test-client --api-key=DEIN_KEY --path=/users/DEINE_USER_ID/items
 ```
 
-`DEINE_USER_ID` steht in der Key-Antwort (erster Aufruf ohne `--path`). So kannst du z. B. einen Items-Abruf testen.
+---
+
+## Zitierstile (citation_style)
+
+Das Feld **citation_style** in `tl_zotero_library` wird bei der Zotero API für formatierte Literaturverweise (`include=bib`) verwendet. Erlaubt ist entweder der **Dateiname ohne .csl** eines Stils aus dem [Zotero Style Repository](https://www.zotero.org/styles) oder die **URL** einer externen CSL-Datei.
+
+**Häufig verwendete Zitierstile (Name ohne .csl eintragen):**
+
+| Stil-Name (für citation_style) | Beschreibung |
+|--------------------------------|--------------|
+| `apa` | American Psychological Association (7th edition) |
+| `chicago-note-bibliography` | Chicago (Fußnoten + Bibliographie), API-Standard |
+| `chicago-author-date` | Chicago (Autor-Jahr) |
+| `mla` | Modern Language Association |
+| `harvard1` | Harvard (variante 1) |
+| `din-1505-2` | DIN 1505-2 (deutsch) |
+| `ieee` | IEEE |
+| `nature` | Nature |
+| `vancouver` | Vancouver (Nummernstil) |
+| `gb-t-7714-2015` | Chinesischer Nationalstandard GB/T 7714-2015 |
+
+**Deutschsprachige Zitierstile (Name ohne .csl eintragen):**
+
+| Stil-Name (für citation_style) | Beschreibung |
+|--------------------------------|--------------|
+| `deutsche-gesellschaft-fur-psychologie` | DGPs (Deutsche Gesellschaft für Psychologie), Richtlinien zur Manuskriptgestaltung |
+| `din-1505-2` | DIN 1505-2 (deutsche Norm für Literaturverzeichnisse) |
+| `zeitgeschichte` | Zeitschrift „Zeitgeschichte“ (österreichisch-deutsch) |
+| `deutsch-fussnoten` | Deutsche Zitierweise (Fußnoten) |
+| `deutsche-gesellschaft-fur-erziehungswissenschaft` | DGfE (Deutsche Gesellschaft für Erziehungswissenschaft) |
+| `psychologie-in-geschichte-und-gegenwart` | Psychologie in Geschichte und Gegenwart |
+| `soziologie-deutsch` | Soziologie (deutsche Zeitschrift) |
+| `historische-zeitschrift` | Historische Zeitschrift (HZ) |
+| `medizin-deutsch` | Medizin (deutsche Fachzeitschriften) |
+| `linguistik-in-deutschland` | Linguistik in Deutschland |
+
+Die vollständige Liste (über 10.000 Stile) durchsuchst du im [Zotero Style Repository](https://www.zotero.org/styles); der dort angezeigte Stil-Name (ohne Endung) ist der Wert für **citation_style**. Ungültige oder leere Werte führen beim Sync zu keiner Zitierausgabe; Platzhalter wie „CSL-URL“ können zu API-Fehlern führen.

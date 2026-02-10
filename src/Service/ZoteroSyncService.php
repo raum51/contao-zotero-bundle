@@ -17,7 +17,8 @@ use Symfony\Contracts\HttpClient\ResponseInterface;
  */
 final class ZoteroSyncService
 {
-    private const ITEMS_PAGE_SIZE = 50;
+    /** Max Items pro API-Seite (Zotero-API-Limit 100). Weniger Requests durch Batch-Abruf. */
+    private const ITEMS_PAGE_SIZE = 100;
 
     public function __construct(
         private readonly ZoteroClient $zoteroClient,
@@ -29,11 +30,13 @@ final class ZoteroSyncService
     /**
      * Sync ausführen (alle Libraries oder eine).
      *
+     * @param int|null $libraryId Wenn null: alle Libraries (nur published, wenn $onlyPublished=true)
+     * @param bool $onlyPublished Bei sync(null): nur published Libraries synchronisieren
      * @return array{collections_created: int, collections_updated: int, items_created: int, items_updated: int, items_deleted: int, items_skipped: int, collection_items_created: int, collection_items_deleted: int, item_creators_created: int, item_creators_deleted: int, errors: list<string>}
      */
-    public function sync(?int $libraryId = null): array
+    public function sync(?int $libraryId = null, bool $onlyPublished = false): array
     {
-        $libraries = $this->fetchLibraries($libraryId);
+        $libraries = $this->fetchLibraries($libraryId, $onlyPublished);
         $total = [
             'collections_created' => 0,
             'collections_updated' => 0,
@@ -77,12 +80,14 @@ final class ZoteroSyncService
     /**
      * @return list<array<string, mixed>>
      */
-    private function fetchLibraries(?int $libraryId): array
+    private function fetchLibraries(?int $libraryId, bool $onlyPublished = false): array
     {
         $qb = $this->connection->createQueryBuilder();
         $qb->select('*')->from('tl_zotero_library');
         if ($libraryId !== null) {
             $qb->where($qb->expr()->eq('id', ':id'))->setParameter('id', $libraryId);
+        } elseif ($onlyPublished) {
+            $qb->where($qb->expr()->eq('published', ':published'))->setParameter('published', '1');
         }
         $stmt = $qb->executeQuery();
         $rows = $stmt->fetchAllAssociative();
@@ -239,6 +244,8 @@ final class ZoteroSyncService
     }
 
     /**
+     * Items pro Seite gebündelt laden (2 Requests pro Seite statt 2 pro Item).
+     *
      * @return array<string, int> zotero_key -> unsere item id
      */
     private function syncItems(string $prefix, string $apiKey, int $pid, string $citationStyle, string $citationLocale, int $since, array &$result): array
@@ -246,75 +253,125 @@ final class ZoteroSyncService
         $keyToId = [];
         $start = 0;
         $limit = self::ITEMS_PAGE_SIZE;
-        $query = ['limit' => $limit];
-        if ($since > 0) {
-            $query['since'] = $since;
-        }
+        $path = $prefix . '/items/top';
+        $minLimitOn500 = 25;
 
         do {
-            $query['start'] = $start;
-            $response = $this->zoteroClient->get($prefix . '/items/top', $apiKey, $query);
-            $this->ensureSuccessResponse($response, $prefix . '/items/top');
-            $this->lastModifiedVersion = $this->parseLastModifiedVersion($response);
-            $items = $this->decodeJson($response->getContent(false), $prefix . '/items/top');
+            $query = ['start' => $start, 'limit' => $limit];
+            if ($since > 0) {
+                $query['since'] = $since;
+            }
+
+            $items = null;
+            $bibtexByKey = [];
+
+            try {
+                // 1) Alle Items der Seite mit data + bib (formatted citation) in einem Request
+                $queryWithInclude = $query;
+                $queryWithInclude['include'] = 'data,bib';
+                if ($this->isValidCitationStyle($citationStyle)) {
+                    $queryWithInclude['style'] = $citationStyle;
+                }
+                if ($citationLocale !== '') {
+                    $queryWithInclude['locale'] = $citationLocale;
+                }
+                $response = $this->zoteroClient->get($path, $apiKey, $queryWithInclude);
+                $this->ensureSuccessResponse($response, $path);
+                $this->lastModifiedVersion = $this->parseLastModifiedVersion($response);
+                $items = $this->decodeJson($response->getContent(false), $path);
+                if (!\is_array($items) || $items === []) {
+                    break;
+                }
+
+                // 2) Dieselbe Seite als BibTeX in einem Request
+                $queryBibtex = $query;
+                $queryBibtex['format'] = 'bibtex';
+                $bibResponse = $this->zoteroClient->get($path, $apiKey, $queryBibtex);
+                $this->ensureSuccessResponse($bibResponse, $path . '?format=bibtex');
+                $bibtexByKey = $this->parseBibtexMultiResponse($bibResponse->getContent(false));
+            } catch (\RuntimeException $e) {
+                // Bei HTTP 500 (Zotero-Server): ein Retry mit kleinerer Seite, oft hilfreich bei großen Batches/Styles
+                if (str_contains($e->getMessage(), '500') && $limit > $minLimitOn500) {
+                    $limit = $minLimitOn500;
+                    $this->logger->info('Zotero API HTTP 500 – Retry mit kleinerer Seitengröße', [
+                        'path' => $path,
+                        'new_limit' => $limit,
+                    ]);
+                    continue;
+                }
+                throw $e;
+            }
+
             if (!\is_array($items)) {
                 break;
             }
+
             foreach ($items as $item) {
                 $key = $item['key'] ?? '';
                 if ($key === '') {
                     continue;
                 }
                 try {
-                    $itemId = $this->upsertItem($prefix, $apiKey, $pid, $key, $item, $citationStyle, $citationLocale, $result);
+                    $bibContent = $bibtexByKey[$key] ?? '';
+                    $itemId = $this->upsertItemFromData($pid, $item, $bibContent, $result);
                     if ($itemId > 0) {
                         $keyToId[$key] = $itemId;
                     }
                 } catch (\Throwable $e) {
-                    $this->logger->warning('Zotero Item übersprungen (API-Fehler)', [
+                    $this->logger->warning('Zotero Item übersprungen', [
                         'key' => $key,
-                        'path' => $prefix . '/items/' . $key,
                         'error' => $e->getMessage(),
                     ]);
                     $result['items_skipped']++;
                 }
             }
             $start += $limit;
-        } while (\count($items) === $limit);
+        } while (\count($items ?? []) === $limit);
 
         return $keyToId;
     }
 
     /**
-     * Einzelnes Item: Metadaten + cite (include=bib) + bib (format=bibtex).
+     * Parst die Antwort eines Multi-Item-BibTeX-Requests (format=bibtex) in key => vollständiger Eintrag.
+     *
+     * @return array<string, string>
      */
-    private function upsertItem(string $prefix, string $apiKey, int $pid, string $key, array $listItem, string $citationStyle, string $citationLocale, array &$result): int
+    private function parseBibtexMultiResponse(string $bibtex): array
     {
-        $path = $prefix . '/items/' . $key;
-        $includeQuery = ['include' => 'data,bib'];
-        // Nur gültige Zotero-Styles senden (Name aus Style-Repo oder URL zu .csl). Platzhalter wie "CSL-URL" führen zu HTTP 500.
-        if ($this->isValidCitationStyle($citationStyle)) {
-            $includeQuery['style'] = $citationStyle;
+        $byKey = [];
+        $bibtex = trim($bibtex);
+        if ($bibtex === '') {
+            return $byKey;
         }
-        if ($citationLocale !== '') {
-            $includeQuery['locale'] = $citationLocale;
+        // Einträge trennen: jedes @type{key,...} bis zum nächsten @
+        $parts = preg_split('/\s*(?=@\w+\{)/s', $bibtex);
+        foreach ($parts as $part) {
+            $part = trim($part);
+            if ($part === '') {
+                continue;
+            }
+            if (preg_match('/@\w+\{\s*([^,\s]+)\s*,/s', $part, $m)) {
+                $key = trim($m[1]);
+                $byKey[$key] = $part;
+            }
         }
-        $fullItemResponse = $this->zoteroClient->get($path, $apiKey, $includeQuery);
-        $this->ensureSuccessResponse($fullItemResponse, $path);
-        $fullItem = $this->decodeJson($fullItemResponse->getContent(false), $path);
-        if (!\is_array($fullItem)) {
-            return 0;
-        }
-        $data = $fullItem['data'] ?? $listItem['data'] ?? [];
-        $citeContent = $fullItem['bib'] ?? '';
+        return $byKey;
+    }
 
-        $bibResponse = $this->zoteroClient->get($path, $apiKey, ['format' => 'bibtex']);
-        $this->ensureSuccessResponse($bibResponse, $path . '?format=bibtex');
-        $bibContent = $bibResponse->getContent(false);
+    /**
+     * Einzelnes Item in die DB schreiben (ohne API-Request). Daten kommen aus Batch-Response.
+     *
+     * @param array $item Item von API mit key, version, data, bib
+     */
+    private function upsertItemFromData(int $pid, array $item, string $bibContent, array &$result): int
+    {
+        $key = $item['key'] ?? '';
+        $data = $item['data'] ?? [];
+        $citeContent = $item['bib'] ?? '';
+        $version = (int) ($item['version'] ?? 0);
 
         $title = $data['title'] ?? '';
         $itemType = $data['itemType'] ?? '';
-        $version = (int) ($fullItem['version'] ?? $listItem['version'] ?? 0);
         $year = '';
         $date = $data['date'] ?? '';
         if (preg_match('/\b(19|20)\d{2}\b/', $date, $m)) {
@@ -519,6 +576,18 @@ final class ZoteroSyncService
         );
     }
 
+    /**
+     * Setzt die Sync-Metadaten aller Libraries zurück (Vollabzug beim nächsten Sync).
+     */
+    public function resetAllSyncStates(): void
+    {
+        $tstamp = time();
+        $this->connection->executeStatement(
+            'UPDATE tl_zotero_library SET tstamp = ?, last_sync_version = 0, last_sync_at = 0, last_sync_status = ?',
+            [$tstamp, '']
+        );
+    }
+
     private function updateLibrarySyncStatus(int $libraryId, ?int $newVersion): void
     {
         $set = [
@@ -566,8 +635,11 @@ final class ZoteroSyncService
         if ($status >= 200 && $status < 300) {
             return;
         }
+        $hint = $status >= 500
+            ? 'Serverfehler bei Zotero (z. B. Timeout oder fehlerhafte Items/Styles). Später erneut versuchen oder kleinere Bibliothek.'
+            : 'Prüfe API-Key und Library-ID.';
         throw new \RuntimeException(
-            sprintf('Zotero API %s: HTTP %d. Prüfe API-Key und Library-ID.', $path, $status)
+            sprintf('Zotero API %s: HTTP %d. %s', $path, $status, $hint)
         );
     }
 

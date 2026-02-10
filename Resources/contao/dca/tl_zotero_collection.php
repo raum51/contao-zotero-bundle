@@ -12,6 +12,7 @@ $GLOBALS['TL_DCA']['tl_zotero_collection'] = [
         'dataContainer' => \Contao\DC_Table::class,
         'ptable' => 'tl_zotero_library',
         'ctable' => ['tl_zotero_collection_item'],
+        'doNotCopyRecords' => true,
         'enableVersioning' => true,
         'sql' => [
             'keys' => [
@@ -41,14 +42,14 @@ $GLOBALS['TL_DCA']['tl_zotero_collection'] = [
             ],
         ],
         'operations' => [
-            'show' => [
-                'href' => 'act=show',
-                'icon' => 'show.svg',
-            ],
             'toggle' => [
                 'href' => 'act=toggle&amp;field=published',
                 'icon' => 'visible.svg',
-                'showInHeader' => true,
+                'primary' => true,
+            ],
+            'show' => [
+                'href' => 'act=show',
+                'icon' => 'show.svg',
             ],
         ],
     ],
@@ -98,6 +99,8 @@ $GLOBALS['TL_DCA']['tl_zotero_collection'] = [
         'published' => [
             'label' => &$GLOBALS['TL_LANG']['tl_zotero_collection']['published'],
             'exclude' => true,
+            'filter' => true,
+            'toggle' => true,
             'inputType' => 'checkbox',
             'eval' => ['tl_class' => 'w50'],
             'sql' => "char(1) NOT NULL default '1'",

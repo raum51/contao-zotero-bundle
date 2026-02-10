@@ -12,6 +12,7 @@ $GLOBALS['TL_DCA']['tl_zotero_item'] = [
         'dataContainer' => \Contao\DC_Table::class,
         'ptable' => 'tl_zotero_library',
         'ctable' => ['tl_zotero_item_creator'],
+        'doNotCopyRecords' => true,
         'notDeletable' => true,
         'enableVersioning' => true,
         'sql' => [
@@ -42,15 +43,14 @@ $GLOBALS['TL_DCA']['tl_zotero_item'] = [
             ],
         ],
         'operations' => [
-            'edit' => [
-                'href' => 'act=edit',
-                'icon' => 'edit.svg',
-            ],
             'toggle' => [
                 'href' => 'act=toggle&amp;field=published',
                 'icon' => 'visible.svg',
-                'showInHeader' => true,
                 'primary' => true,
+            ],
+            'edit' => [
+                'href' => 'act=edit',
+                'icon' => 'edit.svg',
             ],
             'show' => [
                 'href' => 'act=show',

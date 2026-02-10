@@ -23,6 +23,8 @@ final class ZoteroClient
     private const BASE_URL = 'https://api.zotero.org';
     private const API_VERSION_HEADER = '3';
     private const DEFAULT_MAX_RETRIES = 3;
+    /** Maximale Wartezeit pro HTTP-Request (Sekunden). Große Libraries/Items können lange Antwortzeiten haben. */
+    private const REQUEST_TIMEOUT = 600;
 
     public function __construct(
         private readonly HttpClientInterface $httpClient,
@@ -50,6 +52,8 @@ final class ZoteroClient
     public function request(string $method, string $path, string $apiKey, array $options = []): ResponseInterface
     {
         $url = rtrim($this->baseUrl, '/') . '/' . ltrim($path, '/');
+        $options['timeout'] = $options['timeout'] ?? self::REQUEST_TIMEOUT;
+        $options['max_duration'] = $options['max_duration'] ?? self::REQUEST_TIMEOUT;
         $options['headers'] = array_merge(
             $options['headers'] ?? [],
             [

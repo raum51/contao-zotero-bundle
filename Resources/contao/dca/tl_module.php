@@ -26,7 +26,7 @@ $GLOBALS['TL_DCA']['tl_module']['fields']['zotero_library'] = [
     'inputType' => 'select',
     'eval' => ['mandatory' => true, 'chosen' => true, 'tl_class' => 'w50'],
     'sql' => 'int(10) unsigned NOT NULL default 0',
-    'relation' => ['type' => 'hasOne', 'table' => 'tl_zotero_library', 'field' => 'id'],
+    'relation' => ['type' => 'hasOne', 'table' => 'tl_zotero_library', 'field' => 'id', 'where' => [['field' => 'published', 'value' => '1']]],
 ];
 $GLOBALS['TL_DCA']['tl_module']['fields']['zotero_collections'] = [
     'label' => &$GLOBALS['TL_LANG']['tl_module']['zotero_collections'],

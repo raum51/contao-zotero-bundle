@@ -36,6 +36,12 @@ final class ZoteroSyncCommand extends Command
             InputOption::VALUE_OPTIONAL,
             'Nur diese Library-ID synchronisieren (ohne Option: alle)'
         );
+        $this->addOption(
+            'reset',
+            'r',
+            InputOption::VALUE_NONE,
+            'Sync-Metadaten vor dem Abruf zurücksetzen (Vollabzug wie „Synchronisation zurücksetzen“ im Backend)'
+        );
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): int
@@ -49,6 +55,17 @@ final class ZoteroSyncCommand extends Command
                 $io->error('Ungültige Library-ID.');
 
                 return self::FAILURE;
+            }
+        }
+
+        $resetFirst = $input->getOption('reset');
+        if ($resetFirst) {
+            if ($id > 0) {
+                $this->syncService->resetSyncState($id);
+                $io->note('Sync-Metadaten für Library-ID ' . $id . ' zurückgesetzt (Vollabzug).');
+            } else {
+                $this->syncService->resetAllSyncStates();
+                $io->note('Sync-Metadaten für alle Libraries zurückgesetzt (Vollabzug).');
             }
         }
 

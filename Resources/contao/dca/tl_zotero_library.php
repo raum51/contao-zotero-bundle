@@ -35,8 +35,28 @@ $GLOBALS['TL_DCA']['tl_zotero_library'] = [
                 'class' => 'header_edit_all',
                 'attributes' => 'onclick="Backend.getScrollOffset()"',
             ],
+            'sync_all' => [
+                'href' => 'key=zotero_sync_all',
+                'class' => 'header_sync',
+                'icon' => 'sync.svg',
+                'label' => &$GLOBALS['TL_LANG']['tl_zotero_library']['sync_all'],
+                'attributes' => 'onclick="if(!confirm(\'' . ($GLOBALS['TL_LANG']['tl_zotero_library']['sync_all_confirm'] ?? '') . '\'))return false;Backend.getScrollOffset()"',
+            ],
+            'reset_sync_all' => [
+                'href' => 'key=zotero_reset_sync_all',
+                'class' => 'header_reset_sync',
+                'icon' => 'sync.svg',
+                'label' => &$GLOBALS['TL_LANG']['tl_zotero_library']['reset_sync_all'],
+                'attributes' => 'onclick="if(!confirm(\'' . ($GLOBALS['TL_LANG']['tl_zotero_library']['sync_all_confirm'] ?? '') . '\'))return false;Backend.getScrollOffset()"',
+            ],
         ],
         'operations' => [
+            'toggle' => [
+                'href' => 'act=toggle&amp;field=published',
+                'icon' => 'visible.svg',
+                'showInHeader' => true,
+                'primary' => true,
+            ],
             'edit' => [
                 'href' => 'act=edit',
                 'icon' => 'edit.svg',
@@ -72,7 +92,7 @@ $GLOBALS['TL_DCA']['tl_zotero_library'] = [
         ],
     ],
     'palettes' => [
-        'default' => '{title_legend},title;{zotero_legend},library_id,library_type,api_key;{citation_legend},citation_style,citation_locale;{sync_legend},sync_interval,last_sync_at,last_sync_status,last_sync_version;{options_legend},download_attachments;{expert_legend},sorting',
+        'default' => '{title_legend},title;{zotero_legend},library_id,library_type,api_key;{citation_legend},citation_style,citation_locale;{sync_legend},sync_interval,last_sync_at,last_sync_status,last_sync_version;{options_legend},download_attachments,published;{expert_legend},sorting',
     ],
     'fields' => [
         'id' => [
@@ -164,6 +184,15 @@ $GLOBALS['TL_DCA']['tl_zotero_library'] = [
             'inputType' => 'checkbox',
             'eval' => ['tl_class' => 'w50'],
             'sql' => "char(1) NOT NULL default ''",
+        ],
+        'published' => [
+            'label' => &$GLOBALS['TL_LANG']['tl_zotero_library']['published'],
+            'exclude' => true,
+            'filter' => true,
+            'toggle' => true,
+            'inputType' => 'checkbox',
+            'eval' => ['tl_class' => 'w50'],
+            'sql' => "char(1) NOT NULL default '1'",
         ],
     ],
 ];
