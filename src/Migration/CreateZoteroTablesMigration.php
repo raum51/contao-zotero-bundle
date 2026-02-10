@@ -87,7 +87,7 @@ final class CreateZoteroTablesMigration extends AbstractMigration
                 id int(10) unsigned NOT NULL AUTO_INCREMENT,
                 pid int(10) unsigned NOT NULL DEFAULT 0,
                 tstamp int(10) unsigned NOT NULL DEFAULT 0,
-                parent_id int(10) unsigned NOT NULL DEFAULT 0,
+                parent_id int(10) unsigned NULL DEFAULT NULL,
                 sorting int(10) unsigned NOT NULL DEFAULT 0,
                 zotero_key varchar(16) NOT NULL DEFAULT '',
                 title varchar(255) NOT NULL DEFAULT '',

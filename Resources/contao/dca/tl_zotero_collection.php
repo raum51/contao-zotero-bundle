@@ -24,7 +24,7 @@ $GLOBALS['TL_DCA']['tl_zotero_collection'] = [
     ],
     'list' => [
         'sorting' => [
-            'mode' => 5,
+            'mode' => 4,
             'fields' => ['sorting'],
             'headerFields' => ['title'],
             'panelLayout' => 'filter;search,limit',
@@ -74,7 +74,7 @@ $GLOBALS['TL_DCA']['tl_zotero_collection'] = [
             'exclude' => true,
             'inputType' => 'text',
             'eval' => ['mandatory' => false, 'rgxp' => 'natural', 'tl_class' => 'w50'],
-            'sql' => 'int(10) unsigned NOT NULL default 0',
+            'sql' => 'int(10) unsigned NULL DEFAULT NULL',
         ],
         'sorting' => [
             'label' => &$GLOBALS['TL_LANG']['tl_zotero_collection']['sorting'],

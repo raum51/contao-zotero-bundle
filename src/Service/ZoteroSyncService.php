@@ -191,7 +191,7 @@ final class ZoteroSyncService
                     $this->connection->insert('tl_zotero_collection', [
                         'pid' => $pid,
                         'tstamp' => $tstamp,
-                        'parent_id' => 0,
+                        'parent_id' => null,
                         'sorting' => 0,
                         'zotero_key' => $key,
                         'title' => $name,

@@ -11,6 +11,8 @@ services:
         tags: [{ name: contao.migration }]
     Raum51\ContaoZoteroBundle\Migration\AddLastSyncVersionMigration:
         tags: [{ name: contao.migration }]
+    Raum51\ContaoZoteroBundle\Migration\CollectionParentIdNullMigration:
+        tags: [{ name: contao.migration }]
 
     Raum51\ContaoZoteroBundle\Command\TestZoteroClientCommand:
         tags: [{ name: console.command }]

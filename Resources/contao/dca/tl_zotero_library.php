@@ -10,6 +10,7 @@ declare(strict_types=1);
 $GLOBALS['TL_DCA']['tl_zotero_library'] = [
     'config' => [
         'dataContainer' => \Contao\DC_Table::class,
+        'ctable' => ['tl_zotero_collection', 'tl_zotero_item'],
         'enableVersioning' => true,
         'sql' => [
             'keys' => [
@@ -39,6 +40,16 @@ $GLOBALS['TL_DCA']['tl_zotero_library'] = [
             'edit' => [
                 'href' => 'act=edit',
                 'icon' => 'edit.svg',
+            ],
+            'collections' => [
+                'href' => 'table=tl_zotero_collection',
+                'icon' => 'folderC.svg',
+                'label' => &$GLOBALS['TL_LANG']['tl_zotero_library']['collections'],
+            ],
+            'items' => [
+                'href' => 'table=tl_zotero_item',
+                'icon' => 'article.svg',
+                'label' => &$GLOBALS['TL_LANG']['tl_zotero_library']['items'],
             ],
             'copy' => [
                 'href' => 'act=copy',
