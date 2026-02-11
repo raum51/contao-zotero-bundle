@@ -42,6 +42,12 @@ final class ZoteroSyncCommand extends Command
             InputOption::VALUE_NONE,
             'Sync-Metadaten vor dem Abruf zurücksetzen (Vollabzug wie „Synchronisation zurücksetzen“ im Backend)'
         );
+        $this->addOption(
+            'log-skipped',
+            null,
+            InputOption::VALUE_REQUIRED,
+            'Übersprungene Items in diese Datei schreiben (JSON, z. B. var/log/zotero_skipped.json)'
+        );
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): int
@@ -75,20 +81,72 @@ final class ZoteroSyncCommand extends Command
 
         $io->success('Sync beendet.');
         $rows = [
-            ['Collections erstellt', $result['collections_created']],
-            ['Collections aktualisiert', $result['collections_updated']],
             ['Items erstellt', $result['items_created']],
             ['Items aktualisiert', $result['items_updated']],
             ['Items gelöscht', $result['items_deleted']],
+            ['Items übersprungen', $result['items_skipped'] ?? 0],
+            ['Item-Creator-Verknüpfungen erstellt', $result['item_creators_created'] ?? 0],
+            ['Item-Creator-Verknüpfungen aktualisiert', $result['item_creators_updated'] ?? 0],
+            ['Item-Creator-Verknüpfungen gelöscht', $result['item_creators_deleted'] ?? 0],
+            ['Item-Creator-Verknüpfungen übersprungen', $result['item_creators_skipped'] ?? 0],
+            ['Attachments erstellt', $result['attachments_created'] ?? 0],
+            ['Attachments aktualisiert', $result['attachments_updated'] ?? 0],
+            ['Attachments gelöscht', $result['attachments_deleted'] ?? 0],
+            ['Attachments übersprungen', $result['attachments_skipped'] ?? 0],
+            ['Collections erstellt', $result['collections_created']],
+            ['Collections aktualisiert', $result['collections_updated']],
+            ['Collections gelöscht', $result['collections_deleted'] ?? 0],
+            ['Collections übersprungen', $result['collections_skipped'] ?? 0],
+            ['Collection-Item-Verknüpfungen erstellt', $result['collection_items_created'] ?? 0],
+            ['Collection-Item-Verknüpfungen aktualisiert', $result['collection_items_updated'] ?? 0],
+            ['Collection-Item-Verknüpfungen gelöscht', $result['collection_items_deleted'] ?? 0],
+            ['Collection-Item-Verknüpfungen übersprungen', $result['collection_items_skipped'] ?? 0],
         ];
-        if (($result['items_skipped'] ?? 0) > 0) {
-            $rows[] = ['Items übersprungen (API-Fehler)', $result['items_skipped']];
-        }
         $io->table(['Metrik', 'Anzahl'], $rows);
+
+        $skippedItems = $result['skipped_items'] ?? [];
+        $logSkippedPath = $input->getOption('log-skipped');
+        if ($logSkippedPath !== null && $logSkippedPath !== '') {
+            $this->writeSkippedLog($logSkippedPath, $skippedItems);
+            $io->writeln(sprintf('Skipped-Log in <info>%s</info> geschrieben (%d Einträge).', $logSkippedPath, \count($skippedItems)));
+        }
+        if ($skippedItems !== []) {
+            $io->section('Übersprungene Items (protokolliert)');
+            $skipRows = [];
+            foreach ($skippedItems as $s) {
+                $parent = isset($s['parent_key']) ? ' → Parent: ' . $s['parent_key'] : '';
+                $skipRows[] = [
+                    $s['key'] ?? '',
+                    ($s['item_type'] ?? '') . $parent,
+                    $s['reason'] ?? '',
+                    $s['library'] ?? '',
+                ];
+            }
+            $io->table(['Key', 'Typ / Parent', 'Grund', 'Library'], $skipRows);
+        }
+
         if ($result['errors'] !== []) {
             $io->warning('Fehler: ' . implode('; ', $result['errors']));
         }
 
         return self::SUCCESS;
+    }
+
+    /**
+     * Übersprungene Items in eine JSON-Datei schreiben (für spätere Auswertung).
+     */
+    private function writeSkippedLog(string $path, array $skippedItems): void
+    {
+        $payload = [
+            'synced_at' => date(\DateTimeInterface::ATOM),
+            'count' => \count($skippedItems),
+            'skipped_items' => $skippedItems,
+        ];
+        $json = json_encode($payload, \JSON_UNESCAPED_UNICODE | \JSON_PRETTY_PRINT | \JSON_THROW_ON_ERROR);
+        $dir = \dirname($path);
+        if (!is_dir($dir)) {
+            mkdir($dir, 0755, true);
+        }
+        file_put_contents($path, $json);
     }
 }

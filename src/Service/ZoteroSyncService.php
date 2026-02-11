@@ -35,7 +35,7 @@ final class ZoteroSyncService
      *
      * @param int|null $libraryId Wenn null: alle Libraries (nur published, wenn $onlyPublished=true)
      * @param bool $onlyPublished Bei sync(null): nur published Libraries synchronisieren
-     * @return array{collections_created: int, collections_updated: int, items_created: int, items_updated: int, items_deleted: int, items_skipped: int, collection_items_created: int, collection_items_deleted: int, item_creators_created: int, item_creators_deleted: int, errors: list<string>}
+     * @return array{collections_created: int, collections_updated: int, items_created: int, items_updated: int, items_deleted: int, items_skipped: int, skipped_items: array, attachments_created: int, attachments_updated: int, attachments_deleted: int, attachments_skipped: int, collection_items_created: int, collection_items_deleted: int, item_creators_created: int, item_creators_deleted: int, errors: list<string>}
      */
     public function sync(?int $libraryId = null, bool $onlyPublished = false): array
     {
@@ -47,6 +47,11 @@ final class ZoteroSyncService
             'items_updated' => 0,
             'items_deleted' => 0,
             'items_skipped' => 0,
+            'skipped_items' => [],
+            'attachments_created' => 0,
+            'attachments_updated' => 0,
+            'attachments_deleted' => 0,
+            'attachments_skipped' => 0,
             'collection_items_created' => 0,
             'collection_items_deleted' => 0,
             'item_creators_created' => 0,
@@ -63,6 +68,13 @@ final class ZoteroSyncService
                 $total['items_updated'] += $result['items_updated'];
                 $total['items_deleted'] += $result['items_deleted'];
                 $total['items_skipped'] += $result['items_skipped'];
+                $total['attachments_created'] += $result['attachments_created'] ?? 0;
+                $total['attachments_updated'] += $result['attachments_updated'] ?? 0;
+                $total['attachments_deleted'] += $result['attachments_deleted'] ?? 0;
+                $total['attachments_skipped'] += $result['attachments_skipped'] ?? 0;
+                foreach ($result['skipped_items'] ?? [] as $skip) {
+                    $total['skipped_items'][] = array_merge($skip, ['library' => $library['title'] ?? '']);
+                }
                 $total['collection_items_created'] += $result['collection_items_created'];
                 $total['collection_items_deleted'] += $result['collection_items_deleted'];
                 $total['item_creators_created'] += $result['item_creators_created'];
@@ -107,7 +119,7 @@ final class ZoteroSyncService
     }
 
     /**
-     * @return array{collections_created: int, collections_updated: int, items_created: int, items_updated: int, items_deleted: int, items_skipped: int, collection_items_created: int, collection_items_deleted: int, item_creators_created: int, item_creators_deleted: int}
+     * @return array{collections_created: int, collections_updated: int, items_created: int, items_updated: int, items_deleted: int, items_skipped: int, skipped_items: array, attachments_created: int, attachments_updated: int, attachments_deleted: int, attachments_skipped: int, collection_items_created: int, collection_items_deleted: int, item_creators_created: int, item_creators_deleted: int}
      */
     private function syncLibrary(array $library): array
     {
@@ -127,6 +139,11 @@ final class ZoteroSyncService
             'items_updated' => 0,
             'items_deleted' => 0,
             'items_skipped' => 0,
+            'skipped_items' => [],
+            'attachments_created' => 0,
+            'attachments_updated' => 0,
+            'attachments_deleted' => 0,
+            'attachments_skipped' => 0,
             'collection_items_created' => 0,
             'collection_items_deleted' => 0,
             'item_creators_created' => 0,
@@ -254,50 +271,22 @@ final class ZoteroSyncService
     private function syncItems(string $prefix, string $apiKey, int $pid, string $citationStyle, string $citationLocale, int $since, array &$result): array
     {
         $keyToId = [];
+        $path = $prefix . '/items';
+
+        // Pass 1: Alle Nicht-Attachments (itemType=-attachment), damit Parents vor Attachments in keyToId stehen
         $start = 0;
         $limit = self::ITEMS_PAGE_SIZE;
-        $path = $prefix . '/items';
-        $minLimitOn500 = 25;
-
         do {
-            $query = ['start' => $start, 'limit' => $limit];
+            $query = ['start' => $start, 'limit' => $limit, 'include' => 'data', 'itemType' => '-attachment'];
             if ($since > 0) {
                 $query['since'] = $since;
             }
 
-            $items = null;
-
-            try {
-                // 1) Alle Items der Seite mit data + bib (formatted citation) in einem Request
-                $queryWithInclude = $query;
-                $queryWithInclude['include'] = 'data,bib';
-                if ($this->isValidCitationStyle($citationStyle)) {
-                    $queryWithInclude['style'] = $citationStyle;
-                }
-                if ($citationLocale !== '') {
-                    $queryWithInclude['locale'] = $citationLocale;
-                }
-                $response = $this->zoteroClient->get($path, $apiKey, $queryWithInclude);
-                $this->ensureSuccessResponse($response, $path);
-                $this->lastModifiedVersion = $this->parseLastModifiedVersion($response);
-                $items = $this->decodeJson($response->getContent(false), $path);
-                if (!\is_array($items) || $items === []) {
-                    break;
-                }
-            } catch (\RuntimeException $e) {
-                // Bei HTTP 500 (Zotero-Server): ein Retry mit kleinerer Seite, oft hilfreich bei großen Batches/Styles
-                if (str_contains($e->getMessage(), '500') && $limit > $minLimitOn500) {
-                    $limit = $minLimitOn500;
-                    $this->logger->info('Zotero API HTTP 500 – Retry mit kleinerer Seitengröße', [
-                        'path' => $path,
-                        'new_limit' => $limit,
-                    ]);
-                    continue;
-                }
-                throw $e;
-            }
-
-            if (!\is_array($items)) {
+            $response = $this->zoteroClient->get($path, $apiKey, $query);
+            $this->ensureSuccessResponse($response, $path);
+            $this->lastModifiedVersion = $this->parseLastModifiedVersion($response);
+            $items = $this->decodeJson($response->getContent(false), $path);
+            if (!\is_array($items) || $items === []) {
                 break;
             }
 
@@ -307,24 +296,154 @@ final class ZoteroSyncService
                     continue;
                 }
                 try {
-                    // BibTeX pro Item abrufen (GET .../items/{key}?format=bibtex) – zuverlässige Zuordnung
                     $bibContent = $this->fetchBibtexForItem($path, $apiKey, $key);
-                    $itemId = $this->upsertItemFromData($pid, $item, $bibContent, $result);
+                    $citeContent = $this->fetchCiteForItem($path, $apiKey, $key, $citationStyle, $citationLocale);
+                    $itemId = $this->upsertItemFromData($pid, $item, $bibContent, $citeContent, $result);
                     if ($itemId > 0) {
                         $keyToId[$key] = $itemId;
                     }
                 } catch (\Throwable $e) {
-                    $this->logger->warning('Zotero Item übersprungen', [
-                        'key' => $key,
-                        'error' => $e->getMessage(),
-                    ]);
-                    $result['items_skipped']++;
+                    $this->recordSkipped($result, $key, $e->getMessage(), null, (string) (($item['data'] ?? [])['itemType'] ?? ''));
                 }
             }
             $start += $limit;
-        } while (\count($items ?? []) === $limit);
+        } while (\count($items) === $limit);
+
+        // Pass 2: Alle Attachments (itemType=attachment)
+        $start = 0;
+        do {
+            $query = ['start' => $start, 'limit' => $limit, 'include' => 'data', 'itemType' => 'attachment'];
+            if ($since > 0) {
+                $query['since'] = $since;
+            }
+
+            $response = $this->zoteroClient->get($path, $apiKey, $query);
+            $this->ensureSuccessResponse($response, $path);
+            $this->lastModifiedVersion = $this->parseLastModifiedVersion($response);
+            $items = $this->decodeJson($response->getContent(false), $path);
+            if (!\is_array($items) || $items === []) {
+                break;
+            }
+
+            foreach ($items as $item) {
+                $key = $item['key'] ?? '';
+                if ($key === '') {
+                    continue;
+                }
+                try {
+                    $this->upsertAttachmentFromData($pid, $item, $keyToId, $result);
+                } catch (\Throwable $e) {
+                    $this->recordSkipped($result, $key, $e->getMessage(), (string) (($item['data'] ?? [])['parentItem'] ?? ''), 'attachment');
+                }
+            }
+            $start += $limit;
+        } while (\count($items) === $limit);
 
         return $keyToId;
+    }
+
+    /**
+     * Übersprungenes Item protokollieren (Zähler + Details für Ausgabe).
+     *
+     * @param array<string, mixed> $result  Sync-Result-Array (by reference)
+     * @param string               $key    Zotero-Item-Key
+     * @param string               $reason Grund (z. B. Fehlermeldung)
+     * @param string|null          $parentKey Parent-Key bei Attachments
+     * @param string               $itemType  Zotero itemType
+     */
+    private function recordSkipped(array &$result, string $key, string $reason, ?string $parentKey, string $itemType): void
+    {
+        $this->logger->warning('Zotero Item übersprungen', [
+            'key' => $key,
+            'reason' => $reason,
+            'parent_key' => $parentKey,
+        ]);
+        $result['items_skipped']++;
+        if ($itemType === 'attachment') {
+            $result['attachments_skipped'] = ($result['attachments_skipped'] ?? 0) + 1;
+        }
+        $entry = [
+            'key' => $key,
+            'reason' => $reason,
+            'item_type' => $itemType,
+        ];
+        if ($parentKey !== null && $parentKey !== '') {
+            $entry['parent_key'] = $parentKey;
+        }
+        $result['skipped_items'][] = $entry;
+    }
+
+    /**
+     * Attachment-Datensatz in tl_zotero_item_attachment upserten.
+     *
+     * @param int                $pid      Library-ID (tl_zotero_library.id)
+     * @param array<string,mixed> $item    Zotero-Item mit key, version, data
+     * @param array<string,int>  $keyToId Mapping zotero_key -> tl_zotero_item.id (für parentItem-Auflösung)
+     */
+    private function upsertAttachmentFromData(int $pid, array $item, array $keyToId, array &$result): void
+    {
+        $key = (string) ($item['key'] ?? '');
+        $data = $item['data'] ?? [];
+        $version = (int) ($item['version'] ?? 0);
+        $parentKey = (string) ($data['parentItem'] ?? '');
+
+        if ($parentKey === '') {
+            $this->recordSkipped($result, $key, 'Attachment ohne parentItem (Standalone oder defekt)', null, 'attachment');
+            return;
+        }
+
+        // Parent-Item-ID: bevorzugt aus aktuellem Sync-Mapping, sonst aus DB
+        $parentId = $keyToId[$parentKey] ?? null;
+        if ($parentId === null) {
+            $found = $this->connection->fetchOne(
+                'SELECT id FROM tl_zotero_item WHERE pid = ? AND zotero_key = ?',
+                [$pid, $parentKey]
+            );
+            if ($found === false) {
+                $this->recordSkipped(
+                    $result,
+                    $key,
+                    'Parent-Item nicht in tl_zotero_item (z. B. gelöscht in Zotero, oder Pagination)',
+                    $parentKey,
+                    'attachment'
+                );
+                return;
+            }
+            $parentId = (int) $found;
+        }
+
+        $jsonData = json_encode($data, \JSON_UNESCAPED_UNICODE | \JSON_THROW_ON_ERROR);
+
+        $existing = $this->connection->fetchOne(
+            'SELECT id FROM tl_zotero_item_attachment WHERE pid = ? AND zotero_key = ?',
+            [$parentId, $key]
+        );
+
+        $row = [
+            'pid' => $parentId,
+            'tstamp' => time(),
+            'sorting' => 0,
+            'zotero_key' => $key,
+            'zotero_version' => $version,
+            'link_mode' => (string) ($data['linkMode'] ?? ''),
+            'title' => (string) ($data['title'] ?? ''),
+            'filename' => (string) ($data['filename'] ?? ''),
+            'content_type' => (string) ($data['contentType'] ?? ''),
+            'url' => (string) ($data['url'] ?? ''),
+            'charset' => (string) ($data['charset'] ?? ''),
+            'md5' => (string) ($data['md5'] ?? ''),
+            'json_data' => $jsonData,
+            'published' => '1',
+        ];
+
+        if ($existing !== false) {
+            unset($row['pid'], $row['sorting']);
+            $this->connection->update('tl_zotero_item_attachment', $row, ['id' => $existing]);
+            $result['attachments_updated']++;
+        } else {
+            $this->connection->insert('tl_zotero_item_attachment', $row);
+            $result['attachments_created']++;
+        }
     }
 
     /**
@@ -346,15 +465,39 @@ final class ZoteroSyncService
     }
 
     /**
-     * Einzelnes Item in die DB schreiben (ohne API-Request). Daten kommen aus Batch-Response.
-     *
-     * @param array $item Item von API mit key, version, data, bib
+     * Formatierten Literaturverweis (HTML) für ein Item nachladen (GET …/items/{key}?include=bib&style=…).
      */
-    private function upsertItemFromData(int $pid, array $item, string $bibContent, array &$result): int
+    private function fetchCiteForItem(string $itemsPath, string $apiKey, string $key, string $citationStyle, string $citationLocale): string
+    {
+        $path = $itemsPath . '/' . $key;
+        $query = ['include' => 'bib'];
+        if ($this->isValidCitationStyle($citationStyle)) {
+            $query['style'] = $citationStyle;
+        }
+        if ($citationLocale !== '') {
+            $query['locale'] = $citationLocale;
+        }
+        try {
+            $response = $this->zoteroClient->get($path, $apiKey, $query);
+            $this->ensureSuccessResponse($response, $path);
+            $decoded = $this->decodeJson($response->getContent(false), $path);
+            $bib = $decoded['bib'] ?? '';
+            return \is_string($bib) ? trim($bib) : '';
+        } catch (\Throwable $e) {
+            $this->logger->debug('Zitation für Item nicht abrufbar', ['key' => $key, 'error' => $e->getMessage()]);
+            return '';
+        }
+    }
+
+    /**
+     * Einzelnes Item in die DB schreiben (ohne weiteren API-Request). Daten aus Batch-Response, bib/cite bereits nachgeladen.
+     *
+     * @param array $item Item von API mit key, version, data
+     */
+    private function upsertItemFromData(int $pid, array $item, string $bibContent, string $citeContent, array &$result): int
     {
         $key = $item['key'] ?? '';
         $data = $item['data'] ?? [];
-        $citeContent = $item['bib'] ?? '';
         $version = (int) ($item['version'] ?? 0);
 
         $title = $data['title'] ?? '';

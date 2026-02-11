@@ -82,10 +82,11 @@ final class ZoteroLibrarySyncCallback
             $libraryTitle = $this->getLibraryTitle($id);
             $done = sprintf($lang['sync_status_done_with_title'] ?? 'Sync Zotero-Library %s abgeschlossen', $libraryTitle);
             $rest = [
-                sprintf($lang['sync_status_collections'] ?? 'Collections: %d neu, %d aktualisiert', $result['collections_created'], $result['collections_updated']),
                 sprintf($lang['sync_status_items'] ?? 'Items: %d neu, %d aktualisiert, %d gelöscht, %d übersprungen', $result['items_created'], $result['items_updated'], $result['items_deleted'], $result['items_skipped']),
-                sprintf($lang['sync_status_collection_items'] ?? 'Collection-Item-Zuordnungen: %d neu, %d gelöscht', $result['collection_items_created'] ?? 0, $result['collection_items_deleted'] ?? 0),
-                sprintf($lang['sync_status_item_creators'] ?? 'Item-Creator-Zuordnungen: %d neu, %d gelöscht', $result['item_creators_created'] ?? 0, $result['item_creators_deleted'] ?? 0),
+                sprintf($lang['sync_status_item_creators'] ?? 'Item-Creator-Verknüpfungen: %d neu, %d aktualisiert, %d gelöscht, %d übersprungen', $result['item_creators_created'] ?? 0, $result['item_creators_updated'] ?? 0, $result['item_creators_deleted'] ?? 0, $result['item_creators_skipped'] ?? 0),
+                sprintf($lang['sync_status_attachments'] ?? 'Attachments: %d neu, %d aktualisiert, %d gelöscht, %d übersprungen', $result['attachments_created'] ?? 0, $result['attachments_updated'] ?? 0, $result['attachments_deleted'] ?? 0, $result['attachments_skipped'] ?? 0),
+                sprintf($lang['sync_status_collections'] ?? 'Collections: %d neu, %d aktualisiert, %d gelöscht, %d übersprungen', $result['collections_created'], $result['collections_updated'], $result['collections_deleted'] ?? 0, $result['collections_skipped'] ?? 0),
+                sprintf($lang['sync_status_collection_items'] ?? 'Collection-Item-Verknüpfungen: %d neu, %d aktualisiert, %d gelöscht, %d übersprungen', $result['collection_items_created'] ?? 0, $result['collection_items_updated'] ?? 0, $result['collection_items_deleted'] ?? 0, $result['collection_items_skipped'] ?? 0),
             ];
             Message::addConfirmation($done . ' - ' . implode(' | ', $rest));
             if (!empty($result['errors'])) {
@@ -127,10 +128,11 @@ final class ZoteroLibrarySyncCallback
                 $result = $this->syncService->sync($id);
                 $done = sprintf($lang['sync_status_done_with_title'] ?? 'Sync Zotero-Library %s abgeschlossen', $title);
                 $rest = [
-                    sprintf($lang['sync_status_collections'] ?? 'Collections: %d neu, %d aktualisiert', $result['collections_created'], $result['collections_updated']),
                     sprintf($lang['sync_status_items'] ?? 'Items: %d neu, %d aktualisiert, %d gelöscht, %d übersprungen', $result['items_created'], $result['items_updated'], $result['items_deleted'], $result['items_skipped']),
-                    sprintf($lang['sync_status_collection_items'] ?? 'Collection-Item-Zuordnungen: %d neu, %d gelöscht', $result['collection_items_created'] ?? 0, $result['collection_items_deleted'] ?? 0),
-                    sprintf($lang['sync_status_item_creators'] ?? 'Item-Creator-Zuordnungen: %d neu, %d gelöscht', $result['item_creators_created'] ?? 0, $result['item_creators_deleted'] ?? 0),
+                    sprintf($lang['sync_status_item_creators'] ?? 'Item-Creator-Verknüpfungen: %d neu, %d aktualisiert, %d gelöscht, %d übersprungen', $result['item_creators_created'] ?? 0, $result['item_creators_updated'] ?? 0, $result['item_creators_deleted'] ?? 0, $result['item_creators_skipped'] ?? 0),
+                    sprintf($lang['sync_status_attachments'] ?? 'Attachments: %d neu, %d aktualisiert, %d gelöscht, %d übersprungen', $result['attachments_created'] ?? 0, $result['attachments_updated'] ?? 0, $result['attachments_deleted'] ?? 0, $result['attachments_skipped'] ?? 0),
+                    sprintf($lang['sync_status_collections'] ?? 'Collections: %d neu, %d aktualisiert, %d gelöscht, %d übersprungen', $result['collections_created'], $result['collections_updated'], $result['collections_deleted'] ?? 0, $result['collections_skipped'] ?? 0),
+                    sprintf($lang['sync_status_collection_items'] ?? 'Collection-Item-Verknüpfungen: %d neu, %d aktualisiert, %d gelöscht, %d übersprungen', $result['collection_items_created'] ?? 0, $result['collection_items_updated'] ?? 0, $result['collection_items_deleted'] ?? 0, $result['collection_items_skipped'] ?? 0),
                 ];
                 Message::addConfirmation($done . ' - ' . implode(' | ', $rest));
                 if (!empty($result['errors'])) {

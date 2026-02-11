@@ -37,42 +37,38 @@ final class AttachmentProxyController
     public function download(int $id): StreamedResponse
     {
         $item = $this->connection->fetchAssociative(
-            'SELECT i.id, i.pid, i.zotero_key, i.download_attachments, i.title
-             FROM tl_zotero_item i
+            'SELECT a.id, a.pid AS item_id, a.zotero_key, a.title,
+                    i.download_attachments AS item_download_attachments,
+                    l.id AS library_id, l.library_id AS zotero_library_id, l.library_type, l.api_key,
+                    l.download_attachments AS library_download_attachments
+             FROM tl_zotero_item_attachment a
+             INNER JOIN tl_zotero_item i ON i.id = a.pid
              INNER JOIN tl_zotero_library l ON l.id = i.pid
-             WHERE i.id = ? AND i.published = ? AND l.published = ?',
+             WHERE a.id = ? AND i.published = ? AND l.published = ?',
             [$id, '1', '1']
         );
 
         if ($item === false) {
-            throw new NotFoundHttpException('Item not found or not published.');
+            throw new NotFoundHttpException('Attachment not found or not published.');
         }
 
-        $itemType = $this->connection->fetchOne('SELECT item_type FROM tl_zotero_item WHERE id = ?', [$id]);
-        if (strtolower((string) $itemType) !== 'attachment') {
-            throw new NotFoundHttpException('Item is not an attachment.');
-        }
-
-        $library = $this->connection->fetchAssociative(
-            'SELECT id, library_id, library_type, api_key, download_attachments FROM tl_zotero_library WHERE id = ?',
-            [$item['pid']]
-        );
-        if ($library === false || ($library['download_attachments'] ?? '') !== '1') {
+        if (($item['library_download_attachments'] ?? '') !== '1') {
             throw new NotFoundHttpException('Downloads not allowed for this library.');
         }
-        if (($item['download_attachments'] ?? '') !== '1') {
+        if (($item['item_download_attachments'] ?? '') !== '1') {
             throw new NotFoundHttpException('Downloads not allowed for this item.');
         }
 
-        $prefix = ($library['library_type'] ?? 'user') === 'group'
-            ? 'groups/' . ($library['library_id'] ?? '')
-            : 'users/' . ($library['library_id'] ?? '');
+        $prefix = ($item['library_type'] ?? 'user') === 'group'
+            ? 'groups/' . ($item['zotero_library_id'] ?? '')
+            : 'users/' . ($item['zotero_library_id'] ?? '');
         $path = $prefix . '/items/' . ($item['zotero_key'] ?? '') . '/file';
-        $apiKey = (string) ($library['api_key'] ?? '');
+        $apiKey = (string) ($item['api_key'] ?? '');
 
         $this->logger->info('Zotero attachment download', [
-            'item_id' => $id,
-            'library_id' => $library['id'],
+            'attachment_id' => $id,
+            'item_id' => $item['item_id'] ?? null,
+            'library_id' => $item['library_id'] ?? null,
             'path' => $path,
         ]);
 
