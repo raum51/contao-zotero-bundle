@@ -7,6 +7,13 @@ declare(strict_types=1);
  * Operationen: show, edit, toggle. ctable => tl_zotero_item_creator.
  */
 
+use Contao\Backend;
+use Contao\DataContainer;
+use Contao\Database;
+use Contao\System;
+use Exception;
+use Raum51\ContaoZoteroBundle\Service\ZoteroBibUtil;
+
 $GLOBALS['TL_DCA']['tl_zotero_item'] = [
     'config' => [
         'dataContainer' => \Contao\DC_Table::class,
@@ -20,6 +27,7 @@ $GLOBALS['TL_DCA']['tl_zotero_item'] = [
                 'id' => 'primary',
                 'pid' => 'index',
                 'zotero_key' => 'index',
+                'alias' => 'unique',
                 'published' => 'index',
             ],
         ],
@@ -59,7 +67,7 @@ $GLOBALS['TL_DCA']['tl_zotero_item'] = [
         ],
     ],
     'palettes' => [
-        'default' => '{zotero_legend},zotero_key,zotero_version,title,item_type,year,date,publication_title;{content_legend},cite_content,bib_content;{data_legend},json_data,tags;{options_legend},download_attachments,published',
+        'default' => '{zotero_legend},zotero_key,alias,zotero_version,title,item_type,year,date,publication_title;{content_legend},cite_content,bib_content;{data_legend},json_data,tags;{options_legend},download_attachments,published',
     ],
     'fields' => [
         'id' => [
@@ -81,6 +89,17 @@ $GLOBALS['TL_DCA']['tl_zotero_item'] = [
             'inputType' => 'text',
             'eval' => ['maxlength' => 16, 'readonly' => true, 'tl_class' => 'w50'],
             'sql' => "varchar(16) NOT NULL default ''",
+        ],
+        'alias' => [
+            'label' => &$GLOBALS['TL_LANG']['tl_zotero_item']['alias'],
+            'exclude' => true,
+            'search' => true,
+            'inputType' => 'text',
+            'eval' => ['rgxp' => 'alias', 'doNotCopy' => true, 'unique' => true, 'maxlength' => 255, 'tl_class' => 'w50'],
+            'save_callback' => [
+                ['tl_zotero_item', 'generateAlias'],
+            ],
+            'sql' => "varchar(255) BINARY NOT NULL default ''",
         ],
         'zotero_version' => [
             'label' => &$GLOBALS['TL_LANG']['tl_zotero_item']['zotero_version'],
@@ -169,3 +188,58 @@ $GLOBALS['TL_DCA']['tl_zotero_item'] = [
         ],
     ],
 ];
+
+/**
+ * Provide miscellaneous methods that are used by the data configuration array.
+ *
+ * @internal
+ */
+class tl_zotero_item extends Backend
+{
+    /**
+     * Auto-generate the item alias if it has not been set yet (cite_key from bib_content or title).
+     * Uses Contao slug service for URL-safe string and aliasExists for duplicate check.
+     *
+     * @param mixed $varValue
+     *
+     * @throws Exception
+     */
+    public function generateAlias($varValue, DataContainer $dc): string
+    {
+        $aliasExists = static function (string $alias) use ($dc): bool {
+            $result = Database::getInstance()
+                ->prepare('SELECT id FROM tl_zotero_item WHERE alias=? AND id!=?')
+                ->execute($alias, $dc->id);
+
+            return $result->numRows > 0;
+        };
+
+        $varValue = trim((string) $varValue);
+
+        if ($varValue === '') {
+            $source = '';
+            if (!empty($dc->activeRecord->bib_content)) {
+                $source = ZoteroBibUtil::extractCiteKeyFromBib((string) $dc->activeRecord->bib_content);
+            }
+            if ($source === '' && !empty($dc->activeRecord->title)) {
+                $source = (string) $dc->activeRecord->title;
+            }
+            if ($source === '') {
+                $source = 'item-' . $dc->id;
+            }
+            $varValue = System::getContainer()->get('contao.slug')->generate($source, [], $aliasExists);
+
+            return $varValue;
+        }
+
+        if (preg_match('/^[1-9]\d*$/', $varValue)) {
+            throw new Exception(sprintf($GLOBALS['TL_LANG']['ERR']['aliasNumeric'] ?? 'Alias "%s" is numeric.', $varValue));
+        }
+
+        if ($aliasExists($varValue)) {
+            throw new Exception(sprintf($GLOBALS['TL_LANG']['ERR']['aliasExists'] ?? 'Alias "%s" already exists.', $varValue));
+        }
+
+        return $varValue;
+    }
+}

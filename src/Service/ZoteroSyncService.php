@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace Raum51\ContaoZoteroBundle\Service;
 
+use Contao\CoreBundle\Slug\Slug;
 use Doctrine\DBAL\Connection;
 use Psr\Log\LoggerInterface;
+use Raum51\ContaoZoteroBundle\Service\ZoteroBibUtil;
 use Symfony\Contracts\HttpClient\ResponseInterface;
 
 /**
@@ -24,6 +26,7 @@ final class ZoteroSyncService
         private readonly ZoteroClient $zoteroClient,
         private readonly Connection $connection,
         private readonly LoggerInterface $logger,
+        private readonly Slug $slug,
     ) {
     }
 
@@ -253,7 +256,7 @@ final class ZoteroSyncService
         $keyToId = [];
         $start = 0;
         $limit = self::ITEMS_PAGE_SIZE;
-        $path = $prefix . '/items/top';
+        $path = $prefix . '/items';
         $minLimitOn500 = 25;
 
         do {
@@ -263,7 +266,6 @@ final class ZoteroSyncService
             }
 
             $items = null;
-            $bibtexByKey = [];
 
             try {
                 // 1) Alle Items der Seite mit data + bib (formatted citation) in einem Request
@@ -282,13 +284,6 @@ final class ZoteroSyncService
                 if (!\is_array($items) || $items === []) {
                     break;
                 }
-
-                // 2) Dieselbe Seite als BibTeX in einem Request
-                $queryBibtex = $query;
-                $queryBibtex['format'] = 'bibtex';
-                $bibResponse = $this->zoteroClient->get($path, $apiKey, $queryBibtex);
-                $this->ensureSuccessResponse($bibResponse, $path . '?format=bibtex');
-                $bibtexByKey = $this->parseBibtexMultiResponse($bibResponse->getContent(false));
             } catch (\RuntimeException $e) {
                 // Bei HTTP 500 (Zotero-Server): ein Retry mit kleinerer Seite, oft hilfreich bei großen Batches/Styles
                 if (str_contains($e->getMessage(), '500') && $limit > $minLimitOn500) {
@@ -312,7 +307,8 @@ final class ZoteroSyncService
                     continue;
                 }
                 try {
-                    $bibContent = $bibtexByKey[$key] ?? '';
+                    // BibTeX pro Item abrufen (GET .../items/{key}?format=bibtex) – zuverlässige Zuordnung
+                    $bibContent = $this->fetchBibtexForItem($path, $apiKey, $key);
                     $itemId = $this->upsertItemFromData($pid, $item, $bibContent, $result);
                     if ($itemId > 0) {
                         $keyToId[$key] = $itemId;
@@ -332,30 +328,21 @@ final class ZoteroSyncService
     }
 
     /**
-     * Parst die Antwort eines Multi-Item-BibTeX-Requests (format=bibtex) in key => vollständiger Eintrag.
-     *
-     * @return array<string, string>
+     * Holt BibTeX für ein einzelnes Item (GET .../items/{key}?format=bibtex).
+     * Bei Fehler oder leeren Typen (z. B. Attachment) wird '' zurückgegeben.
      */
-    private function parseBibtexMultiResponse(string $bibtex): array
+    private function fetchBibtexForItem(string $itemsPath, string $apiKey, string $key): string
     {
-        $byKey = [];
-        $bibtex = trim($bibtex);
-        if ($bibtex === '') {
-            return $byKey;
+        $path = $itemsPath . '/' . $key;
+        try {
+            $response = $this->zoteroClient->get($path, $apiKey, ['format' => 'bibtex']);
+            $this->ensureSuccessResponse($response, $path);
+            $content = trim($response->getContent(false));
+            return $content;
+        } catch (\Throwable $e) {
+            $this->logger->debug('BibTeX für Item nicht abrufbar', ['key' => $key, 'error' => $e->getMessage()]);
+            return '';
         }
-        // Einträge trennen: jedes @type{key,...} bis zum nächsten @
-        $parts = preg_split('/\s*(?=@\w+\{)/s', $bibtex);
-        foreach ($parts as $part) {
-            $part = trim($part);
-            if ($part === '') {
-                continue;
-            }
-            if (preg_match('/@\w+\{\s*([^,\s]+)\s*,/s', $part, $m)) {
-                $key = trim($m[1]);
-                $byKey[$key] = $part;
-            }
-        }
-        return $byKey;
     }
 
     /**
@@ -384,6 +371,20 @@ final class ZoteroSyncService
 
         $existing = $this->connection->fetchOne('SELECT id FROM tl_zotero_item WHERE pid = ? AND zotero_key = ?', [$pid, $key]);
         $tstamp = time();
+
+        $citeKey = ZoteroBibUtil::extractCiteKeyFromBib($bibContent);
+        $excludeId = $existing !== false ? (int) $existing : null;
+        $aliasExists = function (string $a) use ($excludeId): bool {
+            if ($excludeId !== null) {
+                $e = $this->connection->fetchOne('SELECT id FROM tl_zotero_item WHERE alias = ? AND id != ?', [$a, $excludeId]);
+            } else {
+                $e = $this->connection->fetchOne('SELECT id FROM tl_zotero_item WHERE alias = ?', [$a]);
+            }
+            return $e !== false;
+        };
+        $aliasSource = $citeKey !== '' ? $citeKey : ($title !== '' ? $title : 'item-' . $key);
+        $alias = $this->slug->generate($aliasSource, [], $aliasExists);
+
         $row = [
             'pid' => $pid,
             'tstamp' => $tstamp,
@@ -400,6 +401,7 @@ final class ZoteroSyncService
             'tags' => $tagsJson,
             'download_attachments' => '',
             'published' => '1',
+            'alias' => $alias,
         ];
 
         if ($existing !== false) {

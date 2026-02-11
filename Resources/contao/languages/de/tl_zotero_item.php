@@ -10,6 +10,7 @@ $GLOBALS['TL_LANG']['tl_zotero_item'] = [
     'pid' => ['Bibliothek', ''],
     'tstamp' => ['Änderungsdatum', ''],
     'zotero_key' => ['Zotero-Key', ''],
+    'alias' => ['Alias (Cite-Key)', 'Aus Zotero-BibTeX (z. B. najm_associations_2020). Eindeutig; kann statt ID in URLs genutzt werden.'],
     'zotero_version' => ['Zotero-Version', ''],
     'title' => ['Titel', ''],
     'item_type' => ['Publikationstyp', 'z. B. journalArticle, book'],

@@ -1,0 +1,21 @@
+# Zotero-Bundle: Frontend-Routen für .bib-Export und Attachment-Proxy.
+# In der Contao-App (config/routes.yaml) importieren:
+#   Raum51ContaoZoteroBundle:
+#     resource: '@Raum51ContaoZoteroBundle/Resources/config/routes.yaml'
+
+zotero_export_item:
+    path: /zotero/export/item/{id}.bib
+    controller: Raum51\ContaoZoteroBundle\Controller\BibExportController::item
+    requirements:
+        id: '[^/]+'
+
+zotero_export_list:
+    path: /zotero/export/list.bib
+    controller: Raum51\ContaoZoteroBundle\Controller\BibExportController::list
+    methods: [GET]
+
+zotero_attachment:
+    path: /zotero/attachment/{id}
+    controller: Raum51\ContaoZoteroBundle\Controller\AttachmentProxyController::download
+    requirements:
+        id: '\d+'

@@ -42,6 +42,35 @@ Bei großen Bibliotheken kann der Sync im Backend zu Timeouts führen; dann den 
 
 ---
 
+## Frontend-Routen (Bib-Export & Attachments)
+
+Die Routen werden im Bundle über `Resources/config/routes.yaml` definiert und in der **Contao Managed Edition** automatisch per **RoutingPluginInterface** im Manager-Plugin geladen (vor dem Contao-Content-Routing). Kein manueller Eintrag in der App nötig.
+
+**Ohne Managed Edition** (z. B. eigenes Symfony-Projekt mit dem Bundle): Nach der Installation einmal ausführen:
+
+```bash
+php bin/console contao:zotero:install-routes
+```
+
+Der Befehl legt in der Contao-Installation die Datei `config/routes.yaml` an bzw. ergänzt sie um den Import der Zotero-Bundle-Routen. Anschließend Cache leeren (z. B. `php bin/console cache:clear`).
+
+Falls Sie den Import manuell eintragen möchten: In `config/routes.yaml` der App den Block aus dem Befehl `contao:zotero:install-routes` (oder den folgenden) einfügen:
+
+```yaml
+Raum51ContaoZoteroBundle:
+    resource: '@Raum51ContaoZoteroBundle/Resources/config/routes.yaml'
+```
+
+| Route | Beschreibung |
+|-------|--------------|
+| `GET /zotero/export/item/{id}.bib` | Einzelnes Zotero-Item als .bib-Datei (gespeichertes **bib_content**). |
+| `GET /zotero/export/list.bib` | Liste als .bib. Query: `ids=1,2,3` oder `collection=123` oder `library=1`. |
+| `GET /zotero/attachment/{id}` | Attachment-Datei streamen (id = tl_zotero_item, item_type muss „attachment“ sein). Prüfung: Library- und Item-`download_attachments` müssen erlaubt sein. |
+
+Zugriff nur auf publizierte Items und publizierte Libraries. Modul-Ebene für `download_attachments` kommt mit den Frontend-Modulen (Phase 4).
+
+---
+
 ## Logging (Kanal raum51_zotero)
 
 Das Bundle schreibt alle Sync- und API-Logs in den Monolog-Kanal **raum51_zotero**. So können Zotero-Logs getrennt von den allgemeinen App-Logs geführt werden.
