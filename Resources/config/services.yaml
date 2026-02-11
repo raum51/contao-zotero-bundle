@@ -24,21 +24,6 @@ services:
             $logger: '@monolog.logger.raum51_zotero'
         tags: [{ name: controller.service_arguments }]
 
-    Raum51\ContaoZoteroBundle\Migration\CreateZoteroTablesMigration:
-        tags: [{ name: contao.migration }]
-    Raum51\ContaoZoteroBundle\Migration\AddLastSyncVersionMigration:
-        tags: [{ name: contao.migration }]
-    Raum51\ContaoZoteroBundle\Migration\CollectionParentIdNullMigration:
-        tags: [{ name: contao.migration }]
-    Raum51\ContaoZoteroBundle\Migration\AddZoteroItemAliasMigration:
-        arguments:
-            $slug: '@contao.slug'
-        tags: [{ name: contao.migration }]
-    Raum51\ContaoZoteroBundle\Migration\ZoteroItemAliasBinaryNotNullMigration:
-        arguments:
-            $slug: '@contao.slug'
-        tags: [{ name: contao.migration }]
-
     Raum51\ContaoZoteroBundle\Command\TestZoteroClientCommand:
         tags: [{ name: console.command }]
     Raum51\ContaoZoteroBundle\Command\ZoteroSyncCommand:
