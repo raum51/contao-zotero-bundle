@@ -11,3 +11,13 @@ declare(strict_types=1);
 $GLOBALS['BE_MOD']['content']['bibliography'] = [
     'tables' => ['tl_zotero_library', 'tl_zotero_collection', 'tl_zotero_item'],
 ];
+
+/*
+ * Frontend-Modul-Kategorie „Zotero“ für Zotero-Liste, -Reader und -Suche.
+ * Fragment-Controller nutzen category: 'zotero' im AsFrontendModule-Attribut.
+ */
+if (!isset($GLOBALS['FE_MOD']['zotero'])) {
+    $GLOBALS['FE_MOD']['zotero'] = [];
+}
+
+$GLOBALS['TL_MODELS']['tl_zotero_item'] = \Raum51\ContaoZoteroBundle\Model\ZoteroItemModel::class;

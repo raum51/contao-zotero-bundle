@@ -92,7 +92,7 @@ $GLOBALS['TL_DCA']['tl_zotero_library'] = [
         ],
     ],
     'palettes' => [
-        'default' => '{title_legend},title;{zotero_legend},library_id,library_type,api_key;{citation_legend},citation_style,citation_locale;{sync_legend},sync_interval,last_sync_at,last_sync_status,last_sync_version;{options_legend},download_attachments,published;{expert_legend},sorting',
+        'default' => '{title_legend},title;{frontend_legend},jumpTo;{zotero_legend},library_id,library_type,api_key;{citation_legend},citation_style,citation_locale;{sync_legend},sync_interval,last_sync_at,last_sync_status,last_sync_version;{options_legend},download_attachments,published;{expert_legend},sorting',
     ],
     'fields' => [
         'id' => [
@@ -193,6 +193,14 @@ $GLOBALS['TL_DCA']['tl_zotero_library'] = [
             'inputType' => 'checkbox',
             'eval' => ['tl_class' => 'w50'],
             'sql' => "char(1) NOT NULL default '1'",
+        ],
+        'jumpTo' => [
+            'label' => &$GLOBALS['TL_LANG']['tl_zotero_library']['jumpTo'],
+            'exclude' => true,
+            'inputType' => 'pageTree',
+            'eval' => ['fieldType' => 'radio', 'tl_class' => 'clr'],
+            'sql' => 'int(10) unsigned NOT NULL default 0',
+            'relation' => ['type' => 'hasOne', 'table' => 'tl_page', 'field' => 'id'],
         ],
     ],
 ];

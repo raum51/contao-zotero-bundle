@@ -7,7 +7,9 @@ namespace Raum51\ContaoZoteroBundle\Controller\FrontendModule;
 use Contao\CoreBundle\Controller\FrontendModule\AbstractFrontendModuleController;
 use Contao\CoreBundle\DependencyInjection\Attribute\AsFrontendModule;
 use Contao\CoreBundle\Twig\FragmentTemplate;
+use Contao\Input;
 use Contao\ModuleModel;
+use Contao\PageModel;
 use Contao\StringUtil;
 use Doctrine\DBAL\ArrayParameterType;
 use Doctrine\DBAL\Connection;
@@ -20,10 +22,12 @@ use Symfony\Component\HttpFoundation\Response;
  * Liegt in src/Controller/FrontendModule/, da Contao Fragment-Controller dort erwartet.
  * Zeigt Items aus der konfigurierten Library (optional gefiltert nach Collections),
  * gerendert über das gewählte Zotero-Item-Template (cite_content, json_dl, fields).
+ * Optional: Bei gesetztem zotero_reader_module und auto_item in der URL wird das
+ * Lesemodul gerendert (News-Pattern).
  */
 #[AsFrontendModule(
     type: 'zotero_list',
-    category: 'miscellaneous',
+    category: 'zotero',
     template: 'frontend_module/zotero_list',
 )]
 final class ZoteroListController extends AbstractFrontendModuleController
@@ -35,14 +39,35 @@ final class ZoteroListController extends AbstractFrontendModuleController
 
     protected function getResponse(FragmentTemplate $template, ModuleModel $model, Request $request): Response
     {
-        $libraryId = (int) $model->zotero_library;
+        $readerModuleId = (int) ($model->zotero_reader_module ?? 0);
+        $autoItem = Input::get('auto_item');
+
+        // Reader auf derselben Seite: Lesemodul rendern statt Liste (News-Pattern)
+        if ($readerModuleId > 0 && $autoItem !== null && $autoItem !== '') {
+            $template->show_reader = true;
+            $template->reader_module_id = $readerModuleId;
+
+            return $template->getResponse();
+        }
+
+        $libraryIds = $this->parseLibraryIds($model->zotero_libraries ?? '');
         $collections = $this->parseCollectionIds($model->zotero_collections ?? '');
         $itemTemplate = (string) ($model->zotero_template ?? 'cite_content');
 
-        $items = $this->fetchItems($libraryId, $collections);
+        $items = $this->fetchItems($libraryIds, $collections);
+        $pageMap = $this->getLibraryReaderPageMap($libraryIds, $model->zotero_reader_module ?? 0);
+
+        foreach ($items as $i => $item) {
+            $alias = $item['alias'] ?: (string) $item['id'];
+            $page = $pageMap[$item['pid']] ?? null;
+            $items[$i]['reader_url'] = $page instanceof PageModel
+                ? $page->getFrontendUrl('/' . $alias)
+                : null;
+        }
 
         $template->items = $items;
         $template->item_template = $itemTemplate;
+        $template->show_reader = false;
 
         $headlineData = StringUtil::deserialize($model->headline ?? '', true);
         $template->headline = [
@@ -51,6 +76,65 @@ final class ZoteroListController extends AbstractFrontendModuleController
         ];
 
         return $template->getResponse();
+    }
+
+    /**
+     * Map libraryId => PageModel der Reader-Seite.
+     * Bei zotero_reader_module: aktuelle Seite für alle. Sonst: library.jumpTo pro Library.
+     * URLs mit getFrontendUrl('/' . $alias) erzeugen – damit Suffix (.html) und Routing korrekt.
+     *
+     * @param list<int> $libraryIds
+     *
+     * @return array<int, PageModel> libraryId => page
+     */
+    private function getLibraryReaderPageMap(array $libraryIds, int $readerModuleId): array
+    {
+        $map = [];
+        if ($libraryIds === []) {
+            return $map;
+        }
+
+        if ($readerModuleId > 0) {
+            $page = $this->getPageModel();
+            if ($page instanceof PageModel) {
+                foreach ($libraryIds as $id) {
+                    $map[$id] = $page;
+                }
+            }
+            return $map;
+        }
+
+        $placeholders = implode(',', array_fill(0, \count($libraryIds), '?'));
+        $rows = $this->connection->fetchAllAssociative(
+            'SELECT id, jumpTo FROM tl_zotero_library WHERE id IN (' . $placeholders . ')',
+            $libraryIds
+        );
+        foreach ($rows as $row) {
+            $jumpTo = (int) ($row['jumpTo'] ?? 0);
+            if ($jumpTo > 0) {
+                $page = PageModel::findPublishedById($jumpTo);
+                if ($page instanceof PageModel) {
+                    $map[(int) $row['id']] = $page;
+                }
+            }
+        }
+
+        return $map;
+    }
+
+    /**
+     * @return list<int>
+     */
+    private function parseLibraryIds(string $value): array
+    {
+        if ($value === '') {
+            return [];
+        }
+        $ids = unserialize($value, ['allowed_classes' => false]);
+        if (!\is_array($ids)) {
+            return [];
+        }
+        return array_values(array_map('intval', array_filter($ids, 'is_numeric')));
     }
 
     /**
@@ -69,22 +153,23 @@ final class ZoteroListController extends AbstractFrontendModuleController
     }
 
     /**
+     * @param list<int> $libraryIds
      * @param list<int> $collectionIds Leer = alle Collections
      *
      * @return list<array<string, mixed>>
      */
-    private function fetchItems(int $libraryId, array $collectionIds): array
+    private function fetchItems(array $libraryIds, array $collectionIds): array
     {
-        if ($libraryId <= 0) {
+        if ($libraryIds === []) {
             return [];
         }
 
         $qb = $this->connection->createQueryBuilder();
-        $qb->select('i.id', 'i.alias', 'i.title', 'i.year', 'i.date', 'i.publication_title', 'i.item_type', 'i.cite_content', 'i.json_data')
+        $qb->select('i.id', 'i.pid', 'i.alias', 'i.title', 'i.year', 'i.date', 'i.publication_title', 'i.item_type', 'i.cite_content', 'i.json_data')
             ->from('tl_zotero_item', 'i')
-            ->where('i.pid = :pid')
+            ->where($qb->expr()->in('i.pid', ':pids'))
             ->andWhere('i.published = :published')
-            ->setParameter('pid', $libraryId)
+            ->setParameter('pids', $libraryIds, ArrayParameterType::INTEGER)
             ->setParameter('published', '1')
             ->orderBy('i.title', 'ASC');
 
@@ -103,6 +188,7 @@ final class ZoteroListController extends AbstractFrontendModuleController
             $data = json_decode($jsonData, true);
             $items[] = [
                 'id' => (int) $row['id'],
+                'pid' => (int) $row['pid'],
                 'alias' => $row['alias'] ?? '',
                 'title' => $row['title'] ?? '',
                 'year' => $row['year'] ?? '',

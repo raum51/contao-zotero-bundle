@@ -10,12 +10,12 @@ use Contao\Input;
 use Doctrine\DBAL\Connection;
 
 /**
- * Liefert Zotero-Collections der gewählten Bibliothek als Options für Checkbox-Wizard.
+ * Liefert Zotero-Collections der gewählten Bibliotheken als Options für Checkbox-Wizard.
  *
  * Liegt unter EventListener/DataContainer/, da es ein DCA-Callback
  * (fields.zotero_collections.options) für tl_module ist. Collections werden
- * nach der ausgewählten Library (zotero_library) gefiltert – bei Änderung der
- * Library muss die Seite neu geladen werden (submitOnChange auf zotero_library).
+ * nach den ausgewählten Libraries (zotero_libraries) gefiltert – bei Änderung
+ * muss die Seite neu geladen werden (submitOnChange auf zotero_libraries).
  */
 #[AsCallback(table: 'tl_module', target: 'fields.zotero_collections.options')]
 final class ZoteroCollectionsOptionsCallback
@@ -30,42 +30,71 @@ final class ZoteroCollectionsOptionsCallback
      */
     public function __invoke(DataContainer|null $dc = null): array
     {
-        $libraryId = $this->getLibraryId($dc);
-        if ($libraryId <= 0) {
+        $libraryIds = $this->getLibraryIds($dc);
+        if ($libraryIds === []) {
             return [];
         }
 
+        $placeholders = implode(',', array_fill(0, \count($libraryIds), '?'));
+        $params = array_merge($libraryIds, ['1']);
         $rows = $this->connection->fetchAllAssociative(
-            'SELECT id, title FROM tl_zotero_collection WHERE pid = ? AND published = ? ORDER BY title',
-            [$libraryId, '1']
+            'SELECT c.id, c.title, l.title AS library_title FROM tl_zotero_collection c
+            INNER JOIN tl_zotero_library l ON l.id = c.pid
+            WHERE c.pid IN (' . $placeholders . ') AND c.published = ? ORDER BY l.title, c.title',
+            $params
         );
 
         $options = [];
         foreach ($rows as $row) {
-            $options[(int) $row['id']] = (string) ($row['title'] ?? 'ID ' . $row['id']);
+            $collTitle = (string) ($row['title'] ?? 'ID ' . $row['id']);
+            $libTitle = (string) ($row['library_title'] ?? '');
+            $options[(int) $row['id']] = $libTitle !== '' ? $collTitle . ' (' . $libTitle . ')' : $collTitle;
         }
 
         return $options;
     }
 
-    private function getLibraryId(DataContainer|null $dc): int
+    /**
+     * @return list<int>
+     */
+    private function getLibraryIds(DataContainer|null $dc): array
     {
         if ($dc === null) {
-            return 0;
+            return [];
         }
 
         // Nach Submit (z.B. submitOnChange) enthält getCurrentRecord die neuen Werte
         $record = $dc->getCurrentRecord();
-        if (isset($record['zotero_library']) && (int) $record['zotero_library'] > 0) {
-            return (int) $record['zotero_library'];
+        if (isset($record['zotero_libraries'])) {
+            return $this->parseLibraryIds($record['zotero_libraries']);
         }
 
         // Fallback: POST-Daten bei noch nicht gespeichertem Datensatz
-        $post = Input::post('zotero_library');
-        if ($post !== null && (int) $post > 0) {
-            return (int) $post;
+        $post = Input::post('zotero_libraries');
+        if (\is_array($post)) {
+            return array_map('intval', array_filter($post, 'is_numeric'));
         }
 
-        return 0;
+        return [];
+    }
+
+    /**
+     * @param mixed $value Serialisierte oder Array-Werte
+     *
+     * @return list<int>
+     */
+    private function parseLibraryIds(mixed $value): array
+    {
+        if (\is_array($value)) {
+            return array_values(array_map('intval', array_filter($value, 'is_numeric')));
+        }
+        if (\is_string($value)) {
+            $ids = unserialize($value, ['allowed_classes' => false]);
+            if (\is_array($ids)) {
+                return array_values(array_map('intval', array_filter($ids, 'is_numeric')));
+            }
+        }
+
+        return [];
     }
 }

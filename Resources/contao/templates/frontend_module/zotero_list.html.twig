@@ -2,11 +2,20 @@
 
 {% block content %}
     <div class="zotero-list">
-        {% if items|length > 0 %}
+        {% if show_reader|default(false) and reader_module_id|default(0) %}
+            {# Liste + Reader kombiniert: Lesemodul rendern (News-Pattern) #}
+            {{ frontend_module(reader_module_id) }}
+        {% elseif items|length > 0 %}
             <ul class="zotero-list__items" role="list">
                 {% for item in items %}
                     <li class="zotero-list__item">
-                        {% include "@Contao_Raum51ContaoZoteroBundle/zotero_item/" ~ item_template ~ ".html.twig" with {item: item} %}
+                        {% if item.reader_url|default %}
+                            <a href="{{ item.reader_url }}" class="zotero-list__link">
+                                {% include "@Contao_Raum51ContaoZoteroBundle/zotero_item/" ~ item_template ~ ".html.twig" with {item: item} %}
+                            </a>
+                        {% else %}
+                            {% include "@Contao_Raum51ContaoZoteroBundle/zotero_item/" ~ item_template ~ ".html.twig" with {item: item} %}
+                        {% endif %}
                     </li>
                 {% endfor %}
             </ul>

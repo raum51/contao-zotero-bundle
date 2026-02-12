@@ -7,6 +7,8 @@ declare(strict_types=1);
  */
 $GLOBALS['TL_LANG']['tl_zotero_library'] = [
     'title_legend' => 'Label',
+    'frontend_legend' => 'Frontend',
+    'jumpTo' => ['Redirect page', 'Page with Zotero reader module for publication detail view'],
     'zotero_legend' => 'Zotero',
     'citation_legend' => 'Citation style',
     'sync_legend' => 'Synchronisation',

@@ -33,3 +33,10 @@ services:
         tags: [{ name: console.command }]
     Raum51\ContaoZoteroBundle\Command\ZoteroItemCommand:
         tags: [{ name: console.command }]
+
+    Raum51\ContaoZoteroBundle\EventListener\DataContainer\ZoteroReaderModuleOptionsCallback:
+        public: true
+    Raum51\ContaoZoteroBundle\EventListener\DataContainer\ZoteroLibraryOptionsCallback:
+        public: true
+    Raum51\ContaoZoteroBundle\Migration\ConvertZoteroLibraryToLibrariesMigration:
+        tags: [{ name: contao.migration, priority: 0 }]

@@ -12,12 +12,12 @@ use Doctrine\DBAL\Connection;
  * Liefert publizierte Zotero-Bibliotheken als Options für Select-Felder.
  *
  * Liegt unter EventListener/DataContainer/, da es ein DCA-Callback
- * (fields.zotero_library.options) für tl_module und tl_content ist.
+ * (fields.zotero_libraries.options) für tl_module.
  * Contao's relation/foreignKey mit where-Klausel funktioniert für
  * benutzerdefinierte Tabellen offenbar nicht zuverlässig – dieser
  * Callback lädt die Optionen explizit aus der Datenbank.
  */
-#[AsCallback(table: 'tl_module', target: 'fields.zotero_library.options')]
+#[AsCallback(table: 'tl_module', target: 'fields.zotero_libraries.options')]
 final class ZoteroLibraryOptionsCallback
 {
     public function __construct(
