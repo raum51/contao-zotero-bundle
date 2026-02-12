@@ -21,7 +21,10 @@ Synchronisiert Zotero-Bibliotheken (Collections, Items, Zitate, BibTeX) in die l
 |--------|-----|--------------|
 | `--library=ID` | `-l` | Nur diese Library-ID synchronisieren (ohne Option: alle). |
 | `--reset` | `-r` | Sync-Metadaten vor dem Abruf zurücksetzen (Vollabzug, wie „Synchronisation zurücksetzen“ im Backend). |
-| `--log-skipped=PATH` | – | Übersprungene Items in JSON-Datei schreiben (z. B. `var/log/zotero_skipped.json`). Verzeichnis wird ggf. angelegt. |
+| `--log-skipped=PATH` | – | Übersprungene Items in JSON-Datei schreiben (z. B. `var/logs/zotero_skipped.json`). Verzeichnis wird ggf. angelegt. |
+| `--log-changes=PATH` | – | Erstellte, aktualisierte und gelöschte Items/Attachments/Collections in JSON-Datei schreiben (z. B. `var/logs/zotero_changes.json`). Mit `--show-details` werden die Details zusätzlich als Tabellen angezeigt. |
+| `--show-details` | – | Detail-Tabellen anzeigen (übersprungene Items, erstellte/aktualisierte/gelöschte Einträge). Ohne diese Option wird nur die Zusammenfassung ausgegeben. |
+| `--debug` | – | Debug-Info: Rohdaten aller API-Endpoints (/deleted, /collections, /items, /collections/{key}/items) und lokaler Entitäten (tl_zotero_*). Erfordert `-l/--library`. Hilft bei Fehlersuche, z. B. wenn Collection-Löschungen nicht übernommen werden. |
 
 Für detaillierte Ausgaben (API-Requests, Fehlerdetails) die Standard-Optionen von Symfony Console verwenden: **`-v`** (verbose) oder **`-vv`** (sehr ausführlich). Beispiel: `php bin/console contao:zotero:sync -l 11 -vv`.
 
@@ -41,14 +44,23 @@ php bin/console contao:zotero:sync --reset
 php bin/console contao:zotero:sync --reset --library=11
 
 # Übersprungene Items in Datei protokollieren
-php bin/console contao:zotero:sync -l 11 --log-skipped=var/log/zotero_skipped.json
+php bin/console contao:zotero:sync -l 11 --log-skipped=var/logs/zotero_skipped.json
+
+# Änderungsdetails in Datei schreiben (Tabellen nur mit --show-details)
+php bin/console contao:zotero:sync -l 11 --log-changes=var/logs/zotero_changes.json
+
+# Detail-Tabellen anzeigen (übersprungene Items, erstellte/aktualisierte/gelöschte Einträge)
+php bin/console contao:zotero:sync --show-details
+
+# Debug-Info (alle API-Endpoints und lokale Entitäten) – erfordert Library-ID
+php bin/console contao:zotero:sync -l 1 --debug
 ```
 
 Bei großen Bibliotheken kann der Sync im Backend zu Timeouts führen; dann den Sync per CLI ausführen (kein Request-Timeout, kein Browser-Abbruch).
 
 **Items-Abruf (2-Pass):** Der Sync ruft zuerst alle Nicht-Attachments (`itemType=-attachment`) und anschließend alle Attachments (`itemType=attachment`) ab. So stehen Parent-Items immer vor deren Attachments zur Verfügung und Reihenfolge-Probleme entfallen.
 
-**Übersprungene Items:** Nicht importierbare Items (z. B. Attachment ohne Parent, API-Fehler) werden protokolliert: im Log (Kanal `raum51_zotero`), im Result-Array und – bei CLI-Ausführung – als Tabelle mit Key, Typ, Grund und Library. Mit `--log-skipped=PATH` werden sie zusätzlich in eine JSON-Datei geschrieben (Format: `synced_at`, `count`, `skipped_items`).
+**Übersprungene Items:** Nicht importierbare Items (z. B. Attachment ohne Parent, API-Fehler) werden protokolliert: im Log (Kanal `raum51_zotero`), im Result-Array und – bei CLI-Ausführung mit `--show-details` – als Tabelle mit Key, Typ, Grund und Library. Mit `--log-skipped=PATH` werden sie zusätzlich in eine JSON-Datei geschrieben (Format: `synced_at`, `count`, `skipped_items`).
 
 ---
 
@@ -98,7 +110,7 @@ monolog:
       channels: [raum51_zotero]
 ```
 
-Ohne diese Konfiguration landen die Zotero-Logs im Standard-App-Log (z. B. `var/log/prod-*.log`). Mit dem Handler erscheinen sie zusätzlich in `var/log/raum51_zotero.log`.
+Ohne diese Konfiguration landen die Zotero-Logs im Standard-App-Log (z. B. `var/logs/prod-*.log`). Mit dem Handler erscheinen sie zusätzlich in `var/logs/raum51_zotero.log`.
 
 ---
 

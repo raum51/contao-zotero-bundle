@@ -27,6 +27,7 @@ final class ZoteroSyncService
         private readonly Connection $connection,
         private readonly LoggerInterface $logger,
         private readonly Slug $slug,
+        private readonly ApiLogCollector $apiLogCollector,
     ) {
     }
 
@@ -35,27 +36,65 @@ final class ZoteroSyncService
      *
      * @param int|null $libraryId Wenn null: alle Libraries (nur published, wenn $onlyPublished=true)
      * @param bool $onlyPublished Bei sync(null): nur published Libraries synchronisieren
-     * @return array{collections_created: int, collections_updated: int, items_created: int, items_updated: int, items_deleted: int, items_skipped: int, skipped_items: array, attachments_created: int, attachments_updated: int, attachments_deleted: int, attachments_skipped: int, collection_items_created: int, collection_items_deleted: int, item_creators_created: int, item_creators_deleted: int, errors: list<string>}
+     * @param string|null $apiLogPath Optional: API-Aufrufe als JSON in diese Datei protokollieren
+     * @param array<string, mixed> $apiLogMetadata Metadaten für das API-Log (command, timestamp, options)
+     * @return array{collections_created: int, collections_updated: int, collections_deleted: int, collections_skipped: int, items_created: int, items_updated: int, items_deleted: int, items_skipped: int, skipped_items: array, items_updated_details: array, items_deleted_details: array, attachments_created: int, attachments_updated: int, attachments_deleted: int, attachments_skipped: int, attachments_updated_details: array, attachments_deleted_details: array, collection_items_created: int, collection_items_deleted: int, collection_items_skipped: int, collection_items_deleted_details: array, item_creators_created: int, item_creators_deleted: int, item_creators_skipped: int, errors: list<string>}
      */
-    public function sync(?int $libraryId = null, bool $onlyPublished = false): array
+    public function sync(?int $libraryId = null, bool $onlyPublished = false, ?string $apiLogPath = null, array $apiLogMetadata = []): array
+    {
+        if ($apiLogPath !== null && $apiLogPath !== '') {
+            $this->apiLogCollector->enable($apiLogPath, array_merge(
+                ['timestamp' => date(\DateTimeInterface::ATOM), 'command' => 'contao:zotero:sync'],
+                $apiLogMetadata
+            ));
+        }
+
+        try {
+            return $this->doSync($libraryId, $onlyPublished);
+        } finally {
+            if ($apiLogPath !== null && $apiLogPath !== '') {
+                $this->apiLogCollector->flush();
+            }
+        }
+    }
+
+    private function doSync(?int $libraryId, bool $onlyPublished): array
     {
         $libraries = $this->fetchLibraries($libraryId, $onlyPublished);
         $total = [
             'collections_created' => 0,
             'collections_updated' => 0,
+            'collections_deleted' => 0,
+            'collections_skipped' => 0,
+            'collections_created_details' => [],
+            'collections_updated_details' => [],
+            'collections_deleted_details' => [],
             'items_created' => 0,
             'items_updated' => 0,
             'items_deleted' => 0,
             'items_skipped' => 0,
             'skipped_items' => [],
+            'items_updated_details' => [],
+            'items_deleted_details' => [],
+            'items_created_details' => [],
             'attachments_created' => 0,
             'attachments_updated' => 0,
             'attachments_deleted' => 0,
             'attachments_skipped' => 0,
+            'attachments_updated_details' => [],
+            'attachments_deleted_details' => [],
+            'attachments_created_details' => [],
             'collection_items_created' => 0,
             'collection_items_deleted' => 0,
+            'collection_items_skipped' => 0,
+            'collection_items_created_details' => [],
+            'collection_items_deleted_details' => [],
+            'skipped_collections' => [],
             'item_creators_created' => 0,
             'item_creators_deleted' => 0,
+            'item_creators_skipped' => 0,
+            'item_creators_created_details' => [],
+            'item_creators_deleted_details' => [],
             'errors' => [],
         ];
 
@@ -64,21 +103,67 @@ final class ZoteroSyncService
                 $result = $this->syncLibrary($library);
                 $total['collections_created'] += $result['collections_created'];
                 $total['collections_updated'] += $result['collections_updated'];
+                $total['collections_deleted'] += $result['collections_deleted'] ?? 0;
+                $total['collections_skipped'] += $result['collections_skipped'] ?? 0;
+                foreach ($result['collections_created_details'] ?? [] as $d) {
+                    $total['collections_created_details'][] = array_merge($d, ['library' => $library['title'] ?? '']);
+                }
+                foreach ($result['collections_updated_details'] ?? [] as $d) {
+                    $total['collections_updated_details'][] = array_merge($d, ['library' => $library['title'] ?? '']);
+                }
+                foreach ($result['collections_deleted_details'] ?? [] as $d) {
+                    $total['collections_deleted_details'][] = array_merge($d, ['library' => $library['title'] ?? '']);
+                }
+                foreach ($result['skipped_collections'] ?? [] as $d) {
+                    $total['skipped_collections'][] = array_merge($d, ['library' => $library['title'] ?? '']);
+                }
                 $total['items_created'] += $result['items_created'];
                 $total['items_updated'] += $result['items_updated'];
                 $total['items_deleted'] += $result['items_deleted'];
                 $total['items_skipped'] += $result['items_skipped'];
+                foreach ($result['items_updated_details'] ?? [] as $d) {
+                    $total['items_updated_details'][] = array_merge($d, ['library' => $library['title'] ?? '']);
+                }
+                foreach ($result['items_deleted_details'] ?? [] as $d) {
+                    $total['items_deleted_details'][] = array_merge($d, ['library' => $library['title'] ?? '']);
+                }
+                foreach ($result['items_created_details'] ?? [] as $d) {
+                    $total['items_created_details'][] = array_merge($d, ['library' => $library['title'] ?? '']);
+                }
                 $total['attachments_created'] += $result['attachments_created'] ?? 0;
                 $total['attachments_updated'] += $result['attachments_updated'] ?? 0;
                 $total['attachments_deleted'] += $result['attachments_deleted'] ?? 0;
                 $total['attachments_skipped'] += $result['attachments_skipped'] ?? 0;
+                foreach ($result['attachments_updated_details'] ?? [] as $d) {
+                    $total['attachments_updated_details'][] = array_merge($d, ['library' => $library['title'] ?? '']);
+                }
+                foreach ($result['attachments_deleted_details'] ?? [] as $d) {
+                    $total['attachments_deleted_details'][] = array_merge($d, ['library' => $library['title'] ?? '']);
+                }
+                foreach ($result['attachments_created_details'] ?? [] as $d) {
+                    $total['attachments_created_details'][] = array_merge($d, ['library' => $library['title'] ?? '']);
+                }
                 foreach ($result['skipped_items'] ?? [] as $skip) {
                     $total['skipped_items'][] = array_merge($skip, ['library' => $library['title'] ?? '']);
                 }
                 $total['collection_items_created'] += $result['collection_items_created'];
                 $total['collection_items_deleted'] += $result['collection_items_deleted'];
+                $total['collection_items_skipped'] += $result['collection_items_skipped'] ?? 0;
+                foreach ($result['collection_items_created_details'] ?? [] as $d) {
+                    $total['collection_items_created_details'][] = array_merge($d, ['library' => $library['title'] ?? '']);
+                }
+                foreach ($result['collection_items_deleted_details'] ?? [] as $d) {
+                    $total['collection_items_deleted_details'][] = array_merge($d, ['library' => $library['title'] ?? '']);
+                }
                 $total['item_creators_created'] += $result['item_creators_created'];
                 $total['item_creators_deleted'] += $result['item_creators_deleted'];
+                $total['item_creators_skipped'] += $result['item_creators_skipped'] ?? 0;
+                foreach ($result['item_creators_created_details'] ?? [] as $d) {
+                    $total['item_creators_created_details'][] = array_merge($d, ['library' => $library['title'] ?? '']);
+                }
+                foreach ($result['item_creators_deleted_details'] ?? [] as $d) {
+                    $total['item_creators_deleted_details'][] = array_merge($d, ['library' => $library['title'] ?? '']);
+                }
             } catch (\Throwable $e) {
                 $this->logger->error('Zotero Sync fehlgeschlagen', [
                     'library_id' => $library['id'],
@@ -119,7 +204,7 @@ final class ZoteroSyncService
     }
 
     /**
-     * @return array{collections_created: int, collections_updated: int, items_created: int, items_updated: int, items_deleted: int, items_skipped: int, skipped_items: array, attachments_created: int, attachments_updated: int, attachments_deleted: int, attachments_skipped: int, collection_items_created: int, collection_items_deleted: int, item_creators_created: int, item_creators_deleted: int}
+     * @return array{collections_created: int, collections_updated: int, collections_deleted: int, collections_skipped: int, items_created: int, items_updated: int, items_deleted: int, items_skipped: int, skipped_items: array, attachments_created: int, attachments_updated: int, attachments_deleted: int, attachments_skipped: int, collection_items_created: int, collection_items_deleted: int, collection_items_skipped: int, item_creators_created: int, item_creators_deleted: int, item_creators_skipped: int}
      */
     private function syncLibrary(array $library): array
     {
@@ -135,34 +220,55 @@ final class ZoteroSyncService
         $result = [
             'collections_created' => 0,
             'collections_updated' => 0,
+            'collections_deleted' => 0,
+            'collections_skipped' => 0,
+            'collections_created_details' => [],
+            'collections_updated_details' => [],
+            'collections_deleted_details' => [],
             'items_created' => 0,
             'items_updated' => 0,
             'items_deleted' => 0,
             'items_skipped' => 0,
             'skipped_items' => [],
+            'items_updated_details' => [],
+            'items_deleted_details' => [],
+            'items_created_details' => [],
             'attachments_created' => 0,
             'attachments_updated' => 0,
             'attachments_deleted' => 0,
             'attachments_skipped' => 0,
+            'attachments_updated_details' => [],
+            'attachments_deleted_details' => [],
+            'attachments_created_details' => [],
             'collection_items_created' => 0,
             'collection_items_deleted' => 0,
+            'collection_items_skipped' => 0,
+            'collection_items_created_details' => [],
+            'collection_items_deleted_details' => [],
+            'skipped_collections' => [],
             'item_creators_created' => 0,
             'item_creators_deleted' => 0,
+            'item_creators_skipped' => 0,
+            'item_creators_created_details' => [],
+            'item_creators_deleted_details' => [],
         ];
 
-        // 1) Collections
-        $collectionKeyToId = $this->syncCollections($prefix, $apiKey, $pid, $result);
+        // 1) Zuerst GET /deleted?since= – gelöschte Collections/Items holen und lokal entfernen
+        //    (vor syncCollections, damit gelöschte Objekte nicht versehentlich wieder angelegt werden)
+        $deletedObjects = $this->fetchDeletedObjects($prefix, $apiKey, $lastVersion);
+        $this->syncDeletedCollections($pid, $deletedObjects, $result);
+        $this->syncDeletedItems($pid, $deletedObjects, $result);
 
-        // 2) Items (mit since für inkrementell; bei 0 lokalen Items Vollabzug, damit nach manueller Löschung wieder alle geholt werden)
+        // 2) Collections (inkl. Löschen nicht mehr in API vorhandener; überspringt Keys aus /deleted)
+        $collectionKeyToId = $this->syncCollections($prefix, $apiKey, $pid, $result, $deletedObjects);
+
+        // 3) Items (mit since für inkrementell; bei 0 lokalen Items Vollabzug)
         $localItemCount = (int) $this->connection->fetchOne('SELECT COUNT(*) FROM tl_zotero_item WHERE pid = ?', [$pid]);
         $effectiveSince = $localItemCount > 0 ? $lastVersion : 0;
-        $itemKeyToId = $this->syncItems($prefix, $apiKey, $pid, $citationStyle, $citationLocale, $effectiveSince, $result);
+        $itemKeyToId = $this->syncItems($prefix, $apiKey, $pid, $citationStyle, $citationLocale, $effectiveSince, $deletedObjects, $result);
 
-        // 3) Collection-Item-Verknüpfungen
+        // 4) Collection-Item-Verknüpfungen
         $this->syncCollectionItems($prefix, $apiKey, $pid, $collectionKeyToId, $itemKeyToId, $result);
-
-        // 4) Item-Creator-Verknüpfungen (creator_map wird bei Bedarf angelegt, member_id=0)
-        $this->syncItemCreators($pid, $result);
 
         // 5) Library-Metadaten (last_sync_*, Version aus letztem Items-Request)
         $newVersion = $this->getLastModifiedVersionFromCache();
@@ -185,18 +291,22 @@ final class ZoteroSyncService
     }
 
     /**
+     * @param array{collections: list<string>, items: list<string>} $deletedObjects Von fetchDeletedObjects()
      * @return array<string, int> zotero_key -> unsere collection id
      */
-    private function syncCollections(string $prefix, string $apiKey, int $pid, array &$result): array
+    private function syncCollections(string $prefix, string $apiKey, int $pid, array &$result, array $deletedObjects = []): array
     {
+        $deletedCollectionKeys = array_flip($deletedObjects['collections'] ?? []);
+
         $path = $prefix . '/collections';
         $keyToId = [];
         $keyToParentKey = [];
 
         $start = 0;
         $limit = 100;
+        $noCacheHeaders = ['Cache-Control' => 'no-cache, no-store', 'Pragma' => 'no-cache'];
         do {
-            $response = $this->zoteroClient->get($path, $apiKey, ['start' => $start, 'limit' => $limit]);
+            $response = $this->zoteroClient->get($path, $apiKey, ['start' => $start, 'limit' => $limit, 'includeTrashed' => 1], ['headers' => $noCacheHeaders]);
             $this->ensureSuccessResponse($response, $path);
             $this->lastModifiedVersion = $this->parseLastModifiedVersion($response);
             $json = $response->getContent(false);
@@ -206,8 +316,15 @@ final class ZoteroSyncService
             }
             foreach ($collections as $c) {
                 $key = $c['key'] ?? '';
+                // In /deleted gelistete Collections nicht importieren
+                if (isset($deletedCollectionKeys[$key])) {
+                    $result['collections_skipped'] = ($result['collections_skipped'] ?? 0) + 1;
+                    $result['skipped_collections'][] = ['key' => $key, 'reason' => 'Objekt bereits gelöscht'];
+                    continue;
+                }
                 $data = $c['data'] ?? [];
                 $name = $data['name'] ?? '';
+                $inTrash = (int) ($data['deleted'] ?? 0) === 1;
                 $parentKey = $data['parentCollection'] ?? false;
                 if ($parentKey === false) {
                     $parentKey = '';
@@ -215,36 +332,52 @@ final class ZoteroSyncService
                 $keyToParentKey[$key] = (string) $parentKey;
 
                 $existing = $this->connection->fetchAssociative(
-                    'SELECT id, title FROM tl_zotero_collection WHERE pid = ? AND zotero_key = ?',
+                    'SELECT id, title, published FROM tl_zotero_collection WHERE pid = ? AND zotero_key = ?',
                     [$pid, $key]
                 );
 
                 if ($existing !== false && \is_array($existing)) {
                     $updates = [];
-
+                    $currentPublished = (string) ($existing['published'] ?? '1');
+                    $targetPublished = $inTrash ? '0' : '1';
+                    if ($currentPublished !== $targetPublished) {
+                        $updates['published'] = $targetPublished;
+                    }
                     if ((string) $existing['title'] !== $name) {
                         $updates['title'] = $name;
                     }
 
                     if ($updates !== []) {
-                        $updates['tstamp'] = time();
-                        $this->connection->update('tl_zotero_collection', $updates, ['id' => $existing['id']]);
-                        $result['collections_updated']++;
+                        try {
+                            $updates['tstamp'] = time();
+                            $this->connection->update('tl_zotero_collection', $updates, ['id' => $existing['id']]);
+                            $result['collections_updated']++;
+                            $result['collections_updated_details'][] = ['key' => $key, 'title' => $name, 'title_old' => (string) $existing['title']];
+                        } catch (\Throwable $e) {
+                            $this->logger->warning('Collection-Update übersprungen', ['key' => $key, 'reason' => $e->getMessage()]);
+                            $result['collections_skipped'] = ($result['collections_skipped'] ?? 0) + 1;
+                        }
                     }
 
                     $keyToId[$key] = (int) $existing['id'];
                 } else {
-                    $this->connection->insert('tl_zotero_collection', [
-                        'pid' => $pid,
-                        'tstamp' => time(),
-                        'parent_id' => null,
-                        'sorting' => 0,
-                        'zotero_key' => $key,
-                        'title' => $name,
-                        'published' => '1',
-                    ]);
-                    $keyToId[$key] = (int) $this->connection->lastInsertId();
-                    $result['collections_created']++;
+                    try {
+                        $this->connection->insert('tl_zotero_collection', [
+                            'pid' => $pid,
+                            'tstamp' => time(),
+                            'parent_id' => null,
+                            'sorting' => 0,
+                            'zotero_key' => $key,
+                            'title' => $name,
+                            'published' => $inTrash ? '0' : '1',
+                        ]);
+                        $keyToId[$key] = (int) $this->connection->lastInsertId();
+                        $result['collections_created']++;
+                        $result['collections_created_details'][] = ['key' => $key, 'title' => $name];
+                    } catch (\Throwable $e) {
+                        $this->logger->warning('Collection-Erstellung übersprungen', ['key' => $key, 'reason' => $e->getMessage()]);
+                        $result['collections_skipped'] = ($result['collections_skipped'] ?? 0) + 1;
+                    }
                 }
             }
             $start += $limit;
@@ -255,34 +388,207 @@ final class ZoteroSyncService
             if ($parentKey === '' || !isset($keyToId[$key], $keyToId[$parentKey])) {
                 continue;
             }
-            $this->connection->update('tl_zotero_collection', [
-                'parent_id' => $keyToId[$parentKey],
-            ], ['id' => $keyToId[$key]]);
+            try {
+                $this->connection->update('tl_zotero_collection', [
+                    'parent_id' => $keyToId[$parentKey],
+                ], ['id' => $keyToId[$key]]);
+            } catch (\Throwable $e) {
+                $this->logger->warning('Collection parent_id Update übersprungen', ['key' => $key, 'reason' => $e->getMessage()]);
+                $result['collections_skipped'] = ($result['collections_skipped'] ?? 0) + 1;
+            }
+        }
+
+        // Collections löschen, die in der API nicht mehr vorhanden sind (kein /collections/trash)
+        $dbCollections = $this->connection->fetchAllAssociative(
+            'SELECT id, zotero_key, title, parent_id FROM tl_zotero_collection WHERE pid = ?',
+            [$pid]
+        );
+        $apiKeys = array_keys($keyToId);
+        foreach ($dbCollections as $row) {
+            $collKey = $row['zotero_key'] ?? '';
+            if (\in_array($collKey, $apiKeys, true)) {
+                continue;
+            }
+            try {
+                $collId = (int) $row['id'];
+                $newParentId = isset($row['parent_id']) && $row['parent_id'] !== '' ? (int) $row['parent_id'] : null;
+                $this->connection->executeStatement(
+                    'UPDATE tl_zotero_collection SET parent_id = ? WHERE parent_id = ?',
+                    [$newParentId, $collId]
+                );
+                $this->connection->delete('tl_zotero_collection_item', ['collection_id' => $collId]);
+                $this->connection->delete('tl_zotero_collection', ['id' => $collId]);
+                $result['collections_deleted']++;
+                $result['collections_deleted_details'][] = [
+                    'key' => $collKey,
+                    'title' => (string) ($row['title'] ?? ''),
+                ];
+            } catch (\Throwable $e) {
+                $this->logger->warning('Collection-Löschung übersprungen', ['key' => $collKey, 'reason' => $e->getMessage()]);
+                $result['collections_skipped'] = ($result['collections_skipped'] ?? 0) + 1;
+            }
         }
 
         return $keyToId;
     }
 
     /**
+     * Holt alle seit lastVersion gelöschten Objekte (Collections, Items, Searches, Tags).
+     * Ein Request statt separater Abrufe für Collections und Items.
+     *
+     * @return array{collections: list<string>, items: list<string>, searches: list<string>, tags: list<string>}
+     * @see https://www.zotero.org/support/dev/web_api/v3/syncing
+     */
+    private function fetchDeletedObjects(string $prefix, string $apiKey, int $lastVersion): array
+    {
+        $path = $prefix . '/deleted';
+        $noCacheHeaders = ['Cache-Control' => 'no-cache, no-store', 'Pragma' => 'no-cache'];
+        $response = $this->zoteroClient->get($path, $apiKey, ['since' => $lastVersion], ['headers' => $noCacheHeaders]);
+        $this->ensureSuccessResponse($response, $path);
+        $this->lastModifiedVersion = $this->parseLastModifiedVersion($response);
+        $decoded = $this->decodeJson($response->getContent(false), $path);
+
+        return [
+            'collections' => $this->normalizeDeletedKeys($decoded['collections'] ?? null),
+            'items' => $this->normalizeDeletedKeys($decoded['items'] ?? null),
+            'searches' => $this->normalizeDeletedKeys($decoded['searches'] ?? null),
+            'tags' => $this->normalizeDeletedKeys($decoded['tags'] ?? null),
+        ];
+    }
+
+    /**
+     * Normalisiert Keys aus /deleted: API liefert entweder ["key1","key2"] oder {"key1":ver,"key2":ver}.
+     *
+     * @param mixed $data Array oder Objekt aus JSON
+     * @return list<string>
+     */
+    private function normalizeDeletedKeys(mixed $data): array
+    {
+        if (!\is_array($data)) {
+            return [];
+        }
+        $keys = array_keys($data);
+        $numericKeys = array_filter($keys, 'is_numeric');
+        if ($numericKeys === $keys) {
+            return array_values(array_map('strval', $data));
+        }
+        return array_values(array_map('strval', $keys));
+    }
+
+    /**
+     * Explizit in Zotero gelöschte Collections depublizieren (published=0).
+     * Nutzt das von fetchDeletedObjects gelieferte Arrays. Collection-Item-Verknüpfungen bleiben erhalten (bei Wiederherstellung in Zotero sind die Items wieder zugeordnet).
+     */
+    private function syncDeletedCollections(int $pid, array $deletedObjects, array &$result): void
+    {
+        $deletedKeys = $deletedObjects['collections'] ?? [];
+        foreach ($deletedKeys as $collKey) {
+            $collKey = (string) $collKey;
+            if ($collKey === '') {
+                continue;
+            }
+            $row = $this->connection->fetchAssociative(
+                'SELECT id, zotero_key, title FROM tl_zotero_collection WHERE pid = ? AND zotero_key = ?',
+                [$pid, $collKey]
+            );
+            if ($row === false || !\is_array($row)) {
+                continue;
+            }
+            try {
+                $collId = (int) $row['id'];
+                $this->connection->update('tl_zotero_collection', ['published' => '0'], ['id' => $collId]);
+                $result['collections_deleted']++;
+                $result['collections_deleted_details'][] = [
+                    'key' => $collKey,
+                    'title' => (string) ($row['title'] ?? ''),
+                ];
+            } catch (\Throwable $e) {
+                $this->logger->warning('Collection-Depublikation (deleted) übersprungen', ['key' => $collKey, 'reason' => $e->getMessage()]);
+                $result['collections_skipped'] = ($result['collections_skipped'] ?? 0) + 1;
+            }
+        }
+    }
+
+    /**
+     * Explizit in Zotero gelöschte Items und Attachments lokal entfernen.
+     * Nutzt das von fetchDeletedObjects gelieferte items-Array (inkl. Attachments).
+     */
+    private function syncDeletedItems(int $pid, array $deletedObjects, array &$result): void
+    {
+        $deletedKeys = $deletedObjects['items'] ?? [];
+        foreach ($deletedKeys as $itemKey) {
+            $itemKey = (string) $itemKey;
+            if ($itemKey === '') {
+                continue;
+            }
+
+            try {
+                // Zuerst prüfen, ob es ein Attachment ist (in tl_zotero_item_attachment)
+                $attachmentRow = $this->connection->fetchAssociative(
+                    'SELECT a.id, a.title FROM tl_zotero_item_attachment a
+                    INNER JOIN tl_zotero_item i ON a.pid = i.id
+                    WHERE i.pid = ? AND a.zotero_key = ?',
+                    [$pid, $itemKey]
+                );
+                if ($attachmentRow !== false && \is_array($attachmentRow)) {
+                    $this->connection->delete('tl_zotero_item_attachment', ['id' => (int) $attachmentRow['id']]);
+                    $result['attachments_deleted']++;
+                    $result['attachments_deleted_details'][] = [
+                        'key' => $itemKey,
+                        'title' => (string) ($attachmentRow['title'] ?? ''),
+                    ];
+                    continue;
+                }
+
+                // Sonst: reguläres Item (tl_zotero_item)
+                $existing = $this->connection->fetchAssociative(
+                    'SELECT id, title, item_type FROM tl_zotero_item WHERE pid = ? AND zotero_key = ?',
+                    [$pid, $itemKey]
+                );
+                if ($existing === false || !\is_array($existing)) {
+                    continue;
+                }
+                $itemId = (int) $existing['id'];
+                $this->connection->delete('tl_zotero_collection_item', ['item_id' => $itemId]);
+                $this->connection->delete('tl_zotero_item_creator', ['item_id' => $itemId]);
+                $this->connection->delete('tl_zotero_item_attachment', ['pid' => $itemId]);
+                $this->connection->delete('tl_zotero_item', ['id' => $itemId]);
+                $result['items_deleted']++;
+                $result['items_deleted_details'][] = [
+                    'key' => $itemKey,
+                    'item_type' => (string) ($existing['item_type'] ?? ''),
+                    'title' => (string) ($existing['title'] ?? ''),
+                ];
+            } catch (\Throwable $e) {
+                $this->recordSkipped($result, $itemKey, 'Grund unbekannt', null, 'unknown');
+            }
+        }
+    }
+
+    /**
      * Items pro Seite gebündelt laden (2 Requests pro Seite statt 2 pro Item).
      *
+     * @param array{collections: list<string>, items: list<string>} $deletedObjects Von fetchDeletedObjects()
      * @return array<string, int> zotero_key -> unsere item id
      */
-    private function syncItems(string $prefix, string $apiKey, int $pid, string $citationStyle, string $citationLocale, int $since, array &$result): array
+    private function syncItems(string $prefix, string $apiKey, int $pid, string $citationStyle, string $citationLocale, int $since, array $deletedObjects, array &$result): array
     {
         $keyToId = [];
         $path = $prefix . '/items';
+
+        $noCacheHeaders = ['Cache-Control' => 'no-cache, no-store', 'Pragma' => 'no-cache'];
+        $deletedItemKeys = array_flip($deletedObjects['items'] ?? []);
 
         // Pass 1: Alle Nicht-Attachments (itemType=-attachment), damit Parents vor Attachments in keyToId stehen
         $start = 0;
         $limit = self::ITEMS_PAGE_SIZE;
         do {
-            $query = ['start' => $start, 'limit' => $limit, 'include' => 'data', 'itemType' => '-attachment'];
+            $query = ['start' => $start, 'limit' => $limit, 'include' => 'data', 'itemType' => '-attachment', 'includeTrashed' => 1];
             if ($since > 0) {
                 $query['since'] = $since;
             }
 
-            $response = $this->zoteroClient->get($path, $apiKey, $query);
+            $response = $this->zoteroClient->get($path, $apiKey, $query, ['headers' => $noCacheHeaders]);
             $this->ensureSuccessResponse($response, $path);
             $this->lastModifiedVersion = $this->parseLastModifiedVersion($response);
             $items = $this->decodeJson($response->getContent(false), $path);
@@ -293,6 +599,10 @@ final class ZoteroSyncService
             foreach ($items as $item) {
                 $key = $item['key'] ?? '';
                 if ($key === '') {
+                    continue;
+                }
+                if (isset($deletedItemKeys[$key])) {
+                    $this->recordSkipped($result, $key, 'Objekt bereits gelöscht', null, (string) (($item['data'] ?? [])['itemType'] ?? 'unknown'));
                     continue;
                 }
                 try {
@@ -301,23 +611,27 @@ final class ZoteroSyncService
                     $itemId = $this->upsertItemFromData($pid, $item, $bibContent, $citeContent, $result);
                     if ($itemId > 0) {
                         $keyToId[$key] = $itemId;
+                        $this->syncItemCreatorsForItem($itemId, ($item['data'] ?? [])['creators'] ?? [], $result);
                     }
                 } catch (\Throwable $e) {
-                    $this->recordSkipped($result, $key, $e->getMessage(), null, (string) (($item['data'] ?? [])['itemType'] ?? ''));
+                    $this->recordSkipped($result, $key, 'Grund unbekannt', null, (string) (($item['data'] ?? [])['itemType'] ?? 'unknown'));
                 }
             }
             $start += $limit;
         } while (\count($items) === $limit);
 
         // Pass 2: Alle Attachments (itemType=attachment)
+        // Zuerst alle Attachments sammeln, dann in Runden verarbeiten – damit auch Attachments
+        // mit Parent-Attachment (z. B. Notiz an PDF) korrekt verarbeitet werden (Pagination-Reihenfolge).
+        $allAttachments = [];
         $start = 0;
         do {
-            $query = ['start' => $start, 'limit' => $limit, 'include' => 'data', 'itemType' => 'attachment'];
+            $query = ['start' => $start, 'limit' => $limit, 'include' => 'data', 'itemType' => 'attachment', 'includeTrashed' => 1];
             if ($since > 0) {
                 $query['since'] = $since;
             }
 
-            $response = $this->zoteroClient->get($path, $apiKey, $query);
+            $response = $this->zoteroClient->get($path, $apiKey, $query, ['headers' => $noCacheHeaders]);
             $this->ensureSuccessResponse($response, $path);
             $this->lastModifiedVersion = $this->parseLastModifiedVersion($response);
             $items = $this->decodeJson($response->getContent(false), $path);
@@ -330,16 +644,93 @@ final class ZoteroSyncService
                 if ($key === '') {
                     continue;
                 }
-                try {
-                    $this->upsertAttachmentFromData($pid, $item, $keyToId, $result);
-                } catch (\Throwable $e) {
-                    $this->recordSkipped($result, $key, $e->getMessage(), (string) (($item['data'] ?? [])['parentItem'] ?? ''), 'attachment');
+                if (isset($deletedItemKeys[$key])) {
+                    $this->recordSkipped($result, $key, 'Objekt bereits gelöscht', (string) (($item['data'] ?? [])['parentItem'] ?? ''), 'attachment');
+                    continue;
                 }
+                $allAttachments[] = $item;
             }
             $start += $limit;
         } while (\count($items) === $limit);
 
+        // Attachments topologisch sortieren: Eltern vor Kindern (parentItem = anderes Attachment)
+        $allAttachments = $this->sortAttachmentsByParentChild($allAttachments, $keyToId);
+
+        $attachmentKeyToPid = [];
+        foreach ($allAttachments as $item) {
+            $key = $item['key'] ?? '';
+            if ($key === '') {
+                continue;
+            }
+            try {
+                $this->upsertAttachmentFromData($pid, $item, $keyToId, $attachmentKeyToPid, $deletedItemKeys, $result);
+            } catch (\Throwable $e) {
+                $this->recordSkipped($result, $key, 'Grund unbekannt', (string) (($item['data'] ?? [])['parentItem'] ?? ''), 'attachment');
+            }
+        }
+
         return $keyToId;
+    }
+
+    /**
+     * Sortiert Attachments so, dass Eltern vor Kindern kommen (Parent-Attachment vor Child-Attachment).
+     * Ermöglicht Verarbeitung in einer Runde ohne Pagination-Reihenfolge-Probleme.
+     *
+     * @param array<int, array<string, mixed>> $attachments
+     * @param array<string, int>               $keyToId    Reguläre Items (Parent kann tl_zotero_item sein)
+     * @return array<int, array<string, mixed>>
+     */
+    private function sortAttachmentsByParentChild(array $attachments, array $keyToId): array
+    {
+        $byKey = [];
+        foreach ($attachments as $item) {
+            $key = $item['key'] ?? '';
+            if ($key !== '') {
+                $byKey[$key] = $item;
+            }
+        }
+        $attachmentKeys = array_keys($byKey);
+        $sorted = [];
+        $added = [];
+
+        while (\count($sorted) < \count($attachmentKeys)) {
+            $roundAdded = 0;
+            foreach ($attachmentKeys as $key) {
+                if (isset($added[$key])) {
+                    continue;
+                }
+                $item = $byKey[$key] ?? null;
+                if ($item === null) {
+                    continue;
+                }
+                $parentKey = (string) (($item['data'] ?? [])['parentItem'] ?? '');
+                if ($parentKey === '') {
+                    $sorted[] = $item;
+                    $added[$key] = true;
+                    ++$roundAdded;
+                    continue;
+                }
+                $parentReady = isset($keyToId[$parentKey]) || isset($added[$parentKey]);
+                if ($parentReady) {
+                    $sorted[] = $item;
+                    $added[$key] = true;
+                    ++$roundAdded;
+                }
+            }
+            if ($roundAdded === 0) {
+                break;
+            }
+        }
+
+        $remaining = array_filter($attachmentKeys, static fn (string $k) => !isset($added[$k]));
+        foreach ($remaining as $key) {
+            $item = $byKey[$key] ?? null;
+            if ($item !== null) {
+                $sorted[] = $item;
+            }
+        }
+
+        return $sorted;
     }
 
     /**
@@ -376,40 +767,53 @@ final class ZoteroSyncService
     /**
      * Attachment-Datensatz in tl_zotero_item_attachment upserten.
      *
-     * @param int                $pid      Library-ID (tl_zotero_library.id)
-     * @param array<string,mixed> $item    Zotero-Item mit key, version, data
-     * @param array<string,int>  $keyToId Mapping zotero_key -> tl_zotero_item.id (für parentItem-Auflösung)
+     * @param int                $pid                   Library-ID (tl_zotero_library.id)
+     * @param array<string,mixed> $item                  Zotero-Item mit key, version, data
+     * @param array<string,int>  $keyToId               zotero_key -> tl_zotero_item.id (reguläre Items)
+     * @param array<string,int>  $attachmentKeyToPid    zotero_key -> tl_zotero_item.id (bereits verarbeitete Attachments, Parent nutzt deren pid)
+     * @param array<string, int> $deletedItemKeys       Key => 1 für in /deleted gelistete Items
+     * @return bool true wenn verarbeitet, false wenn übersprungen (Parent nicht gefunden)
      */
-    private function upsertAttachmentFromData(int $pid, array $item, array $keyToId, array &$result): void
+    private function upsertAttachmentFromData(int $pid, array $item, array $keyToId, array &$attachmentKeyToPid, array $deletedItemKeys, array &$result): bool
     {
         $key = (string) ($item['key'] ?? '');
         $data = $item['data'] ?? [];
         $version = (int) ($item['version'] ?? 0);
         $parentKey = (string) ($data['parentItem'] ?? '');
+        $inTrash = (int) ($data['deleted'] ?? 0) === 1;
 
         if ($parentKey === '') {
-            $this->recordSkipped($result, $key, 'Attachment ohne parentItem (Standalone oder defekt)', null, 'attachment');
-            return;
+            $this->recordSkipped($result, $key, 'Grund unbekannt', null, 'attachment');
+
+            return false;
         }
 
-        // Parent-Item-ID: bevorzugt aus aktuellem Sync-Mapping, sonst aus DB
-        $parentId = $keyToId[$parentKey] ?? null;
+        // Parent-Item-ID: keyToId (reguläres Item), attachmentKeyToPid (Parent-Attachment dieses Laufs), sonst DB
+        $parentId = $keyToId[$parentKey] ?? $attachmentKeyToPid[$parentKey] ?? null;
         if ($parentId === null) {
+            // Reguläres Item in tl_zotero_item
             $found = $this->connection->fetchOne(
                 'SELECT id FROM tl_zotero_item WHERE pid = ? AND zotero_key = ?',
                 [$pid, $parentKey]
             );
-            if ($found === false) {
-                $this->recordSkipped(
-                    $result,
-                    $key,
-                    'Parent-Item nicht in tl_zotero_item (z. B. gelöscht in Zotero, oder Pagination)',
-                    $parentKey,
-                    'attachment'
+            if ($found !== false) {
+                $parentId = (int) $found;
+            } else {
+                // Parent-Attachment aus vorherigem Sync (a.pid = tl_zotero_item.id des übergeordneten Items)
+                $found = $this->connection->fetchOne(
+                    'SELECT a.pid FROM tl_zotero_item_attachment a INNER JOIN tl_zotero_item i ON i.id = a.pid WHERE i.pid = ? AND a.zotero_key = ?',
+                    [$pid, $parentKey]
                 );
-                return;
+                if ($found !== false) {
+                    $parentId = (int) $found;
+                }
             }
-            $parentId = (int) $found;
+            if ($parentId === null) {
+                $reason = isset($deletedItemKeys[$parentKey]) ? 'Parent wurde gelöscht' : 'Grund unbekannt';
+                $this->recordSkipped($result, $key, $reason, $parentKey, 'attachment');
+
+                return false;
+            }
         }
 
         $jsonData = json_encode($data, \JSON_UNESCAPED_UNICODE | \JSON_THROW_ON_ERROR);
@@ -433,17 +837,31 @@ final class ZoteroSyncService
             'charset' => (string) ($data['charset'] ?? ''),
             'md5' => (string) ($data['md5'] ?? ''),
             'json_data' => $jsonData,
-            'published' => '1',
+            'published' => $inTrash ? '0' : '1',
         ];
 
         if ($existing !== false) {
             unset($row['pid'], $row['sorting']);
             $this->connection->update('tl_zotero_item_attachment', $row, ['id' => $existing]);
             $result['attachments_updated']++;
+            $result['attachments_updated_details'][] = [
+                'key' => $key,
+                'parent_key' => $parentKey,
+                'title' => (string) ($data['title'] ?? ''),
+            ];
         } else {
             $this->connection->insert('tl_zotero_item_attachment', $row);
             $result['attachments_created']++;
+            $result['attachments_created_details'][] = [
+                'key' => $key,
+                'parent_key' => $parentKey,
+                'title' => (string) ($data['title'] ?? ''),
+            ];
         }
+
+        $attachmentKeyToPid[$key] = $parentId;
+
+        return true;
     }
 
     /**
@@ -502,6 +920,7 @@ final class ZoteroSyncService
 
         $title = $data['title'] ?? '';
         $itemType = $data['itemType'] ?? '';
+        $inTrash = (int) ($data['deleted'] ?? 0) === 1;
         $year = '';
         $date = $data['date'] ?? '';
         if (preg_match('/\b(19|20)\d{2}\b/', $date, $m)) {
@@ -543,7 +962,7 @@ final class ZoteroSyncService
             'json_data' => $jsonData,
             'tags' => $tagsJson,
             'download_attachments' => '',
-            'published' => '1',
+            'published' => $inTrash ? '0' : '1',
             'alias' => $alias,
         ];
 
@@ -551,15 +970,20 @@ final class ZoteroSyncService
             unset($row['pid']);
             $this->connection->update('tl_zotero_item', $row, ['id' => $existing]);
             $result['items_updated']++;
+            $result['items_updated_details'][] = ['key' => $key, 'title' => (string) $title];
             return (int) $existing;
         }
         $this->connection->insert('tl_zotero_item', $row);
         $result['items_created']++;
+        $result['items_created_details'][] = ['key' => $key, 'title' => (string) $title, 'item_type' => (string) $itemType];
         return (int) $this->connection->lastInsertId();
     }
 
     /**
      * Collection-Item-Verknüpfungen synchronisieren. Entfernt Verknüpfungen, die nicht mehr in der Collection sind.
+     *
+     * Hinweis: itemKeyToId enthält bei inkrementellem Sync nur Keys von Items, die im aktuellen Lauf geholt wurden.
+     * Items, die lokal existieren aber unverändert sind, fehlen dort. Deshalb DB-Lookup als Fallback.
      *
      * @param array<string, int> $collectionKeyToId
      * @param array<string, int> $itemKeyToId
@@ -567,26 +991,54 @@ final class ZoteroSyncService
      */
     private function syncCollectionItems(string $prefix, string $apiKey, int $pid, array $collectionKeyToId, array $itemKeyToId, array &$result): void
     {
+        $limit = 100;
+
         foreach ($collectionKeyToId as $collKey => $collectionId) {
             $path = $prefix . '/collections/' . $collKey . '/items';
-            $response = $this->zoteroClient->get($path, $apiKey, ['limit' => 100]);
-            $this->ensureSuccessResponse($response, $path);
-            $items = $this->decodeJson($response->getContent(false), $path);
-            if (!\is_array($items)) {
-                // Keine Items in Collection: alle Verknüpfungen löschen
-                $deleted = $this->connection->delete('tl_zotero_collection_item', ['collection_id' => $collectionId]);
-                $result['collection_items_deleted'] += $deleted;
+            $items = [];
+            $start = 0;
+            do {
+                $response = $this->zoteroClient->get($path, $apiKey, ['start' => $start, 'limit' => $limit]);
+                $this->ensureSuccessResponse($response, $path);
+                $page = $this->decodeJson($response->getContent(false), $path);
+                if (!\is_array($page)) {
+                    $items = null;
+                    break;
+                }
+                $items = array_merge($items, $page);
+                $start += $limit;
+            } while (\count($page) >= $limit);
+
+            if ($items === null) {
+                try {
+                    $deleted = $this->connection->delete('tl_zotero_collection_item', ['collection_id' => $collectionId]);
+                    $result['collection_items_deleted'] += $deleted;
+                } catch (\Throwable $e) {
+                    $this->logger->warning('Collection-Item-Löschung übersprungen', ['collection_id' => $collectionId, 'reason' => $e->getMessage()]);
+                    $result['collection_items_skipped'] = ($result['collection_items_skipped'] ?? 0) + 1;
+                }
                 continue;
             }
 
-            // 1) Erwartete Item-IDs aus der API sammeln
+            // 1) Erwartete Item-IDs aus der API sammeln (alle Seiten)
+            // itemKeyToId enthält bei inkrementellem Sync nur geänderte Items; unveränderte lokal vorhandene Items per DB nachschlagen
             $expectedItemIds = [];
             foreach ($items as $item) {
                 $itemKey = $item['key'] ?? trim((string) $item);
-                if ($itemKey === '' || !isset($itemKeyToId[$itemKey])) {
+                if ($itemKey === '') {
                     continue;
                 }
-                $expectedItemIds[] = $itemKeyToId[$itemKey];
+                $itemId = $itemKeyToId[$itemKey] ?? null;
+                if ($itemId === null) {
+                    $found = $this->connection->fetchOne(
+                        'SELECT id FROM tl_zotero_item WHERE pid = ? AND zotero_key = ?',
+                        [$pid, $itemKey]
+                    );
+                    $itemId = $found !== false ? (int) $found : null;
+                }
+                if ($itemId !== null) {
+                    $expectedItemIds[] = $itemId;
+                }
             }
 
             // 2) Bestehende Verknüpfungen für diese Collection holen
@@ -597,54 +1049,91 @@ final class ZoteroSyncService
             $existingItemIds = array_map(static fn (array $row) => (int) $row['item_id'], $existingLinks);
 
             // 3) Verknüpfungen löschen, die nicht mehr erwartet werden
+            // Depublizierte Items (Papierkorb) nicht entfernen – Zotero liefert sie evtl. nicht in /collections/{key}/items; bei Wiederherstellung sind sie wieder in der Collection
             $toDelete = array_diff($existingItemIds, $expectedItemIds);
             foreach ($toDelete as $itemId) {
-                $deleted = $this->connection->delete('tl_zotero_collection_item', [
-                    'collection_id' => $collectionId,
-                    'item_id' => $itemId,
-                ]);
-                $result['collection_items_deleted'] += $deleted;
+                $itemRow = $this->connection->fetchAssociative('SELECT zotero_key, title, published FROM tl_zotero_item WHERE id = ?', [$itemId]);
+                if (\is_array($itemRow) && ((string) ($itemRow['published'] ?? '1')) === '0') {
+                    continue;
+                }
+                try {
+                    $detail = ['collection_id' => $collectionId, 'item_id' => $itemId];
+                    if (\is_array($itemRow)) {
+                        $detail['item_key'] = (string) ($itemRow['zotero_key'] ?? '');
+                        $detail['item_title'] = (string) ($itemRow['title'] ?? '');
+                    }
+                    $collRow = $this->connection->fetchAssociative('SELECT zotero_key, title FROM tl_zotero_collection WHERE id = ?', [$collectionId]);
+                    if (\is_array($collRow)) {
+                        $detail['collection_key'] = (string) ($collRow['zotero_key'] ?? '');
+                        $detail['collection_title'] = (string) ($collRow['title'] ?? '');
+                    }
+                    $deleted = $this->connection->delete('tl_zotero_collection_item', [
+                        'collection_id' => $collectionId,
+                        'item_id' => $itemId,
+                    ]);
+                    if ($deleted > 0) {
+                        $result['collection_items_deleted'] += $deleted;
+                        $result['collection_items_deleted_details'][] = $detail;
+                    }
+                } catch (\Throwable $e) {
+                    $this->logger->warning('Collection-Item-Löschung übersprungen', ['collection_id' => $collectionId, 'item_id' => $itemId, 'reason' => $e->getMessage()]);
+                    $result['collection_items_skipped'] = ($result['collection_items_skipped'] ?? 0) + 1;
+                }
             }
 
             // 4) Neue Verknüpfungen anlegen (die noch nicht existieren)
             $toCreate = array_diff($expectedItemIds, $existingItemIds);
+            $collRow = $this->connection->fetchAssociative('SELECT title FROM tl_zotero_collection WHERE id = ?', [$collectionId]);
+            $collectionTitle = \is_array($collRow) ? (string) ($collRow['title'] ?? '') : '';
+            $itemRowsById = [];
+            if ($toCreate !== []) {
+                $rows = $this->connection->fetchAllAssociative(
+                    'SELECT id, zotero_key, title FROM tl_zotero_item WHERE id IN (' . implode(',', array_map('\intval', $toCreate)) . ')'
+                );
+                foreach ($rows as $r) {
+                    $itemRowsById[(int) $r['id']] = $r;
+                }
+            }
             foreach ($toCreate as $itemId) {
-                $this->connection->insert('tl_zotero_collection_item', [
-                    'pid' => $collectionId,
-                    'tstamp' => time(),
-                    'collection_id' => $collectionId,
-                    'item_id' => $itemId,
-                ]);
-                $result['collection_items_created']++;
+                try {
+                    $this->connection->insert('tl_zotero_collection_item', [
+                        'pid' => $collectionId,
+                        'tstamp' => time(),
+                        'collection_id' => $collectionId,
+                        'item_id' => $itemId,
+                    ]);
+                    $result['collection_items_created']++;
+                    $detail = [
+                        'collection_id' => $collectionId,
+                        'collection_key' => $collKey,
+                        'collection_title' => $collectionTitle,
+                        'item_id' => $itemId,
+                    ];
+                    if (isset($itemRowsById[$itemId])) {
+                        $detail['item_key'] = (string) ($itemRowsById[$itemId]['zotero_key'] ?? '');
+                        $detail['item_title'] = (string) ($itemRowsById[$itemId]['title'] ?? '');
+                    }
+                    $result['collection_items_created_details'][] = $detail;
+                } catch (\Throwable $e) {
+                    $this->logger->warning('Collection-Item-Erstellung übersprungen', ['collection_id' => $collectionId, 'item_id' => $itemId, 'reason' => $e->getMessage()]);
+                    $result['collection_items_skipped'] = ($result['collection_items_skipped'] ?? 0) + 1;
+                }
             }
         }
     }
 
     /**
-     * Verknüpfungen item <-> creator_map. Creator-Map-Einträge werden bei Bedarf angelegt (member_id=0).
-     * Entfernt Verknüpfungen, die nicht mehr im Item vorhanden sind.
+     * Item-Creator-Verknüpfungen für ein einzelnes Item synchronisieren (Daten kommen aus Item, kein eigener API-Endpoint).
+     * Creator-Map-Einträge werden bei Bedarf angelegt (member_id=0).
      *
-     * @param array{item_creators_created: int, item_creators_deleted: int} $result
+     * @param int   $itemId   tl_zotero_item.id
+     * @param array $creators Zotero creators-Array aus item.data.creators
      */
-    private function syncItemCreators(int $pid, array &$result): void
+    private function syncItemCreatorsForItem(int $itemId, array $creators, array &$result): void
     {
-        $items = $this->connection->fetchAllAssociative(
-            'SELECT id, json_data FROM tl_zotero_item WHERE pid = ? AND json_data IS NOT NULL AND json_data != ?',
-            [$pid, '']
-        );
-        foreach ($items as $item) {
-            $itemId = (int) $item['id'];
-            $data = json_decode((string) $item['json_data'], true);
-            if (!\is_array($data)) {
-                // Keine Creator-Daten: alle Verknüpfungen löschen
-                $deleted = $this->connection->delete('tl_zotero_item_creator', ['item_id' => $itemId]);
-                $result['item_creators_deleted'] += $deleted;
-                continue;
-            }
-            $creators = $data['creators'] ?? [];
+        try {
             $expectedCreatorMapIds = [];
 
-            // 1) Alle Creator aus json_data sammeln und Creator-Map-IDs finden/erstellen
             foreach ($creators as $creator) {
                 $firstName = trim((string) ($creator['firstName'] ?? ''));
                 $lastName = trim((string) ($creator['lastName'] ?? ''));
@@ -672,26 +1161,43 @@ final class ZoteroSyncService
                 $expectedCreatorMapIds[] = $creatorMapId;
             }
 
-            // 2) Alle bestehenden Verknüpfungen für dieses Item holen
             $existingLinks = $this->connection->fetchAllAssociative(
                 'SELECT creator_map_id FROM tl_zotero_item_creator WHERE item_id = ?',
                 [$itemId]
             );
             $existingCreatorMapIds = array_map(static fn (array $row) => (int) $row['creator_map_id'], $existingLinks);
 
-            // 3) Verknüpfungen löschen, die nicht mehr erwartet werden
+            $itemRow = $this->connection->fetchAssociative('SELECT zotero_key, title FROM tl_zotero_item WHERE id = ?', [$itemId]);
+
             $toDelete = array_diff($existingCreatorMapIds, $expectedCreatorMapIds);
             foreach ($toDelete as $creatorMapId) {
+                $creatorRow = $this->connection->fetchAssociative(
+                    'SELECT zotero_firstname, zotero_lastname FROM tl_zotero_creator_map WHERE id = ?',
+                    [$creatorMapId]
+                );
                 $deleted = $this->connection->delete('tl_zotero_item_creator', [
                     'item_id' => $itemId,
                     'creator_map_id' => $creatorMapId,
                 ]);
-                $result['item_creators_deleted'] += $deleted;
+                if ($deleted > 0) {
+                    $result['item_creators_deleted'] += $deleted;
+                    $detail = [
+                        'item_id' => $itemId,
+                        'item_key' => \is_array($itemRow) ? (string) ($itemRow['zotero_key'] ?? '') : '',
+                        'item_title' => \is_array($itemRow) ? (string) ($itemRow['title'] ?? '') : '',
+                        'creator_firstname' => \is_array($creatorRow) ? (string) ($creatorRow['zotero_firstname'] ?? '') : '',
+                        'creator_lastname' => \is_array($creatorRow) ? (string) ($creatorRow['zotero_lastname'] ?? '') : '',
+                    ];
+                    $result['item_creators_deleted_details'][] = $detail;
+                }
             }
 
-            // 4) Neue Verknüpfungen anlegen (die noch nicht existieren)
             $toCreate = array_diff($expectedCreatorMapIds, $existingCreatorMapIds);
             foreach ($toCreate as $creatorMapId) {
+                $creatorRow = $this->connection->fetchAssociative(
+                    'SELECT zotero_firstname, zotero_lastname FROM tl_zotero_creator_map WHERE id = ?',
+                    [$creatorMapId]
+                );
                 $this->connection->insert('tl_zotero_item_creator', [
                     'pid' => $itemId,
                     'tstamp' => time(),
@@ -699,8 +1205,120 @@ final class ZoteroSyncService
                     'creator_map_id' => $creatorMapId,
                 ]);
                 $result['item_creators_created']++;
+                $detail = [
+                    'item_id' => $itemId,
+                    'item_key' => \is_array($itemRow) ? (string) ($itemRow['zotero_key'] ?? '') : '',
+                    'item_title' => \is_array($itemRow) ? (string) ($itemRow['title'] ?? '') : '',
+                    'creator_firstname' => \is_array($creatorRow) ? (string) ($creatorRow['zotero_firstname'] ?? '') : '',
+                    'creator_lastname' => \is_array($creatorRow) ? (string) ($creatorRow['zotero_lastname'] ?? '') : '',
+                ];
+                $result['item_creators_created_details'][] = $detail;
             }
+        } catch (\Throwable $e) {
+            $this->logger->warning('Item-Creator-Sync übersprungen', ['item_id' => $itemId, 'reason' => $e->getMessage()]);
+            $result['item_creators_skipped'] = ($result['item_creators_skipped'] ?? 0) + 1;
         }
+    }
+
+    /**
+     * Debug-Daten für Fehlersuche. Liefert Rohdaten aller genutzten API-Endpoints und lokalen Entitäten.
+     *
+     * API-Endpoints: /deleted, /collections, /items (Items + Attachments), /collections/{key}/items
+     * Lokale Tabellen: tl_zotero_collection, tl_zotero_item, tl_zotero_item_attachment,
+     *                  tl_zotero_collection_item, tl_zotero_item_creator
+     *
+     * @return array{library: array, deleted: array, collections_sample: array, items_sample: array, attachments_sample: array, collection_items_sample: array|null, local_collections: array, local_items: array, local_attachments: array, local_collection_items: array, local_item_creators: array}|null null wenn Library nicht gefunden
+     */
+    public function getDebugSyncData(int $libraryId): ?array
+    {
+        $library = $this->connection->fetchAssociative(
+            'SELECT id, title, library_type, library_id, api_key, last_sync_version FROM tl_zotero_library WHERE id = ?',
+            [$libraryId]
+        );
+        if (!$library || !\is_array($library)) {
+            return null;
+        }
+
+        $prefix = $this->libraryPrefix($library);
+        $apiKey = (string) ($library['api_key'] ?? '');
+        $lastVersion = (int) ($library['last_sync_version'] ?? 0);
+
+        // GET /deleted?since=
+        $pathDeleted = $prefix . '/deleted';
+        $responseDeleted = $this->zoteroClient->get($pathDeleted, $apiKey, ['since' => $lastVersion]);
+        $decodedDeleted = json_decode($responseDeleted->getContent(false), true);
+
+        // GET /collections
+        $pathColl = $prefix . '/collections';
+        $responseColl = $this->zoteroClient->get($pathColl, $apiKey, ['start' => 0, 'limit' => 10]);
+        $collectionsSample = json_decode($responseColl->getContent(false), true);
+
+        // GET /items (Items, nicht Attachments)
+        $pathItems = $prefix . '/items';
+        $responseItems = $this->zoteroClient->get($pathItems, $apiKey, ['start' => 0, 'limit' => 5, 'include' => 'data', 'itemType' => '-attachment']);
+        $itemsSample = json_decode($responseItems->getContent(false), true);
+
+        // GET /items (Attachments)
+        $responseAttachments = $this->zoteroClient->get($pathItems, $apiKey, ['start' => 0, 'limit' => 5, 'include' => 'data', 'itemType' => 'attachment']);
+        $attachmentsSample = json_decode($responseAttachments->getContent(false), true);
+
+        // GET /collections/{key}/items für erste Collection (falls vorhanden)
+        $collectionItemsSample = null;
+        if (\is_array($collectionsSample) && isset($collectionsSample[0]['key'])) {
+            $firstCollKey = $collectionsSample[0]['key'];
+            $pathCollItems = $prefix . '/collections/' . $firstCollKey . '/items';
+            $responseCollItems = $this->zoteroClient->get($pathCollItems, $apiKey, ['limit' => 10]);
+            $collectionItemsSample = json_decode($responseCollItems->getContent(false), true);
+        }
+
+        // Lokale Entitäten
+        $localCollections = $this->connection->fetchAllAssociative(
+            'SELECT id, zotero_key, title, parent_id FROM tl_zotero_collection WHERE pid = ? ORDER BY id',
+            [$libraryId]
+        );
+        $localItems = $this->connection->fetchAllAssociative(
+            'SELECT id, zotero_key, title, item_type FROM tl_zotero_item WHERE pid = ? ORDER BY id LIMIT 15',
+            [$libraryId]
+        );
+        $localAttachments = $this->connection->fetchAllAssociative(
+            'SELECT a.id, a.zotero_key, a.title, a.pid as item_id, i.zotero_key as parent_key FROM tl_zotero_item_attachment a LEFT JOIN tl_zotero_item i ON i.id = a.pid WHERE i.pid = ? ORDER BY a.id LIMIT 10',
+            [$libraryId]
+        );
+        $localCollectionItems = $this->connection->fetchAllAssociative(
+            'SELECT ci.collection_id, ci.item_id, c.zotero_key as coll_key, c.title as coll_title, i.zotero_key as item_key, i.title as item_title FROM tl_zotero_collection_item ci JOIN tl_zotero_collection c ON c.id = ci.collection_id JOIN tl_zotero_item i ON i.id = ci.item_id WHERE c.pid = ? ORDER BY ci.collection_id, ci.item_id LIMIT 20',
+            [$libraryId]
+        );
+        $localItemCreators = $this->connection->fetchAllAssociative(
+            'SELECT ic.item_id, ic.creator_map_id, i.zotero_key, i.title, cm.zotero_firstname, cm.zotero_lastname FROM tl_zotero_item_creator ic JOIN tl_zotero_item i ON i.id = ic.item_id LEFT JOIN tl_zotero_creator_map cm ON cm.id = ic.creator_map_id WHERE i.pid = ? ORDER BY ic.item_id LIMIT 15',
+            [$libraryId]
+        );
+
+        return [
+            'library' => [
+                'id' => $libraryId,
+                'title' => $library['title'] ?? '',
+                'prefix' => $prefix,
+                'last_sync_version' => $lastVersion,
+            ],
+            'deleted' => [
+                'http_status' => $responseDeleted->getStatusCode(),
+                'last_modified_version' => $this->parseLastModifiedVersion($responseDeleted),
+                'collections' => $decodedDeleted['collections'] ?? null,
+                'items' => $decodedDeleted['items'] ?? null,
+                'searches' => $decodedDeleted['searches'] ?? null,
+                'tags' => $decodedDeleted['tags'] ?? null,
+            ],
+            'collections_sample' => \is_array($collectionsSample) ? $collectionsSample : [],
+            'items_sample' => \is_array($itemsSample) ? $itemsSample : [],
+            'attachments_sample' => \is_array($attachmentsSample) ? $attachmentsSample : [],
+            'collection_items_sample' => \is_array($collectionItemsSample) ? $collectionItemsSample : null,
+            'collection_items_sample_coll_key' => \is_array($collectionsSample) && isset($collectionsSample[0]['key']) ? $collectionsSample[0]['key'] : null,
+            'local_collections' => \is_array($localCollections) ? $localCollections : [],
+            'local_items' => \is_array($localItems) ? $localItems : [],
+            'local_attachments' => \is_array($localAttachments) ? $localAttachments : [],
+            'local_collection_items' => \is_array($localCollectionItems) ? $localCollectionItems : [],
+            'local_item_creators' => \is_array($localItemCreators) ? $localItemCreators : [],
+        ];
     }
 
     /**

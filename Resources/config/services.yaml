@@ -3,6 +3,8 @@ services:
         autowire: true
         autoconfigure: true
 
+    Raum51\ContaoZoteroBundle\Service\ApiLogCollector: ~
+
     Raum51\ContaoZoteroBundle\Service\ZoteroSyncService:
         arguments:
             $logger: '@monolog.logger.raum51_zotero'
@@ -10,6 +12,7 @@ services:
     Raum51\ContaoZoteroBundle\Service\ZoteroClient:
         arguments:
             $logger: '@monolog.logger.raum51_zotero'
+            $apiLogCollector: '@Raum51\ContaoZoteroBundle\Service\ApiLogCollector'
 
     Raum51\ContaoZoteroBundle\:
         resource: '../../src/'

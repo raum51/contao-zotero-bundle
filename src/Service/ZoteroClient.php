@@ -29,6 +29,7 @@ final class ZoteroClient
     public function __construct(
         private readonly HttpClientInterface $httpClient,
         private readonly LoggerInterface $logger,
+        private readonly ?ApiLogCollector $apiLogCollector = null,
         private readonly string $baseUrl = self::BASE_URL,
         private readonly int $maxRetries = self::DEFAULT_MAX_RETRIES,
     ) {
@@ -52,15 +53,20 @@ final class ZoteroClient
     public function request(string $method, string $path, string $apiKey, array $options = []): ResponseInterface
     {
         $url = rtrim($this->baseUrl, '/') . '/' . ltrim($path, '/');
+        $fullUrl = $url;
+        if (!empty($options['query'])) {
+            $fullUrl .= '?' . http_build_query($options['query']);
+        }
         $options['timeout'] = $options['timeout'] ?? self::REQUEST_TIMEOUT;
         $options['max_duration'] = $options['max_duration'] ?? self::REQUEST_TIMEOUT;
-        $options['headers'] = array_merge(
+        $requestHeaders = array_merge(
             $options['headers'] ?? [],
             [
                 'Zotero-API-Version' => self::API_VERSION_HEADER,
                 'Zotero-API-Key' => $apiKey,
             ]
         );
+        $options['headers'] = $requestHeaders;
 
         $attempt = 0;
         $lastResponse = null;
@@ -69,7 +75,7 @@ final class ZoteroClient
             $attempt++;
             $this->logger->debug('Zotero API request', [
                 'method' => $method,
-                'url' => $url,
+                'url' => $fullUrl,
                 'attempt' => $attempt,
             ]);
 
@@ -79,23 +85,38 @@ final class ZoteroClient
                 $statusCode = $response->getStatusCode();
             } catch (\Throwable $e) {
                 $this->logger->error('Zotero API request failed', [
-                    'url' => $url,
+                    'url' => $fullUrl,
                     'error' => $e->getMessage(),
                 ]);
                 throw $e;
             }
 
             $this->logger->debug('Zotero API response', [
-                'url' => $url,
+                'url' => $fullUrl,
                 'status' => $statusCode,
             ]);
+
+            if ($this->apiLogCollector?->isEnabled()) {
+                $timestamp = date(\DateTimeInterface::ATOM);
+                $headersForLog = $requestHeaders;
+                if (isset($headersForLog['Zotero-API-Key'])) {
+                    $headersForLog['Zotero-API-Key'] = '[REDACTED]';
+                }
+                $entryIndex = $this->apiLogCollector->recordRequest(
+                    $timestamp,
+                    $method,
+                    $fullUrl,
+                    $headersForLog,
+                    $statusCode
+                );
+            }
 
             // Backoff-Header: API bittet, für N Sekunden keine weiteren Requests zu senden
             $backoff = $response->getHeaders(false)['backoff'] ?? null;
             if ($backoff !== null && isset($backoff[0])) {
                 $seconds = (int) $backoff[0];
                 $this->logger->info('Zotero API requested backoff', [
-                    'url' => $url,
+                    'url' => $fullUrl,
                     'seconds' => $seconds,
                 ]);
                 if ($seconds > 0) {
@@ -110,12 +131,16 @@ final class ZoteroClient
                     ? (int) $retryAfter[0]
                     : 60;
                 $this->logger->warning('Zotero API rate limit (429)', [
-                    'url' => $url,
+                    'url' => $fullUrl,
                     'retry_after' => $wait,
                     'attempt' => $attempt,
                     'max_retries' => $this->maxRetries,
                 ]);
                 if ($attempt < $this->maxRetries) {
+                    $body = $response->getContent(false);
+                    if (isset($entryIndex)) {
+                        $this->apiLogCollector->setResponseBody($entryIndex, $body);
+                    }
                     sleep($wait);
                     continue;
                 }
@@ -123,10 +148,18 @@ final class ZoteroClient
                 break;
             }
 
+            if (isset($entryIndex) && $this->apiLogCollector !== null) {
+                return new LoggingResponseDecorator($response, $this->apiLogCollector, $entryIndex);
+            }
+
             return $response;
         }
 
         if ($lastResponse !== null) {
+            if (isset($entryIndex) && $this->apiLogCollector !== null) {
+                return new LoggingResponseDecorator($lastResponse, $this->apiLogCollector, $entryIndex);
+            }
+
             return $lastResponse;
         }
 
@@ -134,13 +167,12 @@ final class ZoteroClient
     }
 
     /**
-     * GET-Request mit optionalen Query-Parametern.
+     * GET-Request mit optionalen Query-Parametern und Optionen (z. B. headers für Cache-Control).
      */
-    public function get(string $path, string $apiKey, array $query = []): ResponseInterface
+    public function get(string $path, string $apiKey, array $query = [], array $options = []): ResponseInterface
     {
-        $options = [];
         if ($query !== []) {
-            $options['query'] = $query;
+            $options['query'] = array_merge($options['query'] ?? [], $query);
         }
 
         return $this->request('GET', $path, $apiKey, $options);
