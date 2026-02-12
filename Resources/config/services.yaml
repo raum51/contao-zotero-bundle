@@ -31,3 +31,5 @@ services:
         tags: [{ name: console.command }]
     Raum51\ContaoZoteroBundle\Command\ZoteroSyncCommand:
         tags: [{ name: console.command }]
+    Raum51\ContaoZoteroBundle\Command\ZoteroItemCommand:
+        tags: [{ name: console.command }]

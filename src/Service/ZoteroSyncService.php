@@ -783,7 +783,7 @@ final class ZoteroSyncService
         $inTrash = (int) ($data['deleted'] ?? 0) === 1;
 
         if ($parentKey === '') {
-            $this->recordSkipped($result, $key, 'Grund unbekannt', null, 'attachment');
+            $this->recordSkipped($result, $key, 'Attachment ohne Parent-Item', null, 'attachment');
 
             return false;
         }

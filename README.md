@@ -62,6 +62,36 @@ Bei großen Bibliotheken kann der Sync im Backend zu Timeouts führen; dann den 
 
 **Übersprungene Items:** Nicht importierbare Items (z. B. Attachment ohne Parent, API-Fehler) werden protokolliert: im Log (Kanal `raum51_zotero`), im Result-Array und – bei CLI-Ausführung mit `--show-details` – als Tabelle mit Key, Typ, Grund und Library. Mit `--log-skipped=PATH` werden sie zusätzlich in eine JSON-Datei geschrieben (Format: `synced_at`, `count`, `skipped_items`).
 
+### contao:zotero:item
+
+Ruft das JSON eines einzelnen Zotero-Items über die API ab und gibt es aus (oder schreibt es mit `--log-api` in eine Datei). Durchläuft alle konfigurierten Libraries, bis das Item gefunden wird – oder nutzt bei Angabe einer `tl_zotero_item`-ID die bekannte Library direkt. Zotero-Keys können library-spezifisch sein (gleicher Key = unterschiedliche Items in verschiedenen Libraries).
+
+| Argument/Option | Kurz | Beschreibung |
+|-----------------|-----|--------------|
+| `item` | – | Zotero-Item-Key (z. B. `ABC123`) oder `tl_zotero_item.id` (Pflichtargument). |
+| `--library=ID` | `-l` | Nur diese Library-ID durchsuchen (ohne Option: alle Libraries). |
+| `--find-all` | – | Ohne `--library`: Alle Libraries durchsuchen und alle Treffer als JSON-Array ausgeben (Keys können library-spezifisch sein). |
+| `--log-api=PATH` | – | API-Aufrufe als JSON in diese Datei schreiben (gleiches Format wie bei `contao:zotero:sync`). |
+
+**Beispiele:**
+
+```bash
+# Item per Zotero-Key aus allen Libraries suchen
+php bin/console contao:zotero:item ABC123
+
+# Nur in Library 1 suchen
+php bin/console contao:zotero:item ABC123 --library=1
+
+# Alle Libraries durchsuchen, alle Treffer ausgeben (gleicher Key in mehreren Libraries)
+php bin/console contao:zotero:item ABC123 --find-all
+
+# Item per tl_zotero_item.id (nutzt die passende Library direkt)
+php bin/console contao:zotero:item 42
+
+# Mit API-Log in Datei
+php bin/console contao:zotero:item ABC123 --log-api=var/logs/zotero_item_api.json
+```
+
 ---
 
 ## Frontend-Routen (Bib-Export & Attachments)
