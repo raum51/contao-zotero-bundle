@@ -1,0 +1,49 @@
+{#
+  Zotero-Item: Ausgewählte Felder.
+  Format: "Autoren (Jahr): Titel"
+  Erwartet: item.title, item.year, item.data (mit creators)
+#}
+{% set data = item.data|default({}) %}
+{% set creators = data.creators|default([]) %}
+{% set author_parts = [] %}
+{% for creator in creators %}
+    {% if creator.name|default %}
+        {% set author_parts = author_parts|merge([creator.name]) %}
+    {% elseif creator.lastName|default or creator.firstName|default %}
+        {% set name_part = (creator.lastName|default ~ (creator.lastName|default and creator.firstName|default ? ', ' : '') ~ creator.firstName|default)|trim %}
+        {% if name_part %}
+            {% set author_parts = author_parts|merge([name_part]) %}
+        {% endif %}
+    {% endif %}
+{% endfor %}
+{% set authors_str = author_parts|join('; ') %}
+{% set year = item.year|default('') %}
+{% if year == '' and data.date|default %}
+    {# Fallback: Jahr aus Datum (z.B. "2024" oder "2024-12-17") #}
+    {% set date_str = data.date|trim %}
+    {% set year = (date_str|length >= 4 and date_str|slice(0,2) in ['19','20']) ? date_str|slice(0,4) : '' %}
+{% endif %}
+<p class="zotero-item zotero-item--fields" role="listitem" aria-label="{{ item.title|default('Publikation')|e }}">
+    {% if authors_str %}
+        <span class="zotero-item__authors">{{ authors_str|e }}</span>
+        {% if year or item.title|default %}
+            <span class="zotero-item__separator"> (</span>
+        {% endif %}
+    {% endif %}
+    {% if year %}
+        <span class="zotero-item__year">{{ year|e }}</span>
+    {% endif %}
+    {% if authors_str and (year or item.title|default) %}
+        <span class="zotero-item__separator">): </span>
+    {% elseif year and item.title|default %}
+        <span class="zotero-item__separator">): </span>
+    {% elseif not authors_str and year %}
+        <span class="zotero-item__separator">: </span>
+    {% endif %}
+    {% if item.title|default %}
+        <span class="zotero-item__title">{{ item.title|e }}</span>
+    {% endif %}
+    {% if item.publication_title|default and item.item_type|default in ['journalArticle', 'bookSection', 'conferencePaper'] %}
+        <span class="zotero-item__publication">. {{ item.publication_title|e }}</span>
+    {% endif %}
+</p>

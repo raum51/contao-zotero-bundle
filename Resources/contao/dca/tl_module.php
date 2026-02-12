@@ -8,7 +8,7 @@ declare(strict_types=1);
  */
 
 $GLOBALS['TL_DCA']['tl_module']['palettes']['zotero_list'] =
-    '{title_legend},name,headline,type;{zotero_legend},zotero_library,zotero_collections;{template_legend:hide},customTpl;{protected_legend:hide},protected;{expert_legend:hide},guests,cssID';
+    '{title_legend},name,headline,type;{zotero_legend},zotero_library,zotero_collections,zotero_template;{template_legend:hide},customTpl;{protected_legend:hide},protected;{expert_legend:hide},guests,cssID';
 
 $GLOBALS['TL_DCA']['tl_module']['palettes']['zotero_reader'] =
     '{title_legend},name,headline,type;{zotero_legend},zotero_library;{template_legend:hide},customTpl;{protected_legend:hide},protected;{expert_legend:hide},guests,cssID';
@@ -19,14 +19,20 @@ $GLOBALS['TL_DCA']['tl_module']['palettes']['zotero_search'] =
 $GLOBALS['TL_DCA']['tl_module']['fields']['type']['options'][] = 'zotero_list';
 $GLOBALS['TL_DCA']['tl_module']['fields']['type']['options'][] = 'zotero_reader';
 $GLOBALS['TL_DCA']['tl_module']['fields']['type']['options'][] = 'zotero_search';
+if (!isset($GLOBALS['TL_DCA']['tl_module']['fields']['type']['reference'])) {
+    $GLOBALS['TL_DCA']['tl_module']['fields']['type']['reference'] = [];
+}
+$GLOBALS['TL_DCA']['tl_module']['fields']['type']['reference']['zotero_list'] = &$GLOBALS['TL_LANG']['tl_module']['zotero_list'];
+$GLOBALS['TL_DCA']['tl_module']['fields']['type']['reference']['zotero_reader'] = &$GLOBALS['TL_LANG']['tl_module']['zotero_reader'];
+$GLOBALS['TL_DCA']['tl_module']['fields']['type']['reference']['zotero_search'] = &$GLOBALS['TL_LANG']['tl_module']['zotero_search'];
 
 $GLOBALS['TL_DCA']['tl_module']['fields']['zotero_library'] = [
     'label' => &$GLOBALS['TL_LANG']['tl_module']['zotero_library'],
     'exclude' => true,
     'inputType' => 'select',
-    'eval' => ['mandatory' => true, 'chosen' => true, 'tl_class' => 'w50'],
+    'eval' => ['mandatory' => true, 'chosen' => true, 'submitOnChange' => true, 'tl_class' => 'w50'],
     'sql' => 'int(10) unsigned NOT NULL default 0',
-    'relation' => ['type' => 'hasOne', 'table' => 'tl_zotero_library', 'field' => 'id', 'where' => [['field' => 'published', 'value' => '1']]],
+    'relation' => ['type' => 'hasOne', 'table' => 'tl_zotero_library', 'field' => 'id'],
 ];
 $GLOBALS['TL_DCA']['tl_module']['fields']['zotero_collections'] = [
     'label' => &$GLOBALS['TL_LANG']['tl_module']['zotero_collections'],
@@ -43,4 +49,13 @@ $GLOBALS['TL_DCA']['tl_module']['fields']['zotero_list_page'] = [
     'eval' => ['mandatory' => true, 'fieldType' => 'radio', 'tl_class' => 'clr'],
     'sql' => 'int(10) unsigned NOT NULL default 0',
     'relation' => ['type' => 'hasOne', 'table' => 'tl_page', 'field' => 'id'],
+];
+$GLOBALS['TL_DCA']['tl_module']['fields']['zotero_template'] = [
+    'label' => &$GLOBALS['TL_LANG']['tl_module']['zotero_template'],
+    'exclude' => true,
+    'inputType' => 'select',
+    'options' => ['cite_content', 'json_dl', 'fields'],
+    'reference' => &$GLOBALS['TL_LANG']['tl_module']['zotero_template_options'],
+    'eval' => ['tl_class' => 'w50'],
+    'sql' => "varchar(64) NOT NULL default 'cite_content'",
 ];

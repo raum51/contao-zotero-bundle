@@ -1,0 +1,15 @@
+{% extends "@Contao/frontend_module/_base.html.twig" %}
+
+{% block content %}
+    <div class="zotero-list">
+        {% if items|length > 0 %}
+            <ul class="zotero-list__items" role="list">
+                {% for item in items %}
+                    <li class="zotero-list__item">
+                        {% include "@Contao_Raum51ContaoZoteroBundle/zotero_item/" ~ item_template ~ ".html.twig" with {item: item} %}
+                    </li>
+                {% endfor %}
+            </ul>
+        {% endif %}
+    </div>
+{% endblock %}

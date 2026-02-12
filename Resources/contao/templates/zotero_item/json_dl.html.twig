@@ -1,0 +1,48 @@
+{#
+  Zotero-Item: Vollständige Metadaten als Definition List.
+  Alle Elemente von item.data (decoded json_data) als <dl>.
+  Geeignet für Detailansichten.
+  Erwartet: item.data (Array/Objekt aus decoded json_data)
+#}
+{% set data = item.data|default({}) %}
+{% if data is iterable and data|length > 0 %}
+<dl class="zotero-item zotero-item--metadata" role="listitem" aria-label="{{ item.title|default('Publikation')|e }}">
+    {% for key, value in data %}
+        {% if value is not same as(null) and value is not same as('') %}
+            <dt class="zotero-item__term">{{ key|e }}</dt>
+            <dd class="zotero-item__value">
+                {% if value is iterable and value is not mapping %}
+                    {# Arrays: z.B. creators, tags, collections #}
+                    {% if key == 'creators' %}
+                        {% set creator_parts = [] %}
+                        {% for creator in value %}
+                            {% if creator.name|default %}
+                                {% set creator_parts = creator_parts|merge([creator.name]) %}
+                            {% elseif creator.lastName|default or creator.firstName|default %}
+                                {% set name_part = creator.lastName|default ~ (creator.lastName|default and creator.firstName|default ? ', ' : '') ~ creator.firstName|default %}
+                                {% set creator_parts = creator_parts|merge([name_part]) %}
+                            {% endif %}
+                        {% endfor %}
+                        {{ creator_parts|join('; ')|e }}
+                    {% elseif key == 'tags' %}
+                        {% set tag_names = [] %}
+                        {% for t in value %}
+                            {% set tag_val = t.tag|default(t.name|default(t)) %}
+                            {% if tag_val %}
+                                {% set tag_names = tag_names|merge([tag_val]) %}
+                            {% endif %}
+                        {% endfor %}
+                        {{ tag_names|join(', ')|e }}
+                    {% else %}
+                        {{ value|json_encode|e }}
+                    {% endif %}
+                {% elseif value is mapping %}
+                    {{ value|json_encode|e }}
+                {% else %}
+                    {{ value|e }}
+                {% endif %}
+            </dd>
+        {% endif %}
+    {% endfor %}
+</dl>
+{% endif %}

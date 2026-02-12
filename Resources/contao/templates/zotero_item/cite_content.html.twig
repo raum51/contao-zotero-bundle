@@ -1,0 +1,12 @@
+{#
+  Zotero-Item: Literaturverweis (cite_content).
+  Zeigt den von Zotero übermittelten HTML-Literaturverweis.
+  Geeignet für Listen und Kurz-Zitate.
+  Erwartet: item.cite_content (HTML von Zotero, bereits formatiert)
+  Optional: item.id, item.alias für Link zur Detailseite (wird von aufrufendem Modul/CE gesetzt)
+#}
+{% if item.cite_content|default %}
+<div class="zotero-item zotero-item--cite"{% if item.id|default %} id="zotero-{{ item.id }}"{% endif %} role="listitem" aria-label="{{ item.title|default('Literaturverweis')|e }}">
+    {{ item.cite_content|raw }}
+</div>
+{% endif %}
