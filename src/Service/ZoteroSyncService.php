@@ -212,7 +212,7 @@ final class ZoteroSyncService
         $apiKey = (string) $library['api_key'];
         $prefix = $this->libraryPrefix($library);
         $citationStyle = (string) ($library['citation_style'] ?? '');
-        $citationLocale = (string) ($library['citation_locale'] ?? 'en-US');
+        $citationLocale = (string) ($library['citation_locale'] ?? 'en_US');
         $lastVersion = (int) ($library['last_sync_version'] ?? 0);
 
         $this->logger->info('Zotero Sync start', ['library' => $library['title'], 'prefix' => $prefix]);
@@ -893,7 +893,7 @@ final class ZoteroSyncService
             $query['style'] = $citationStyle;
         }
         if ($citationLocale !== '') {
-            $query['locale'] = $citationLocale;
+            $query['locale'] = str_replace('_', '-', $citationLocale);
         }
         try {
             $response = $this->zoteroClient->get($path, $apiKey, $query);

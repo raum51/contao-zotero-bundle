@@ -8,7 +8,7 @@
         {% elseif items|length > 0 %}
             {% if search_mode|default(false) %}
                 <p class="zotero-list__search-info">
-                    {{ 'tl_module.zotero_search_results'|trans }}{% if search_keywords|default %} „{{ search_keywords }}“{% endif %}
+                    {{ 'tl_module.zotero_search_results'|trans({}, 'contao_tl_module') }}{% if search_keywords|default %} „{{ search_keywords }}“{% endif %}
                 </p>
             {% endif %}
             <ul class="zotero-list__items" role="list">
@@ -25,17 +25,17 @@
                 {% endfor %}
             </ul>
             {% if pagination|default and (pagination.prev_url or pagination.next_url) %}
-                <nav class="zotero-list__pagination" aria-label="{{ 'MSC.pagination'|trans }}">
+                <nav class="zotero-list__pagination" aria-label="{{ 'MSC.pagination'|trans({}, 'contao_default') }}">
                     {% if pagination.prev_url %}
-                        <a href="{{ pagination.prev_url }}" class="zotero-list__pagination-prev">{{ 'MSC.previous'|trans }}</a>
+                        <a href="{{ pagination.prev_url }}" class="zotero-list__pagination-prev">{{ 'MSC.previous'|trans({}, 'contao_default') }}</a>
                     {% endif %}
                     {% if pagination.next_url %}
-                        <a href="{{ pagination.next_url }}" class="zotero-list__pagination-next">{{ 'MSC.next'|trans }}</a>
+                        <a href="{{ pagination.next_url }}" class="zotero-list__pagination-next">{{ 'MSC.next'|trans({}, 'contao_default') }}</a>
                     {% endif %}
                 </nav>
             {% endif %}
         {% elseif search_mode|default(false) %}
-            <p class="zotero-list__no-results">{{ 'tl_module.zotero_search_no_results'|trans }}</p>
+            <p class="zotero-list__no-results">{{ 'tl_module.zotero_search_no_results'|trans({}, 'contao_tl_module') }}</p>
         {% endif %}
     </div>
 {% endblock %}

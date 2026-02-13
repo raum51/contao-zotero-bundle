@@ -8,12 +8,12 @@ use Contao\CoreBundle\Controller\FrontendModule\AbstractFrontendModuleController
 use Contao\CoreBundle\DependencyInjection\Attribute\AsFrontendModule;
 use Contao\CoreBundle\Twig\FragmentTemplate;
 use Contao\Input;
-use Contao\MemberModel;
 use Contao\ModuleModel;
 use Contao\PageModel;
 use Contao\StringUtil;
 use Doctrine\DBAL\ArrayParameterType;
 use Doctrine\DBAL\Connection;
+use Raum51\ContaoZoteroBundle\Service\ZoteroLocaleLabelService;
 use Raum51\ContaoZoteroBundle\Service\ZoteroSearchService;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -39,6 +39,7 @@ final class ZoteroListController extends AbstractFrontendModuleController
     public function __construct(
         private readonly Connection $connection,
         private readonly ZoteroSearchService $searchService,
+        private readonly ZoteroLocaleLabelService $localeLabelService,
     ) {
     }
 
@@ -80,8 +81,8 @@ final class ZoteroListController extends AbstractFrontendModuleController
                 $maxResults = (int) ($searchModule->zotero_search_max_results ?? 0) ?: 0;
 
                 $authorMemberId = $this->resolveAuthorToMemberId($zoteroAuthor);
-                $yearFromInt = $yearFrom !== '' && is_numeric($yearFrom) ? (int) $yearFrom : null;
-                $yearToInt = $yearTo !== '' && is_numeric($yearTo) ? (int) $yearTo : null;
+                $yearFromInt = $this->parseYearParam($yearFrom);
+                $yearToInt = $this->parseYearParam($yearTo);
 
                 $page = max(1, (int) $request->query->get('page', 1));
                 $offset = ($page - 1) * self::PER_PAGE;
@@ -137,6 +138,11 @@ final class ZoteroListController extends AbstractFrontendModuleController
             $items[$i]['reader_url'] = $page instanceof PageModel
                 ? $page->getFrontendUrl('/' . $alias)
                 : null;
+            if ($itemTemplate === 'json_dl') {
+                $data = $item['data'] ?? [];
+                $keys = \is_array($data) ? array_keys($data) : [];
+                $items[$i]['field_labels'] = $this->localeLabelService->getItemFieldLabelsForKeys($keys, $this->resolveLocale($request));
+            }
         }
 
         $template->items = $items;
@@ -278,6 +284,33 @@ final class ZoteroListController extends AbstractFrontendModuleController
     }
 
     /**
+     * Ermittelt die Locale der aktuellen Seite (für Feld-Labels).
+     * Request-Locale oder Root-Sprache der Seite, Fallback en.
+     */
+    private function resolveLocale(Request $request): string
+    {
+        $locale = $request->getLocale();
+        if ($locale !== '' && $locale !== null) {
+            return (string) $locale;
+        }
+        $page = $this->getPageModel();
+        if ($page instanceof PageModel) {
+            $page->loadDetails();
+            if (!empty($page->rootId)) {
+                $root = PageModel::findByPk($page->rootId);
+                if ($root instanceof PageModel && $root->language !== '') {
+                    return (string) $root->language;
+                }
+            }
+            if ($page->language !== '') {
+                return (string) $page->language;
+            }
+        }
+
+        return 'en';
+    }
+
+    /**
      * @return list<string>
      */
     private function parseSearchFields(string $value): array
@@ -290,17 +323,29 @@ final class ZoteroListController extends AbstractFrontendModuleController
 
     private function resolveAuthorToMemberId(string $value): ?int
     {
-        if ($value === '') {
+        if ($value === '' || !is_numeric($value)) {
             return null;
         }
-        if (is_numeric($value)) {
-            $id = (int) $value;
+        $id = (int) $value;
 
-            return $id > 0 ? $id : null;
+        return $id > 0 ? $id : null;
+    }
+
+    /**
+     * Parst einen Jahres-Parameter aus dem Suchformular.
+     * Liefert null bei leerem, ungültigem oder 0-Wert (gültig: 1000–9999).
+     */
+    private function parseYearParam(string $value): ?int
+    {
+        if ($value === '' || !is_numeric($value)) {
+            return null;
         }
-        $member = MemberModel::findByAlias($value);
+        $year = (int) $value;
+        if ($year < 1000 || $year > 9999) {
+            return null;
+        }
 
-        return $member instanceof MemberModel ? (int) $member->id : null;
+        return $year;
     }
 
     /**

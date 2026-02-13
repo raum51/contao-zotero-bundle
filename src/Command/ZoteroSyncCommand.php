@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Raum51\ContaoZoteroBundle\Command;
 
+use Raum51\ContaoZoteroBundle\Service\ZoteroLocaleService;
 use Raum51\ContaoZoteroBundle\Service\ZoteroSyncService;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
@@ -24,6 +25,7 @@ final class ZoteroSyncCommand extends Command
 {
     public function __construct(
         private readonly ZoteroSyncService $syncService,
+        private readonly ZoteroLocaleService $localeService,
     ) {
         parent::__construct();
     }
@@ -112,6 +114,9 @@ final class ZoteroSyncCommand extends Command
         }
 
         $io->info($id > 0 ? 'Sync starten (Library-ID: ' . $id . ')' : 'Sync starten (alle Libraries).');
+
+        $io->info('Locales werden aktualisiert …');
+        $this->localeService->fetchAndStore();
 
         $logApiPath = $input->getOption('log-api');
         $apiLogMetadata = [];

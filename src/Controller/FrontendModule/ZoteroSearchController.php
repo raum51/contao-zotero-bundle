@@ -13,6 +13,7 @@ use Contao\StringUtil;
 use Raum51\ContaoZoteroBundle\Service\ZoteroSearchService;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Contracts\Translation\TranslatorInterface;
 
 /**
  * Zotero-Such-Modul: Suchformular für Publikationen.
@@ -30,6 +31,7 @@ final class ZoteroSearchController extends AbstractFrontendModuleController
 {
     public function __construct(
         private readonly ZoteroSearchService $searchService,
+        private readonly TranslatorInterface $translator,
     ) {
     }
 
@@ -46,6 +48,13 @@ final class ZoteroSearchController extends AbstractFrontendModuleController
         $template->show_author = $showAuthor;
         $template->show_year = $showYear;
         $template->authors = $showAuthor ? $this->searchService->getMembersWithCreatorMapping() : [];
+
+        $template->label_keywords = $this->translator->trans('MSC.keywords', [], 'contao_default');
+        $template->label_author = $this->translator->trans('tl_module.zotero_search_author_label', [], 'contao_tl_module');
+        $template->label_author_all = $this->translator->trans('tl_module.zotero_search_author_all', [], 'contao_tl_module');
+        $template->label_year_from = $this->translator->trans('tl_module.zotero_search_year_from', [], 'contao_tl_module');
+        $template->label_year_to = $this->translator->trans('tl_module.zotero_search_year_to', [], 'contao_tl_module');
+        $template->label_search = $this->translator->trans('MSC.search', [], 'contao_default');
 
         $template->keywords = $request->query->getString('keywords');
         $template->zotero_author = $request->query->get('zotero_author', '');

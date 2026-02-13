@@ -65,13 +65,17 @@ final class ZoteroSearchService
                 ->setParameter('author_member_id', $authorMemberId);
         }
 
-        if ($yearFrom !== null) {
-            $qb->andWhere($qb->expr()->gte('CAST(i.year AS SIGNED)', ':year_from'))
-                ->setParameter('year_from', $yearFrom);
-        }
-        if ($yearTo !== null) {
-            $qb->andWhere($qb->expr()->lte('CAST(i.year AS SIGNED)', ':year_to'))
-                ->setParameter('year_to', $yearTo);
+        if ($yearFrom !== null || $yearTo !== null) {
+            // Nur Items mit gültigem Jahr (4 Ziffern); leeres Jahr wird nicht als 0 eingestuft
+            $qb->andWhere("i.year REGEXP '^(19|20)[0-9]{2}$'");
+            if ($yearFrom !== null) {
+                $qb->andWhere($qb->expr()->gte('CAST(i.year AS SIGNED)', ':year_from'))
+                    ->setParameter('year_from', $yearFrom);
+            }
+            if ($yearTo !== null) {
+                $qb->andWhere($qb->expr()->lte('CAST(i.year AS SIGNED)', ':year_to'))
+                    ->setParameter('year_to', $yearTo);
+            }
         }
 
         if ($keywords === '') {
@@ -114,12 +118,12 @@ final class ZoteroSearchService
     }
 
     /**
-     * @return list<array{id: int, username: string|null, alias: string, label: string}>
+     * @return list<array{id: int, username: string|null, label: string}>
      */
     public function getMembersWithCreatorMapping(): array
     {
         $rows = $this->connection->fetchAllAssociative(
-            'SELECT DISTINCT m.id, m.username, m.alias, m.firstname, m.lastname
+            'SELECT DISTINCT m.id, m.username, m.firstname, m.lastname
              FROM tl_member m
              INNER JOIN tl_zotero_creator_map cm ON cm.member_id = m.id
              WHERE cm.member_id > 0
@@ -131,12 +135,11 @@ final class ZoteroSearchService
             $id = (int) $row['id'];
             $label = trim(($row['lastname'] ?? '') . ', ' . ($row['firstname'] ?? ''));
             if ($label === ', ') {
-                $label = $row['username'] ?? $row['alias'] ?? 'ID ' . $id;
+                $label = $row['username'] ?? 'ID ' . $id;
             }
             $result[] = [
                 'id' => $id,
                 'username' => $row['username'] ?? null,
-                'alias' => $row['alias'] ?? '',
                 'label' => $label,
             ];
         }

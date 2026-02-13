@@ -62,6 +62,27 @@ Bei großen Bibliotheken kann der Sync im Backend zu Timeouts führen; dann den 
 
 **Übersprungene Items:** Nicht importierbare Items (z. B. Attachment ohne Parent, API-Fehler) werden protokolliert: im Log (Kanal `raum51_zotero`), im Result-Array und – bei CLI-Ausführung mit `--show-details` – als Tabelle mit Key, Typ, Grund und Library. Mit `--log-skipped=PATH` werden sie zusätzlich in eine JSON-Datei geschrieben (Format: `synced_at`, `count`, `skipped_items`).
 
+### contao:zotero:fetch-locales
+
+Lädt lokalisierte Zotero-Schema-Daten (Item-Typen und Item-Felder) von der API und speichert sie pro Locale in `tl_zotero_locales`. Kein API-Key nötig. Wird bei jedem Sync automatisch mit aufgerufen.
+
+**Locales:** en_US (Fallback), de_DE, plus jede `citation_locale` der Libraries und jede Sprache der Website-Roots (Contao-Format: de_AT, en_US).
+
+| Option | Beschreibung |
+|--------|--------------|
+| `--show-details` | Geladene Locales anzeigen |
+| `--log-changes=PATH` | Änderungen in JSON-Datei schreiben (z. B. `var/logs/zotero_locales_changes.json`) |
+
+**Beispiele:**
+
+```bash
+php bin/console contao:zotero:fetch-locales
+php bin/console contao:zotero:fetch-locales --show-details
+php bin/console contao:zotero:fetch-locales --log-changes=var/logs/zotero_locales_changes.json
+```
+
+**Verarbeitungslogik:** Pro Locale werden Item-Typen und Item-Felder von der Zotero-API abgerufen und in die Tabelle geschrieben. Logging über Kanal `raum51_zotero`.
+
 ### contao:zotero:item
 
 Ruft das JSON eines einzelnen Zotero-Items über die API ab und gibt es aus (oder schreibt es mit `--log-api` in eine Datei). Durchläuft alle konfigurierten Libraries, bis das Item gefunden wird – oder nutzt bei Angabe einer `tl_zotero_item`-ID die bekannte Library direkt. Zotero-Keys können library-spezifisch sein (gleicher Key = unterschiedliche Items in verschiedenen Libraries).

@@ -10,8 +10,10 @@ use Contao\CoreBundle\Exception\PageNotFoundException;
 use Contao\CoreBundle\Twig\FragmentTemplate;
 use Contao\Input;
 use Contao\ModuleModel;
+use Contao\PageModel;
 use Contao\StringUtil;
 use Raum51\ContaoZoteroBundle\Model\ZoteroItemModel;
+use Raum51\ContaoZoteroBundle\Service\ZoteroLocaleLabelService;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -29,6 +31,11 @@ use Symfony\Component\HttpFoundation\Response;
 )]
 final class ZoteroReaderController extends AbstractFrontendModuleController
 {
+    public function __construct(
+        private readonly ZoteroLocaleLabelService $localeLabelService,
+    ) {
+    }
+
     protected function getResponse(FragmentTemplate $template, ModuleModel $model, Request $request): Response
     {
         $autoItem = Input::get('auto_item');
@@ -50,7 +57,13 @@ final class ZoteroReaderController extends AbstractFrontendModuleController
 
         $itemTemplate = (string) ($model->zotero_template ?? 'cite_content');
 
-        $template->item = $this->itemToArray($item);
+        $itemArray = $this->itemToArray($item);
+        if ($itemTemplate === 'json_dl') {
+            $data = $itemArray['data'] ?? [];
+            $keys = \is_array($data) ? array_keys($data) : [];
+            $itemArray['field_labels'] = $this->localeLabelService->getItemFieldLabelsForKeys($keys, $this->resolveLocale($request));
+        }
+        $template->item = $itemArray;
         $template->item_template = $itemTemplate;
 
         $headlineData = StringUtil::deserialize($model->headline ?? '', true);
@@ -75,6 +88,33 @@ final class ZoteroReaderController extends AbstractFrontendModuleController
             return [];
         }
         return array_values(array_map('intval', array_filter($ids, 'is_numeric')));
+    }
+
+    /**
+     * Ermittelt die Locale der aktuellen Seite (für Feld-Labels).
+     * Request-Locale oder Root-Sprache der Seite, Fallback en.
+     */
+    private function resolveLocale(Request $request): string
+    {
+        $locale = $request->getLocale();
+        if ($locale !== '' && $locale !== null) {
+            return (string) $locale;
+        }
+        $page = $this->getPageModel();
+        if ($page instanceof PageModel) {
+            $page->loadDetails();
+            if (!empty($page->rootId)) {
+                $root = PageModel::findByPk($page->rootId);
+                if ($root instanceof PageModel && $root->language !== '') {
+                    return (string) $root->language;
+                }
+            }
+            if ($page->language !== '') {
+                return (string) $page->language;
+            }
+        }
+
+        return 'en';
     }
 
     /**

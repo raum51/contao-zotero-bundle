@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xliff version="1.1">
+  <file datatype="php" original="contao/languages/en/tl_module.php" source-language="en" target-language="de">
+    <body>
+      <trans-unit id="tl_module.zotero_search_author_label">
+        <source>Author</source>
+        <target>Autor</target>
+      </trans-unit>
+      <trans-unit id="tl_module.zotero_search_author_all">
+        <source>– All –</source>
+        <target>– Alle –</target>
+      </trans-unit>
+      <trans-unit id="tl_module.zotero_search_year_from">
+        <source>Year from</source>
+        <target>Jahr von</target>
+      </trans-unit>
+      <trans-unit id="tl_module.zotero_search_year_to">
+        <source>Year to</source>
+        <target>Jahr bis</target>
+      </trans-unit>
+      <trans-unit id="tl_module.zotero_search_results">
+        <source>Search results</source>
+        <target>Suchergebnisse</target>
+      </trans-unit>
+      <trans-unit id="tl_module.zotero_search_no_results">
+        <source>No publications found.</source>
+        <target>Keine Publikationen gefunden.</target>
+      </trans-unit>
+    </body>
+  </file>
+</xliff>

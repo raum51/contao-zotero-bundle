@@ -11,6 +11,9 @@ services:
         arguments:
             $logger: '@monolog.logger.raum51_zotero'
             $slug: '@contao.slug'
+    Raum51\ContaoZoteroBundle\Service\ZoteroLocaleService:
+        arguments:
+            $logger: '@monolog.logger.raum51_zotero'
     Raum51\ContaoZoteroBundle\Service\ZoteroClient:
         arguments:
             $logger: '@monolog.logger.raum51_zotero'
@@ -35,6 +38,8 @@ services:
         tags: [{ name: console.command }]
     Raum51\ContaoZoteroBundle\Command\ZoteroItemCommand:
         tags: [{ name: console.command }]
+    Raum51\ContaoZoteroBundle\Command\FetchLocalesCommand:
+        tags: [{ name: console.command }]
 
     Raum51\ContaoZoteroBundle\EventListener\DataContainer\ZoteroReaderModuleOptionsCallback:
         public: true
@@ -46,3 +51,9 @@ services:
         tags: [{ name: contao.migration, priority: 0 }]
     Raum51\ContaoZoteroBundle\Migration\AddZoteroSearchModuleFieldsMigration:
         tags: [{ name: contao.migration, priority: 0 }]
+    Raum51\ContaoZoteroBundle\Migration\CreateLocalesTableMigration:
+        tags: [{ name: contao.migration, priority: 0 }]
+    Raum51\ContaoZoteroBundle\Migration\DropItemTypesTableMigration:
+        tags: [{ name: contao.migration, priority: -1 }]
+    Raum51\ContaoZoteroBundle\Migration\ConvertLocalesToContaoFormatMigration:
+        tags: [{ name: contao.migration, priority: -2 }]

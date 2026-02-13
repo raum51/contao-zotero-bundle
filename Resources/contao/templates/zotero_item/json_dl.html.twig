@@ -1,15 +1,17 @@
 {#
   Zotero-Item: Vollständige Metadaten als Definition List.
-  Alle Elemente von item.data (decoded json_data) als <dl>.
-  Geeignet für Detailansichten.
-  Erwartet: item.data (Array/Objekt aus decoded json_data)
+  Nur Felder mit lokalisiertem Label (aktuell oder en_US-Fallback) werden ausgegeben.
+  Felder ohne Locale-Eintrag (label == key) werden übersprungen.
+  Erwartet: item.data (decoded json_data), item.field_labels (key→Label aus ZoteroLocaleLabelService)
 #}
 {% set data = item.data|default({}) %}
+{% set field_labels = item.field_labels|default({}) %}
 {% if data is iterable and data|length > 0 %}
 <dl class="zotero-item zotero-item--metadata" role="listitem" aria-label="{{ item.title|default('Publikation')|e }}">
     {% for key, value in data %}
-        {% if value is not same as(null) and value is not same as('') %}
-            <dt class="zotero-item__term">{{ key|e }}</dt>
+        {% set label = field_labels[key] ?? key %}
+        {% if value is not same as(null) and value is not same as('') and label != key %}
+            <dt class="zotero-item__term">{{ label|e }}</dt>
             <dd class="zotero-item__value">
                 {% if value is iterable and value is not mapping %}
                     {# Arrays: z.B. creators, tags, collections #}

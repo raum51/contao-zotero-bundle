@@ -10,6 +10,7 @@ use Contao\DataContainer;
 use Contao\Input;
 use Contao\Message;
 use Doctrine\DBAL\Connection;
+use Raum51\ContaoZoteroBundle\Service\ZoteroLocaleService;
 use Raum51\ContaoZoteroBundle\Service\ZoteroSyncService;
 
 /**
@@ -26,6 +27,7 @@ final class ZoteroLibrarySyncCallback
 {
     public function __construct(
         private readonly ZoteroSyncService $syncService,
+        private readonly ZoteroLocaleService $localeService,
         private readonly Connection $connection,
     ) {
     }
@@ -76,6 +78,8 @@ final class ZoteroLibrarySyncCallback
             $this->syncService->resetSyncState($id);
         }
 
+        $this->localeService->fetchAndStore();
+
         $lang = $GLOBALS['TL_LANG']['tl_zotero_library'] ?? [];
         try {
             $result = $this->syncService->sync($id);
@@ -120,6 +124,8 @@ final class ZoteroLibrarySyncCallback
                 $this->syncService->resetSyncState((int) $library['id']);
             }
         }
+
+        $this->localeService->fetchAndStore();
 
         foreach ($libraries as $library) {
             $id = (int) $library['id'];

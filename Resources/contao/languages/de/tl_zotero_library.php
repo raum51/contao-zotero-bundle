@@ -21,7 +21,7 @@ $GLOBALS['TL_LANG']['tl_zotero_library'] = [
     'library_type' => ['Bibliothekstyp', 'user oder group'],
     'api_key' => ['API-Key', 'Zotero API-Key (geheim)'],
     'citation_style' => ['Zitierstil', 'z. B. CSL-URL oder -Name'],
-    'citation_locale' => ['Zitier-Locale', 'z. B. de-DE, en-US'],
+    'citation_locale' => ['Zitier-Locale', 'z. B. de_DE, de_AT, en_US (Contao-Format)'],
     'sync_interval' => ['Sync-Intervall (Sekunden)', '0 = nur manuell'],
     'last_sync_at' => ['Letzter Sync', 'Zeitpunkt des letzten erfolgreichen Syncs'],
     'last_sync_status' => ['Letzter Sync-Status', 'Erfolg oder Fehlermeldung'],
