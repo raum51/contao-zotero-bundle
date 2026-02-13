@@ -29,3 +29,7 @@ Die Tabelle **tl_zotero_locales** speichert pro Locale die lokalisierten Bezeich
 ## 4. Strukturelle Keys (creators, tags, collections, relations)
 
 Diese Keys liefert `/itemFields` nicht. Sie werden im `ZoteroLocaleService` als statische Ergänzung pro Locale hinterlegt (de-DE: „Autoren“, „Schlagwörter“, …; en-US: „Creators“, „Tags“, …).
+
+## 5. Siehe auch
+
+- `schema-org-json-ld-konzept.md` – Schema.org-Mapping von Zotero itemType (journalArticle, book, …) zu Schema.org @type

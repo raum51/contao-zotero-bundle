@@ -17,5 +17,6 @@ Die Locale entspricht der **Sprache der aktuellen Seite bzw. des Website-Roots**
 ## 4. Siehe auch
 
 - `mehrsprachigkeit-item-types.md` – gemeinsames Konzept für Item-Typen und Item-Felder in `tl_zotero_locales`
+- `schema-org-json-ld-konzept.md` – Schema.org/JSON-LD für Publikationen (nutzt u. a. abstract, creators, language)
 - `ZoteroLocaleService` – API-Abruf und Befüllung
 - `ZoteroLocaleLabelService` – Lookup für Labels

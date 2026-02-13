@@ -212,7 +212,7 @@
 
 - **Neue Backend-Option:** `zotero_search_module` (optional, Referenz auf ein Zotero-Such-Modul)
 - **Logik:**
-  1. Prüfen, ob `keywords`, `zotero_author`, `zotero_year_from` oder `zotero_year_to` gesetzt sind.
+  1. Prüfen, ob `keywords`, `zotero_author`, `zotero_year_from`, `zotero_year_to` oder `zotero_item_type` gesetzt sind.
   2. **Ja (Suchmodus):** Libraries aus dem referenzierten Such-Modul (falls `zotero_search_module` gesetzt) oder aus eigener Konfiguration; `fetchItems()` mit erweiterten Filtern aufrufen.
   3. **Nein (Listenmodus):** Bisheriges Verhalten (Libraries/Collections aus Modul-Konfiguration).
 
@@ -225,6 +225,14 @@
 - **Durchsucht und angezeigt werden** nur Items aus Libraries, die **sowohl** im Such-Modul **als auch** im Listen-Modul ausgewählt sind.
 - Begründung: Das Listen-Modul definiert, welche Libraries auf der Ergebnis-Seite sichtbar sein dürfen (z. B. nur Projekt-Bibliotheken). Das Such-Modul definiert, in welchem Pool gesucht wird. Die striktere Einschränkung ist die des Listen-Moduls – es soll auf seiner Seite nichts anzeigen, was es nicht konfiguriert hat. Gleichzeitig sollen nur durchsucht werden, was im Such-Modul steht. **Schnittmenge** erfüllt beides.
 - Alternative (nur Such-Modul zählt): Würde dazu führen, dass auf einer „nur Projekt Y/Z“-Seite plötzlich Treffer aus Library X erscheinen – inkonsistent mit der Seiten-Konfiguration.
+
+#### Item-Typen: Such-Modul vs. Listen-Modul (analog Libraries)
+
+**Schnittmenge (Intersection)** – gleiche Logik wie bei Libraries:
+
+- Wenn das Listen-Modul **Item-Typen** einschränkt (`zotero_item_types` nicht leer), gelten im Suchmodus nur diese Typen.
+- Form-Filter „Item-Typ“ schränkt zusätzlich ein: nur Typen, die sowohl im Listen-Modul erlaubt als auch im Formular gewählt sind. Beispiel: Listen-Modul erlaubt Buch + Zeitschriftenartikel; Form wählt „Buch“ → nur Bücher. Form wählt „Konferenzbeitrag“ (nicht in Listen-Konfiguration) → keine Treffer.
+- Ohne Listen-Einschränkung: Form-Filter allein bestimmt (wie bisher).
 
 #### Layout: Suchformular und Ergebnisliste auf einer Seite
 
@@ -480,6 +488,7 @@ Contao verwendet **einen zentralen Suchindex** (`tl_search`, `tl_search_index`, 
 
 ## 7. Referenzen
 
+- `schema-org-json-ld-konzept.md` – Schema.org/JSON-LD für Publikationen (optional: ItemCollection in Suchergebnissen)
 - [Contao: Website search](https://docs.contao.org/manual/en/layout/module-management/website-search)
 - [Contao: Create a search form](https://docs.contao.org/manual/en/form-generator/create-a-search-form)
 - [Contao: Search Indexing](https://docs.contao.org/dev/framework/search-indexing/)

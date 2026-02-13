@@ -192,3 +192,9 @@ Der Resolver kennt **keinen** Reader-Modul-Override; der gilt nur im Listenmodul
 2. **jumpTo:** Default 0 (optional), keine Migration nötig – Schema-Update über DCA.
 
 3. **Reader-Modul-Filter:** Alle Zotero-Reader-Module werden angezeigt (`ZoteroReaderModuleOptionsCallback`).
+
+---
+
+## 12. Siehe auch
+
+- `schema-org-json-ld-konzept.md` – JSON-LD/Schema.org für Publikationen; die Reader-Detailansicht ist der geplante Ausgabeort für strukturierte Daten (ScholarlyArticle, Book etc.).
