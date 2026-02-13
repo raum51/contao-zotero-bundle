@@ -121,15 +121,17 @@ Das Bundle bietet drei Frontend-Modul-Typen unter der Kategorie **Zotero**:
 
 | Modul | Beschreibung |
 |-------|--------------|
-| **Zotero-Liste** | Publikationsliste aus Zotero-Bibliotheken (optional gefiltert nach Collections). Bei Such-Parametern: Suchmodus mit Treffern. |
+| **Zotero-Liste** | Publikationsliste aus Zotero-Bibliotheken (optional gefiltert nach Collections und Item-Typen). Konfigurierbar: Anzahl, Elemente pro Seite, Paginierung, Sortierung (Autor+Datum, Jahr+Autor, Titel), Sortierrichtung Datum/Jahr (auf-/absteigend), Gruppierung (Library, Collection, Item-Typ, Jahr). Bei Such-Parametern: Suchmodus mit Treffern. |
 | **Zotero-Lese** | Detailansicht eines Zotero-Items (News-Pattern mit auto_item). |
-| **Zotero-Suche** | Suchformular (Keywords, optional Autor, Jahr von/bis). Leitet per GET auf die Zielseite mit Listen-Modul weiter. |
+| **Zotero-Suche** | Suchformular (Keywords, optional Autor, Jahr von/bis, Item-Typ). Leitet per GET auf die Zielseite mit Listen-Modul weiter. |
 
 ### Suchmodus (Zotero-Liste + Zotero-Suche)
 
-1. **Zotero-Such-Modul** anlegen: Bibliotheken, **Zielseite Listen-Modul** (Seite mit Zotero-Listen-Modul), Filter-Optionen (Autor anzeigen, Jahr anzeigen), Such-Konfiguration (Felder, Token-Logik AND/OR, max. Token, max. Treffer).
-2. **Zotero-Listen-Modul** auf der Zielseite: **Such-Modul** referenzieren (für Library-Schnittmenge und Such-Konfiguration).
-3. Bei GET-Parametern (`keywords`, `zotero_author`, `zotero_year_from`, `zotero_year_to`) zeigt das Listen-Modul Suchergebnisse statt der normalen Liste.
+1. **Zotero-Such-Modul** anlegen: Bibliotheken, **Zielseite Listen-Modul** (Seite mit Zotero-Listen-Modul), Filter-Optionen (Autor anzeigen, Jahr anzeigen, Item-Typ anzeigen), Such-Konfiguration (Felder, Token-Logik AND/OR, max. Token, max. Treffer).
+2. **Zotero-Listen-Modul** auf der Zielseite: **Such-Modul** referenzieren (für Library-Schnittmenge, Item-Typ-Schnittmenge und Such-Konfiguration).
+3. Bei GET-Parametern zeigt das Listen-Modul Suchergebnisse statt der normalen Liste.
+
+**Schnittmengen:** Es werden nur Items aus Libraries angezeigt, die **sowohl** im Such- **als auch** im Listen-Modul aktiviert sind. Entsprechend: Wenn das Listen-Modul Item-Typen einschränkt, gilt das auch im Suchmodus – der Form-Filter „Item-Typ“ schränkt weiter ein (Schnittmenge).
 
 **Request-Parameter:**
 
@@ -139,6 +141,7 @@ Das Bundle bietet drei Frontend-Modul-Typen unter der Kategorie **Zotero**:
 | `zotero_author` | Member-Alias oder member_id (nur Mitglieder mit Creator-Zuordnung) |
 | `zotero_year_from` | Erscheinungsjahr von (4-stellig) |
 | `zotero_year_to` | Erscheinungsjahr bis (4-stellig) |
+| `zotero_item_type` | Zotero-Item-Typ (z. B. journalArticle, book) – nur wenn „Filter Item-Typ anzeigen“ aktiv |
 | `page` | Seite für Pagination (bei vielen Treffern) |
 
 **Stop-Wörter:** Das Bundle enthält Stop-Wörter für Deutsch und Englisch (MIT, stopwords-iso). Projektüberschreibung: `config/zotero_stopwords_de.php`, `config/zotero_stopwords_en.php` (PHP-Array `return [...];`).
@@ -255,3 +258,25 @@ Das Feld **citation_style** in `tl_zotero_library` wird bei der Zotero API für 
 | `linguistik-in-deutschland` | Linguistik in Deutschland |
 
 Die vollständige Liste (über 10.000 Stile) durchsuchst du im [Zotero Style Repository](https://www.zotero.org/styles); der dort angezeigte Stil-Name (ohne Endung) ist der Wert für **citation_style**. Ungültige oder leere Werte führen beim Sync zu keiner Zitierausgabe; Platzhalter wie „CSL-URL“ können zu API-Fehlern führen.
+
+**cite_content Markup (`cite_content_markup`):** Pro Library kannst du festlegen, wie das HTML im Zitations-Output (`cite_content`) verarbeitet wird:
+
+| Option | Beschreibung |
+|--------|---------------|
+| `unchanged` | Unverändert übernehmen (Zotero-Standard) |
+| `remove_divs` | Nur `<div>`-Tags entfernen |
+| `remove_all` | Enthaltenes Markup komplett entfernen (reiner Text) |
+
+---
+
+## Sync-Verarbeitung (HTML in Datenbankfeldern)
+
+Beim Sync werden **Textfelder**, die in die Datenbank übernommen werden (z. B. `title`, `publication_title`, Collection-Namen, Attachment-Titel), von HTML-Markup befreit (`strip_tags` + `html_entity_decode`). Das **json_data** bleibt unverändert; **bib_content** wird unverändert übernommen.
+
+---
+
+## Schema.org / JSON-LD (geplant)
+
+Strukturierte Daten für Suchmaschinen und Knowledge Panels: Publikationen sollen als Schema.org-Typen (ScholarlyArticle, Book, CreativeWork etc.) per JSON-LD eingebettet werden. Contao bietet dafür die Twig-Funktion `add_schema_org()`.
+
+**Konzept und Umsetzungsplan:** Siehe [`docs/schema-org-json-ld-konzept.md`](bundles/raum51/contao-zotero-bundle/docs/schema-org-json-ld-konzept.md) – Zotero itemType → Schema.org-Mapping, empfohlene Properties, Integration über ZoteroReaderController.
