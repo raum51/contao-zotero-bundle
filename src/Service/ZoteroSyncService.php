@@ -265,7 +265,8 @@ final class ZoteroSyncService
         // 3) Items (mit since für inkrementell; bei 0 lokalen Items Vollabzug)
         $localItemCount = (int) $this->connection->fetchOne('SELECT COUNT(*) FROM tl_zotero_item WHERE pid = ?', [$pid]);
         $effectiveSince = $localItemCount > 0 ? $lastVersion : 0;
-        $itemKeyToId = $this->syncItems($prefix, $apiKey, $pid, $citationStyle, $citationLocale, $effectiveSince, $deletedObjects, $result);
+        $citeContentMarkup = (string) ($library['cite_content_markup'] ?? '');
+        $itemKeyToId = $this->syncItems($prefix, $apiKey, $pid, $citationStyle, $citationLocale, $citeContentMarkup, $effectiveSince, $deletedObjects, $result);
 
         // 4) Collection-Item-Verknüpfungen
         $this->syncCollectionItems($prefix, $apiKey, $pid, $collectionKeyToId, $itemKeyToId, $result);
@@ -323,7 +324,7 @@ final class ZoteroSyncService
                     continue;
                 }
                 $data = $c['data'] ?? [];
-                $name = $data['name'] ?? '';
+                $name = $this->stripHtmlFromText((string) ($data['name'] ?? ''));
                 $inTrash = (int) ($data['deleted'] ?? 0) === 1;
                 $parentKey = $data['parentCollection'] ?? false;
                 if ($parentKey === false) {
@@ -571,7 +572,7 @@ final class ZoteroSyncService
      * @param array{collections: list<string>, items: list<string>} $deletedObjects Von fetchDeletedObjects()
      * @return array<string, int> zotero_key -> unsere item id
      */
-    private function syncItems(string $prefix, string $apiKey, int $pid, string $citationStyle, string $citationLocale, int $since, array $deletedObjects, array &$result): array
+    private function syncItems(string $prefix, string $apiKey, int $pid, string $citationStyle, string $citationLocale, string $citeContentMarkup, int $since, array $deletedObjects, array &$result): array
     {
         $keyToId = [];
         $path = $prefix . '/items';
@@ -608,7 +609,7 @@ final class ZoteroSyncService
                 try {
                     $bibContent = $this->fetchBibtexForItem($path, $apiKey, $key);
                     $citeContent = $this->fetchCiteForItem($path, $apiKey, $key, $citationStyle, $citationLocale);
-                    $itemId = $this->upsertItemFromData($pid, $item, $bibContent, $citeContent, $result);
+                    $itemId = $this->upsertItemFromData($pid, $item, $bibContent, $citeContent, $citeContentMarkup, $result);
                     if ($itemId > 0) {
                         $keyToId[$key] = $itemId;
                         $this->syncItemCreatorsForItem($itemId, ($item['data'] ?? [])['creators'] ?? [], $result);
@@ -830,7 +831,7 @@ final class ZoteroSyncService
             'zotero_key' => $key,
             'zotero_version' => $version,
             'link_mode' => (string) ($data['linkMode'] ?? ''),
-            'title' => (string) ($data['title'] ?? ''),
+            'title' => $this->stripHtmlFromText((string) ($data['title'] ?? '')),
             'filename' => (string) ($data['filename'] ?? ''),
             'content_type' => (string) ($data['contentType'] ?? ''),
             'url' => (string) ($data['url'] ?? ''),
@@ -911,14 +912,15 @@ final class ZoteroSyncService
      * Einzelnes Item in die DB schreiben (ohne weiteren API-Request). Daten aus Batch-Response, bib/cite bereits nachgeladen.
      *
      * @param array $item Item von API mit key, version, data
+     * @param string $citeContentMarkup Option für cite_content: ''|'unchanged'=unverändert, 'remove_divs'=Divs entfernen, 'remove_all'=Markup komplett entfernen
      */
-    private function upsertItemFromData(int $pid, array $item, string $bibContent, string $citeContent, array &$result): int
+    private function upsertItemFromData(int $pid, array $item, string $bibContent, string $citeContent, string $citeContentMarkup, array &$result): int
     {
         $key = $item['key'] ?? '';
         $data = $item['data'] ?? [];
         $version = (int) ($item['version'] ?? 0);
 
-        $title = $data['title'] ?? '';
+        $title = $this->stripHtmlFromText((string) ($data['title'] ?? ''));
         $itemType = $data['itemType'] ?? '';
         $inTrash = (int) ($data['deleted'] ?? 0) === 1;
         $year = '';
@@ -926,7 +928,7 @@ final class ZoteroSyncService
         if (preg_match('/\b(19|20)\d{2}\b/', $date, $m)) {
             $year = $m[0];
         }
-        $publicationTitle = $data['publicationTitle'] ?? '';
+        $publicationTitle = $this->stripHtmlFromText((string) ($data['publicationTitle'] ?? ''));
         $tags = $data['tags'] ?? [];
         $tagsJson = $tags !== [] ? json_encode($tags, \JSON_UNESCAPED_UNICODE) : null;
         $jsonData = json_encode($data, \JSON_UNESCAPED_UNICODE | \JSON_THROW_ON_ERROR);
@@ -957,7 +959,7 @@ final class ZoteroSyncService
             'year' => $year,
             'date' => $date,
             'publication_title' => $publicationTitle,
-            'cite_content' => $citeContent,
+            'cite_content' => $this->processCiteContent($citeContent, $citeContentMarkup),
             'bib_content' => $bibContent,
             'json_data' => $jsonData,
             'tags' => $tagsJson,
@@ -977,6 +979,41 @@ final class ZoteroSyncService
         $result['items_created']++;
         $result['items_created_details'][] = ['key' => $key, 'title' => (string) $title, 'item_type' => (string) $itemType];
         return (int) $this->connection->lastInsertId();
+    }
+
+    /**
+     * Entfernt HTML-Markup aus Text, der in DB-Felder übernommen wird.
+     * Nutzt strip_tags und html_entity_decode (PHP-Standard).
+     */
+    private function stripHtmlFromText(string $text): string
+    {
+        if ($text === '') {
+            return '';
+        }
+        $stripped = strip_tags($text);
+
+        return trim(html_entity_decode($stripped, \ENT_QUOTES | \ENT_HTML5, 'UTF-8'));
+    }
+
+    /**
+     * Verarbeitet cite_content je nach Library-Option.
+     *
+     * @param string $citeContent Roh-HTML von Zotero
+     * @param string $mode ''|'unchanged'=unverändert, 'remove_divs'=Divs entfernen, 'remove_all'=Markup komplett entfernen
+     */
+    private function processCiteContent(string $citeContent, string $mode): string
+    {
+        if ($citeContent === '') {
+            return '';
+        }
+        if ($mode === 'remove_all') {
+            return $this->stripHtmlFromText($citeContent);
+        }
+        if ($mode === 'remove_divs') {
+            return preg_replace('/<\/?div[^>]*>/i', '', $citeContent) ?? $citeContent;
+        }
+
+        return $citeContent;
     }
 
     /**
@@ -1123,8 +1160,9 @@ final class ZoteroSyncService
     }
 
     /**
-     * Item-Creator-Verknüpfungen für ein einzelnes Item synchronisieren (Daten kommen aus Item, kein eigener API-Endpoint).
-     * Creator-Map-Einträge werden bei Bedarf angelegt (member_id=0).
+     * Item-Creator-Verknüpfungen synchronisieren.
+     * Löscht alle bestehenden Links und fügt sie in Zotero-Reihenfolge neu ein (sorting 0, 1, 2, …).
+     * Bewahrt so die Autorenreihenfolge bei wissenschaftlichen Publikationen.
      *
      * @param int   $itemId   tl_zotero_item.id
      * @param array $creators Zotero creators-Array aus item.data.creators
@@ -1132,7 +1170,7 @@ final class ZoteroSyncService
     private function syncItemCreatorsForItem(int $itemId, array $creators, array &$result): void
     {
         try {
-            $expectedCreatorMapIds = [];
+            $creatorMapIdsWithSort = [];
 
             foreach ($creators as $creator) {
                 $firstName = trim((string) ($creator['firstName'] ?? ''));
@@ -1158,42 +1196,16 @@ final class ZoteroSyncService
                 } else {
                     $creatorMapId = (int) $creatorMapId;
                 }
-                $expectedCreatorMapIds[] = $creatorMapId;
+                $creatorMapIdsWithSort[] = ['creator_map_id' => $creatorMapId, 'sorting' => \count($creatorMapIdsWithSort)];
             }
-
-            $existingLinks = $this->connection->fetchAllAssociative(
-                'SELECT creator_map_id FROM tl_zotero_item_creator WHERE item_id = ?',
-                [$itemId]
-            );
-            $existingCreatorMapIds = array_map(static fn (array $row) => (int) $row['creator_map_id'], $existingLinks);
 
             $itemRow = $this->connection->fetchAssociative('SELECT zotero_key, title FROM tl_zotero_item WHERE id = ?', [$itemId]);
 
-            $toDelete = array_diff($existingCreatorMapIds, $expectedCreatorMapIds);
-            foreach ($toDelete as $creatorMapId) {
-                $creatorRow = $this->connection->fetchAssociative(
-                    'SELECT zotero_firstname, zotero_lastname FROM tl_zotero_creator_map WHERE id = ?',
-                    [$creatorMapId]
-                );
-                $deleted = $this->connection->delete('tl_zotero_item_creator', [
-                    'item_id' => $itemId,
-                    'creator_map_id' => $creatorMapId,
-                ]);
-                if ($deleted > 0) {
-                    $result['item_creators_deleted'] += $deleted;
-                    $detail = [
-                        'item_id' => $itemId,
-                        'item_key' => \is_array($itemRow) ? (string) ($itemRow['zotero_key'] ?? '') : '',
-                        'item_title' => \is_array($itemRow) ? (string) ($itemRow['title'] ?? '') : '',
-                        'creator_firstname' => \is_array($creatorRow) ? (string) ($creatorRow['zotero_firstname'] ?? '') : '',
-                        'creator_lastname' => \is_array($creatorRow) ? (string) ($creatorRow['zotero_lastname'] ?? '') : '',
-                    ];
-                    $result['item_creators_deleted_details'][] = $detail;
-                }
-            }
+            $this->connection->delete('tl_zotero_item_creator', ['item_id' => $itemId]);
 
-            $toCreate = array_diff($expectedCreatorMapIds, $existingCreatorMapIds);
-            foreach ($toCreate as $creatorMapId) {
+            foreach ($creatorMapIdsWithSort as $entry) {
+                $creatorMapId = $entry['creator_map_id'];
+                $sorting = $entry['sorting'];
                 $creatorRow = $this->connection->fetchAssociative(
                     'SELECT zotero_firstname, zotero_lastname FROM tl_zotero_creator_map WHERE id = ?',
                     [$creatorMapId]
@@ -1203,16 +1215,16 @@ final class ZoteroSyncService
                     'tstamp' => time(),
                     'item_id' => $itemId,
                     'creator_map_id' => $creatorMapId,
+                    'sorting' => $sorting,
                 ]);
                 $result['item_creators_created']++;
-                $detail = [
+                $result['item_creators_created_details'][] = [
                     'item_id' => $itemId,
                     'item_key' => \is_array($itemRow) ? (string) ($itemRow['zotero_key'] ?? '') : '',
                     'item_title' => \is_array($itemRow) ? (string) ($itemRow['title'] ?? '') : '',
                     'creator_firstname' => \is_array($creatorRow) ? (string) ($creatorRow['zotero_firstname'] ?? '') : '',
                     'creator_lastname' => \is_array($creatorRow) ? (string) ($creatorRow['zotero_lastname'] ?? '') : '',
                 ];
-                $result['item_creators_created_details'][] = $detail;
             }
         } catch (\Throwable $e) {
             $this->logger->warning('Item-Creator-Sync übersprungen', ['item_id' => $itemId, 'reason' => $e->getMessage()]);
@@ -1289,7 +1301,7 @@ final class ZoteroSyncService
             [$libraryId]
         );
         $localItemCreators = $this->connection->fetchAllAssociative(
-            'SELECT ic.item_id, ic.creator_map_id, i.zotero_key, i.title, cm.zotero_firstname, cm.zotero_lastname FROM tl_zotero_item_creator ic JOIN tl_zotero_item i ON i.id = ic.item_id LEFT JOIN tl_zotero_creator_map cm ON cm.id = ic.creator_map_id WHERE i.pid = ? ORDER BY ic.item_id LIMIT 15',
+            'SELECT ic.item_id, ic.creator_map_id, ic.sorting, i.zotero_key, i.title, cm.zotero_firstname, cm.zotero_lastname FROM tl_zotero_item_creator ic JOIN tl_zotero_item i ON i.id = ic.item_id LEFT JOIN tl_zotero_creator_map cm ON cm.id = ic.creator_map_id WHERE i.pid = ? ORDER BY ic.item_id, ic.sorting ASC LIMIT 15',
             [$libraryId]
         );
 

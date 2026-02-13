@@ -1,7 +1,7 @@
 {% extends "@Contao/frontend_module/_base.html.twig" %}
 
 {% block content %}
-    <div class="zotero-list">
+    <div class="mod_zotero_list block">
         {% if show_reader|default(false) and reader_module_id|default(0) %}
             {# Liste + Reader kombiniert: Lesemodul rendern (News-Pattern) #}
             {{ frontend_module(reader_module_id) }}
@@ -11,27 +11,53 @@
                     {{ 'tl_module.zotero_search_results'|trans({}, 'contao_tl_module') }}{% if search_keywords|default %} „{{ search_keywords }}“{% endif %}
                 </p>
             {% endif %}
+            {% if total|default(0) > 0 %}
+                <p class="zotero-list__total">{{ 'MSC.entries'|trans([total], 'contao_default') }}</p>
+            {% endif %}
             <ul class="zotero-list__items" role="list">
-                {% for item in items %}
-                    <li class="zotero-list__item">
-                        {% if item.reader_url|default %}
-                            <a href="{{ item.reader_url }}" class="zotero-list__link">
-                                {% include "@Contao_Raum51ContaoZoteroBundle/zotero_item/" ~ item_template ~ ".html.twig" with {item: item} %}
-                            </a>
-                        {% else %}
-                            {% include "@Contao_Raum51ContaoZoteroBundle/zotero_item/" ~ item_template ~ ".html.twig" with {item: item} %}
+                {% if groups|default and groups|length > 0 %}
+                    {# Gruppierung: nested ul – jede Gruppe eine li mit eigener ul #}
+                    {% for group in groups %}
+                        {% set group_items = items|filter(i => (i.group_key|default) == group.key) %}
+                        {% if group_items|length > 0 %}
+                            <li class="zotero-list__group">
+                                <strong class="zotero-list__group-label">{{ group.label|e }}</strong>
+                                <ul class="zotero-list__group-items" role="list">
+                                    {% for entry in group_items %}
+                                        {% set item = entry.item|default(entry) %}
+                                        <li class="zotero-list__item">
+                                            {% if item.reader_url|default %}
+                                                <a href="{{ item.reader_url }}" class="zotero-list__link">
+                                                    {% include "@Contao_Raum51ContaoZoteroBundle/zotero_item/" ~ item_template ~ ".html.twig" with {item: item} %}
+                                                </a>
+                                            {% else %}
+                                                {% include "@Contao_Raum51ContaoZoteroBundle/zotero_item/" ~ item_template ~ ".html.twig" with {item: item} %}
+                                            {% endif %}
+                                        </li>
+                                    {% endfor %}
+                                </ul>
+                            </li>
                         {% endif %}
-                    </li>
-                {% endfor %}
+                    {% endfor %}
+                {% else %}
+                    {# Keine Gruppierung: flache ul #}
+                    {% for entry in items %}
+                        {% set item = entry.item|default(entry) %}
+                        <li class="zotero-list__item">
+                            {% if item.reader_url|default %}
+                                <a href="{{ item.reader_url }}" class="zotero-list__link">
+                                    {% include "@Contao_Raum51ContaoZoteroBundle/zotero_item/" ~ item_template ~ ".html.twig" with {item: item} %}
+                                </a>
+                            {% else %}
+                                {% include "@Contao_Raum51ContaoZoteroBundle/zotero_item/" ~ item_template ~ ".html.twig" with {item: item} %}
+                            {% endif %}
+                        </li>
+                    {% endfor %}
+                {% endif %}
             </ul>
-            {% if pagination|default and (pagination.prev_url or pagination.next_url) %}
-                <nav class="zotero-list__pagination" aria-label="{{ 'MSC.pagination'|trans({}, 'contao_default') }}">
-                    {% if pagination.prev_url %}
-                        <a href="{{ pagination.prev_url }}" class="zotero-list__pagination-prev">{{ 'MSC.previous'|trans({}, 'contao_default') }}</a>
-                    {% endif %}
-                    {% if pagination.next_url %}
-                        <a href="{{ pagination.next_url }}" class="zotero-list__pagination-next">{{ 'MSC.next'|trans({}, 'contao_default') }}</a>
-                    {% endif %}
+            {% if pagination|default %}
+                <nav class="zotero-list__pagination pagination" aria-label="{{ 'MSC.pagination'|trans({}, 'contao_default') }}">
+                    <ul class="pagination__list">{{ pagination|raw }}</ul>
                 </nav>
             {% endif %}
         {% elseif search_mode|default(false) %}

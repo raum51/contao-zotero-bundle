@@ -18,6 +18,14 @@
         <source>Year to</source>
         <target>Jahr bis</target>
       </trans-unit>
+      <trans-unit id="tl_module.zotero_search_item_type_label">
+        <source>Item type</source>
+        <target>Item-Typ</target>
+      </trans-unit>
+      <trans-unit id="tl_module.zotero_search_item_type_all">
+        <source>– All –</source>
+        <target>– Alle –</target>
+      </trans-unit>
       <trans-unit id="tl_module.zotero_search_results">
         <source>Search results</source>
         <target>Suchergebnisse</target>

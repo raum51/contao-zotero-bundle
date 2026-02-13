@@ -25,7 +25,7 @@ $GLOBALS['TL_DCA']['tl_zotero_item_creator'] = [
     'list' => [
         'sorting' => [
             'mode' => 4,
-            'fields' => ['creator_map_id'],
+            'fields' => ['sorting'],
             'headerFields' => ['title'],
             'panelLayout' => 'limit',
             'disableGrouping' => true,
@@ -51,7 +51,7 @@ $GLOBALS['TL_DCA']['tl_zotero_item_creator'] = [
         ],
     ],
     'palettes' => [
-        'default' => '{creator_legend},item_id,creator_map_id',
+        'default' => '{creator_legend},item_id,creator_map_id,sorting',
     ],
     'fields' => [
         'id' => [
@@ -82,6 +82,13 @@ $GLOBALS['TL_DCA']['tl_zotero_item_creator'] = [
             ],
             'sql' => 'int(10) unsigned NOT NULL default 0',
             'relation' => ['type' => 'hasOne', 'table' => 'tl_zotero_creator_map', 'field' => 'id'],
+        ],
+        'sorting' => [
+            'label' => &$GLOBALS['TL_LANG']['tl_zotero_item_creator']['sorting'],
+            'exclude' => true,
+            'inputType' => 'text',
+            'eval' => ['rgxp' => 'natural', 'tl_class' => 'w50'],
+            'sql' => 'int(10) unsigned NOT NULL default 0',
         ],
     ],
 ];

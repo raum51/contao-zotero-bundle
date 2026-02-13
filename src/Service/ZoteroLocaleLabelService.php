@@ -20,6 +20,17 @@ final class ZoteroLocaleLabelService
     }
 
     /**
+     * Alle Item-Typ-Labels für eine Locale (mit Fallback en_US).
+     * Für Options-Listen (Listen-/Such-Modul).
+     *
+     * @return array<string, string> key => label
+     */
+    public function getAllItemTypeLabels(string $locale): array
+    {
+        return $this->getItemTypeLabelsForLocale($locale);
+    }
+
+    /**
      * Label für einen Item-Typ ermitteln.
      *
      * Fallback: en-US → Original-Key.

@@ -22,7 +22,8 @@ final class ZoteroSearchService
     }
 
     /**
-     * @param list<int> $libraryIds
+     * @param list<int>    $libraryIds
+     * @param list<string>|null $itemTypes null = alle; [] = keine Treffer; [x,y] = nur diese Typen
      * @param list<string> $searchFields Reihenfolge = Priorität (z. B. ['title', 'tags', 'abstract'])
      *
      * @return list<array<string, mixed>>
@@ -33,14 +34,16 @@ final class ZoteroSearchService
         ?int $authorMemberId,
         ?int $yearFrom,
         ?int $yearTo,
+        ?array $itemTypes,
         array $searchFields,
         string $tokenMode,
         int $maxTokens,
         int $maxResults,
         string $locale,
-        int $offset = 0
+        int $offset = 0,
+        bool $requireCiteContent = false
     ): array {
-        if ($libraryIds === []) {
+        if ($libraryIds === [] || $itemTypes === []) {
             return [];
         }
 
@@ -54,6 +57,11 @@ final class ZoteroSearchService
             ->andWhere('i.published = :published')
             ->setParameter('pids', $libraryIds, ArrayParameterType::INTEGER)
             ->setParameter('published', '1');
+
+        if ($requireCiteContent) {
+            $qb->andWhere('i.cite_content IS NOT NULL')
+                ->andWhere("i.cite_content != ''");
+        }
 
         if ($authorMemberId !== null) {
             $subQb = $this->connection->createQueryBuilder();
@@ -76,6 +84,11 @@ final class ZoteroSearchService
                 $qb->andWhere($qb->expr()->lte('CAST(i.year AS SIGNED)', ':year_to'))
                     ->setParameter('year_to', $yearTo);
             }
+        }
+
+        if ($itemTypes !== null && $itemTypes !== []) {
+            $qb->andWhere($qb->expr()->in('i.item_type', ':item_types'))
+                ->setParameter('item_types', $itemTypes, ArrayParameterType::STRING);
         }
 
         if ($keywords === '') {

@@ -22,6 +22,12 @@ $GLOBALS['TL_LANG']['tl_zotero_library'] = [
     'api_key' => ['API-Key', 'Zotero API-Key (geheim)'],
     'citation_style' => ['Zitierstil', 'z. B. CSL-URL oder -Name'],
     'citation_locale' => ['Zitier-Locale', 'z. B. de_DE, de_AT, en_US (Contao-Format)'],
+    'cite_content_markup' => ['cite_content Markup', 'Wie soll das HTML im Zitations-Output verarbeitet werden?'],
+    'cite_content_markup_options' => [
+        'unchanged' => 'Unverändert übernehmen',
+        'remove_divs' => 'Divs entfernen',
+        'remove_all' => 'Enthaltenes Markup komplett entfernen',
+    ],
     'sync_interval' => ['Sync-Intervall (Sekunden)', '0 = nur manuell'],
     'last_sync_at' => ['Letzter Sync', 'Zeitpunkt des letzten erfolgreichen Syncs'],
     'last_sync_status' => ['Letzter Sync-Status', 'Erfolg oder Fehlermeldung'],

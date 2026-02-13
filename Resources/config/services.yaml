@@ -47,9 +47,21 @@ services:
         public: true
     Raum51\ContaoZoteroBundle\EventListener\DataContainer\ZoteroSearchModuleOptionsCallback:
         public: true
+    Raum51\ContaoZoteroBundle\EventListener\DataContainer\ZoteroItemTypesOptionsCallback:
+        public: true
     Raum51\ContaoZoteroBundle\Migration\ConvertZoteroLibraryToLibrariesMigration:
         tags: [{ name: contao.migration, priority: 0 }]
     Raum51\ContaoZoteroBundle\Migration\AddZoteroSearchModuleFieldsMigration:
+        tags: [{ name: contao.migration, priority: 0 }]
+    Raum51\ContaoZoteroBundle\Migration\AddZoteroItemTypesMigration:
+        tags: [{ name: contao.migration, priority: 0 }]
+    Raum51\ContaoZoteroBundle\Migration\AddZoteroListConfigMigration:
+        tags: [{ name: contao.migration, priority: 0 }]
+    Raum51\ContaoZoteroBundle\Migration\AddZoteroListSortDirectionDateMigration:
+        tags: [{ name: contao.migration, priority: 0 }]
+    Raum51\ContaoZoteroBundle\Migration\AddCiteContentMarkupMigration:
+        tags: [{ name: contao.migration, priority: 0 }]
+    Raum51\ContaoZoteroBundle\Migration\AddItemCreatorSortingMigration:
         tags: [{ name: contao.migration, priority: 0 }]
     Raum51\ContaoZoteroBundle\Migration\CreateLocalesTableMigration:
         tags: [{ name: contao.migration, priority: 0 }]

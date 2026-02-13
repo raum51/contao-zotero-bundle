@@ -30,6 +30,17 @@
                             <input type="number" name="zotero_year_to" id="zotero_year_to" value="{{ zotero_year_to }}" min="1000" max="9999" placeholder="2024" class="text">
                         </div>
                     {% endif %}
+                    {% if show_item_type and item_types|length > 0 %}
+                        <div class="widget widget-select">
+                            <label for="zotero_item_type">{{ label_item_type }}</label>
+                            <select name="zotero_item_type" id="zotero_item_type">
+                                <option value="">{{ label_item_type_all }}</option>
+                                {% for key, label in item_types %}
+                                    <option value="{{ key|e }}"{% if zotero_item_type == key %} selected{% endif %}>{{ label|e }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    {% endif %}
                     <div class="widget widget-submit">
                         <button type="submit" class="submit">{{ label_search }}</button>
                     </div>

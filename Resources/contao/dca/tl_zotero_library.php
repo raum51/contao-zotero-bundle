@@ -92,7 +92,7 @@ $GLOBALS['TL_DCA']['tl_zotero_library'] = [
         ],
     ],
     'palettes' => [
-        'default' => '{title_legend},title;{frontend_legend},jumpTo;{zotero_legend},library_id,library_type,api_key;{citation_legend},citation_style,citation_locale;{sync_legend},sync_interval,last_sync_at,last_sync_status,last_sync_version;{options_legend},download_attachments,published;{expert_legend},sorting',
+        'default' => '{title_legend},title;{frontend_legend},jumpTo;{zotero_legend},library_id,library_type,api_key;{citation_legend},citation_style,citation_locale,cite_content_markup;{sync_legend},sync_interval,last_sync_at,last_sync_status,last_sync_version;{options_legend},download_attachments,published;{expert_legend},sorting',
     ],
     'fields' => [
         'id' => [
@@ -149,6 +149,19 @@ $GLOBALS['TL_DCA']['tl_zotero_library'] = [
             'inputType' => 'text',
             'eval' => ['maxlength' => 32, 'tl_class' => 'w50'],
             'sql' => "varchar(32) NOT NULL default ''",
+        ],
+        'cite_content_markup' => [
+            'label' => &$GLOBALS['TL_LANG']['tl_zotero_library']['cite_content_markup'],
+            'exclude' => true,
+            'inputType' => 'select',
+            'options' => [
+                'unchanged' => 'unchanged',
+                'remove_divs' => 'remove_divs',
+                'remove_all' => 'remove_all',
+            ],
+            'reference' => &$GLOBALS['TL_LANG']['tl_zotero_library']['cite_content_markup_options'],
+            'eval' => ['tl_class' => 'w50'],
+            'sql' => "varchar(32) NOT NULL default 'unchanged'",
         ],
         'sync_interval' => [
             'label' => &$GLOBALS['TL_LANG']['tl_zotero_library']['sync_interval'],
