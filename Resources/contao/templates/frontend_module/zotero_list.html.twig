@@ -6,6 +6,11 @@
             {# Liste + Reader kombiniert: Lesemodul rendern (News-Pattern) #}
             {{ frontend_module(reader_module_id) }}
         {% elseif items|length > 0 %}
+            {% if search_mode|default(false) %}
+                <p class="zotero-list__search-info">
+                    {{ 'tl_module.zotero_search_results'|trans }}{% if search_keywords|default %} „{{ search_keywords }}“{% endif %}
+                </p>
+            {% endif %}
             <ul class="zotero-list__items" role="list">
                 {% for item in items %}
                     <li class="zotero-list__item">
@@ -19,6 +24,18 @@
                     </li>
                 {% endfor %}
             </ul>
+            {% if pagination|default and (pagination.prev_url or pagination.next_url) %}
+                <nav class="zotero-list__pagination" aria-label="{{ 'MSC.pagination'|trans }}">
+                    {% if pagination.prev_url %}
+                        <a href="{{ pagination.prev_url }}" class="zotero-list__pagination-prev">{{ 'MSC.previous'|trans }}</a>
+                    {% endif %}
+                    {% if pagination.next_url %}
+                        <a href="{{ pagination.next_url }}" class="zotero-list__pagination-next">{{ 'MSC.next'|trans }}</a>
+                    {% endif %}
+                </nav>
+            {% endif %}
+        {% elseif search_mode|default(false) %}
+            <p class="zotero-list__no-results">{{ 'tl_module.zotero_search_no_results'|trans }}</p>
         {% endif %}
     </div>
 {% endblock %}

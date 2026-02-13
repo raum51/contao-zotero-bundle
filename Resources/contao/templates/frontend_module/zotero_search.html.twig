@@ -1,0 +1,36 @@
+{% extends "@Contao/frontend_module/_base.html.twig" %}
+
+{% block content %}
+    <div class="zotero-search">
+        <form action="{{ form_action }}" method="get" class="zotero-search__form">
+            <div class="zotero-search__field">
+                <label for="keywords">{{ 'MSC.keywords'|trans }}</label>
+                <input type="text" name="keywords" id="keywords" value="{{ keywords }}" placeholder="{{ 'MSC.keywords'|trans }}" class="zotero-search__input">
+            </div>
+            {% if show_author and authors|length > 0 %}
+                <div class="zotero-search__field">
+                    <label for="zotero_author">{{ 'tl_module.zotero_search_author_label'|trans }}</label>
+                    <select name="zotero_author" id="zotero_author" class="zotero-search__select">
+                        <option value="">{{ 'tl_module.zotero_search_author_all'|trans }}</option>
+                        {% for author in authors %}
+                            <option value="{{ author.alias ?: author.id }}"{% if zotero_author == (author.alias ?: author.id|string) or zotero_author == author.id|string %} selected{% endif %}>{{ author.label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            {% endif %}
+            {% if show_year %}
+                <div class="zotero-search__field zotero-search__field--inline">
+                    <label for="zotero_year_from">{{ 'tl_module.zotero_search_year_from'|trans }}</label>
+                    <input type="number" name="zotero_year_from" id="zotero_year_from" value="{{ zotero_year_from }}" min="1000" max="9999" placeholder="z. B. 2020" class="zotero-search__input zotero-search__input--year">
+                </div>
+                <div class="zotero-search__field zotero-search__field--inline">
+                    <label for="zotero_year_to">{{ 'tl_module.zotero_search_year_to'|trans }}</label>
+                    <input type="number" name="zotero_year_to" id="zotero_year_to" value="{{ zotero_year_to }}" min="1000" max="9999" placeholder="z. B. 2024" class="zotero-search__input zotero-search__input--year">
+                </div>
+            {% endif %}
+            <div class="zotero-search__submit">
+                <button type="submit" class="zotero-search__button">{{ 'MSC.search'|trans }}</button>
+            </div>
+        </form>
+    </div>
+{% endblock %}

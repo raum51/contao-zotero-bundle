@@ -5,6 +5,8 @@ services:
 
     Raum51\ContaoZoteroBundle\Service\ApiLogCollector: ~
 
+    Raum51\ContaoZoteroBundle\Service\ZoteroStopwordService: ~
+    Raum51\ContaoZoteroBundle\Service\ZoteroSearchService: ~
     Raum51\ContaoZoteroBundle\Service\ZoteroSyncService:
         arguments:
             $logger: '@monolog.logger.raum51_zotero'
@@ -38,5 +40,9 @@ services:
         public: true
     Raum51\ContaoZoteroBundle\EventListener\DataContainer\ZoteroLibraryOptionsCallback:
         public: true
+    Raum51\ContaoZoteroBundle\EventListener\DataContainer\ZoteroSearchModuleOptionsCallback:
+        public: true
     Raum51\ContaoZoteroBundle\Migration\ConvertZoteroLibraryToLibrariesMigration:
+        tags: [{ name: contao.migration, priority: 0 }]
+    Raum51\ContaoZoteroBundle\Migration\AddZoteroSearchModuleFieldsMigration:
         tags: [{ name: contao.migration, priority: 0 }]

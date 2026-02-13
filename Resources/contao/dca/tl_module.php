@@ -8,13 +8,13 @@ declare(strict_types=1);
  */
 
 $GLOBALS['TL_DCA']['tl_module']['palettes']['zotero_list'] =
-    '{title_legend},name,headline,type;{zotero_legend},zotero_libraries,zotero_collections,zotero_template,zotero_reader_module;{template_legend:hide},customTpl;{protected_legend:hide},protected;{expert_legend:hide},guests,cssID';
+    '{title_legend},name,headline,type;{zotero_legend},zotero_libraries,zotero_collections,zotero_template,zotero_reader_module,zotero_search_module;{template_legend:hide},customTpl;{protected_legend:hide},protected;{expert_legend:hide},guests,cssID';
 
 $GLOBALS['TL_DCA']['tl_module']['palettes']['zotero_reader'] =
     '{title_legend},name,headline,type;{zotero_legend},zotero_libraries,zotero_template;{template_legend:hide},customTpl;{protected_legend:hide},protected;{expert_legend:hide},guests,cssID';
 
 $GLOBALS['TL_DCA']['tl_module']['palettes']['zotero_search'] =
-    '{title_legend},name,headline,type;{zotero_legend},zotero_libraries,zotero_list_page;{template_legend:hide},customTpl;{protected_legend:hide},protected;{expert_legend:hide},guests,cssID';
+    '{title_legend},name,headline,type;{zotero_legend},zotero_libraries,zotero_list_page,zotero_search_show_author,zotero_search_show_year;{search_config_legend},zotero_search_fields,zotero_search_token_mode,zotero_search_max_tokens,zotero_search_max_results;{template_legend:hide},customTpl;{protected_legend:hide},protected;{expert_legend:hide},guests,cssID';
 
 $GLOBALS['TL_DCA']['tl_module']['fields']['type']['options'][] = 'zotero_list';
 $GLOBALS['TL_DCA']['tl_module']['fields']['type']['options'][] = 'zotero_reader';
@@ -67,4 +67,56 @@ $GLOBALS['TL_DCA']['tl_module']['fields']['zotero_reader_module'] = [
     'options_callback' => [\Raum51\ContaoZoteroBundle\EventListener\DataContainer\ZoteroReaderModuleOptionsCallback::class, '__invoke'],
     'eval' => ['chosen' => true, 'includeBlankOption' => true, 'tl_class' => 'w50'],
     'sql' => 'int(10) unsigned NOT NULL default 0',
+];
+$GLOBALS['TL_DCA']['tl_module']['fields']['zotero_search_module'] = [
+    'label' => &$GLOBALS['TL_LANG']['tl_module']['zotero_search_module'],
+    'exclude' => true,
+    'inputType' => 'select',
+    'options_callback' => [\Raum51\ContaoZoteroBundle\EventListener\DataContainer\ZoteroSearchModuleOptionsCallback::class, '__invoke'],
+    'eval' => ['chosen' => true, 'includeBlankOption' => true, 'tl_class' => 'w50'],
+    'sql' => 'int(10) unsigned NOT NULL default 0',
+];
+$GLOBALS['TL_DCA']['tl_module']['fields']['zotero_search_show_author'] = [
+    'label' => &$GLOBALS['TL_LANG']['tl_module']['zotero_search_show_author'],
+    'exclude' => true,
+    'inputType' => 'checkbox',
+    'eval' => ['tl_class' => 'w50 m12'],
+    'sql' => "char(1) NOT NULL default '1'",
+];
+$GLOBALS['TL_DCA']['tl_module']['fields']['zotero_search_show_year'] = [
+    'label' => &$GLOBALS['TL_LANG']['tl_module']['zotero_search_show_year'],
+    'exclude' => true,
+    'inputType' => 'checkbox',
+    'eval' => ['tl_class' => 'w50 m12'],
+    'sql' => "char(1) NOT NULL default '1'",
+];
+$GLOBALS['TL_DCA']['tl_module']['fields']['zotero_search_fields'] = [
+    'label' => &$GLOBALS['TL_LANG']['tl_module']['zotero_search_fields'],
+    'exclude' => true,
+    'inputType' => 'text',
+    'eval' => ['maxlength' => 64, 'tl_class' => 'w50', 'placeholder' => 'title,tags,abstract'],
+    'sql' => "varchar(64) NOT NULL default 'title,tags,abstract'",
+];
+$GLOBALS['TL_DCA']['tl_module']['fields']['zotero_search_token_mode'] = [
+    'label' => &$GLOBALS['TL_LANG']['tl_module']['zotero_search_token_mode'],
+    'exclude' => true,
+    'inputType' => 'select',
+    'options' => ['and', 'or'],
+    'reference' => &$GLOBALS['TL_LANG']['tl_module']['zotero_search_token_mode_options'],
+    'eval' => ['tl_class' => 'w50'],
+    'sql' => "varchar(4) NOT NULL default 'and'",
+];
+$GLOBALS['TL_DCA']['tl_module']['fields']['zotero_search_max_tokens'] = [
+    'label' => &$GLOBALS['TL_LANG']['tl_module']['zotero_search_max_tokens'],
+    'exclude' => true,
+    'inputType' => 'text',
+    'eval' => ['rgxp' => 'natural', 'tl_class' => 'w50'],
+    'sql' => "varchar(8) NOT NULL default '10'",
+];
+$GLOBALS['TL_DCA']['tl_module']['fields']['zotero_search_max_results'] = [
+    'label' => &$GLOBALS['TL_LANG']['tl_module']['zotero_search_max_results'],
+    'exclude' => true,
+    'inputType' => 'text',
+    'eval' => ['rgxp' => 'natural', 'tl_class' => 'w50'],
+    'sql' => "varchar(8) NOT NULL default '0'",
 ];

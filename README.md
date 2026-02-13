@@ -94,6 +94,36 @@ php bin/console contao:zotero:item ABC123 --log-api=var/logs/zotero_item_api.jso
 
 ---
 
+## Frontend-Module (Zotero-Suche)
+
+Das Bundle bietet drei Frontend-Modul-Typen unter der Kategorie **Zotero**:
+
+| Modul | Beschreibung |
+|-------|--------------|
+| **Zotero-Liste** | Publikationsliste aus Zotero-Bibliotheken (optional gefiltert nach Collections). Bei Such-Parametern: Suchmodus mit Treffern. |
+| **Zotero-Lese** | Detailansicht eines Zotero-Items (News-Pattern mit auto_item). |
+| **Zotero-Suche** | Suchformular (Keywords, optional Autor, Jahr von/bis). Leitet per GET auf die Zielseite mit Listen-Modul weiter. |
+
+### Suchmodus (Zotero-Liste + Zotero-Suche)
+
+1. **Zotero-Such-Modul** anlegen: Bibliotheken, **Zielseite Listen-Modul** (Seite mit Zotero-Listen-Modul), Filter-Optionen (Autor anzeigen, Jahr anzeigen), Such-Konfiguration (Felder, Token-Logik AND/OR, max. Token, max. Treffer).
+2. **Zotero-Listen-Modul** auf der Zielseite: **Such-Modul** referenzieren (für Library-Schnittmenge und Such-Konfiguration).
+3. Bei GET-Parametern (`keywords`, `zotero_author`, `zotero_year_from`, `zotero_year_to`) zeigt das Listen-Modul Suchergebnisse statt der normalen Liste.
+
+**Request-Parameter:**
+
+| Parameter | Beschreibung |
+|-----------|--------------|
+| `keywords` | Textsuche (Titel, Tags, Abstract) |
+| `zotero_author` | Member-Alias oder member_id (nur Mitglieder mit Creator-Zuordnung) |
+| `zotero_year_from` | Erscheinungsjahr von (4-stellig) |
+| `zotero_year_to` | Erscheinungsjahr bis (4-stellig) |
+| `page` | Seite für Pagination (bei vielen Treffern) |
+
+**Stop-Wörter:** Das Bundle enthält Stop-Wörter für Deutsch und Englisch (MIT, stopwords-iso). Projektüberschreibung: `config/zotero_stopwords_de.php`, `config/zotero_stopwords_en.php` (PHP-Array `return [...];`).
+
+---
+
 ## Frontend-Routen (Bib-Export & Attachments)
 
 Die Routen werden im Bundle über `Resources/config/routes.yaml` definiert und in der **Contao Managed Edition** automatisch per **RoutingPluginInterface** im Manager-Plugin geladen (vor dem Contao-Content-Routing). Kein manueller Eintrag in der App nötig.

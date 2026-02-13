@@ -15,3 +15,18 @@ $GLOBALS['TL_LANG']['tl_module']['zotero_template_options'] = [
     'json_dl' => 'Metadaten als Liste (json_dl)',
     'fields' => 'Ausgewählte Felder (fields)',
 ];
+$GLOBALS['TL_LANG']['tl_module']['zotero_search_module'] = ['Such-Modul', 'Optional: Beim Suchmodus Libraries und Such-Konfiguration von diesem Modul übernehmen'];
+$GLOBALS['TL_LANG']['tl_module']['zotero_search_show_author'] = ['Filter Autor anzeigen', 'Dropdown für Autor-Filter im Suchformular'];
+$GLOBALS['TL_LANG']['tl_module']['zotero_search_show_year'] = ['Filter Jahr anzeigen', 'Felder Jahr von/bis im Suchformular'];
+$GLOBALS['TL_LANG']['tl_module']['zotero_search_fields'] = ['Durchsuchbare Felder', 'Reihenfolge = Priorität (z. B. title,tags,abstract)'];
+$GLOBALS['TL_LANG']['tl_module']['zotero_search_token_mode'] = ['Token-Logik', 'AND: alle Begriffe müssen vorkommen; OR: mindestens einer'];
+$GLOBALS['TL_LANG']['tl_module']['zotero_search_token_mode_options'] = ['and' => 'AND (alle Begriffe)', 'or' => 'OR (mindestens ein Begriff)'];
+$GLOBALS['TL_LANG']['tl_module']['zotero_search_max_tokens'] = ['Max. Token-Anzahl', 'Begrenzung bei Mehrwort-Suche (0 = unbegrenzt)'];
+$GLOBALS['TL_LANG']['tl_module']['zotero_search_max_results'] = ['Max. Trefferanzahl', 'Limit der Suchergebnisse (0 = unbegrenzt)'];
+$GLOBALS['TL_LANG']['tl_module']['search_config_legend'] = 'Such-Konfiguration';
+$GLOBALS['TL_LANG']['tl_module']['zotero_search_author_label'] = 'Autor';
+$GLOBALS['TL_LANG']['tl_module']['zotero_search_author_all'] = '– Alle –';
+$GLOBALS['TL_LANG']['tl_module']['zotero_search_year_from'] = 'Jahr von';
+$GLOBALS['TL_LANG']['tl_module']['zotero_search_year_to'] = 'Jahr bis';
+$GLOBALS['TL_LANG']['tl_module']['zotero_search_results'] = 'Suchergebnisse';
+$GLOBALS['TL_LANG']['tl_module']['zotero_search_no_results'] = 'Keine Publikationen gefunden.';

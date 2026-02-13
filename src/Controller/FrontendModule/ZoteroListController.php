@@ -8,11 +8,13 @@ use Contao\CoreBundle\Controller\FrontendModule\AbstractFrontendModuleController
 use Contao\CoreBundle\DependencyInjection\Attribute\AsFrontendModule;
 use Contao\CoreBundle\Twig\FragmentTemplate;
 use Contao\Input;
+use Contao\MemberModel;
 use Contao\ModuleModel;
 use Contao\PageModel;
 use Contao\StringUtil;
 use Doctrine\DBAL\ArrayParameterType;
 use Doctrine\DBAL\Connection;
+use Raum51\ContaoZoteroBundle\Service\ZoteroSearchService;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -32,8 +34,11 @@ use Symfony\Component\HttpFoundation\Response;
 )]
 final class ZoteroListController extends AbstractFrontendModuleController
 {
+    private const PER_PAGE = 12;
+
     public function __construct(
         private readonly Connection $connection,
+        private readonly ZoteroSearchService $searchService,
     ) {
     }
 
@@ -50,11 +55,80 @@ final class ZoteroListController extends AbstractFrontendModuleController
             return $template->getResponse();
         }
 
+        $searchModuleId = (int) ($model->zotero_search_module ?? 0);
+        $keywords = $request->query->getString('keywords');
+        $zoteroAuthor = $request->query->get('zotero_author', '');
+        $yearFrom = $request->query->get('zotero_year_from', '');
+        $yearTo = $request->query->get('zotero_year_to', '');
+        $hasSearchParams = $keywords !== '' || $zoteroAuthor !== '' || $yearFrom !== '' || $yearTo !== '';
+
         $libraryIds = $this->parseLibraryIds($model->zotero_libraries ?? '');
         $collections = $this->parseCollectionIds($model->zotero_collections ?? '');
         $itemTemplate = (string) ($model->zotero_template ?? 'cite_content');
 
-        $items = $this->fetchItems($libraryIds, $collections);
+        if ($hasSearchParams && $searchModuleId > 0) {
+            $searchModule = ModuleModel::findByPk($searchModuleId);
+            if ($searchModule instanceof ModuleModel && $searchModule->type === 'zotero_search') {
+                $searchLibraryIds = $this->parseLibraryIds($searchModule->zotero_libraries ?? '');
+                $libraryIds = array_values(array_intersect($libraryIds, $searchLibraryIds));
+                $searchFields = $this->parseSearchFields((string) ($searchModule->zotero_search_fields ?? 'title,tags,abstract'));
+                if ($searchFields === []) {
+                    $searchFields = ['title', 'tags', 'abstract'];
+                }
+                $tokenMode = (string) ($searchModule->zotero_search_token_mode ?? 'and');
+                $maxTokens = (int) ($searchModule->zotero_search_max_tokens ?? 10) ?: 0;
+                $maxResults = (int) ($searchModule->zotero_search_max_results ?? 0) ?: 0;
+
+                $authorMemberId = $this->resolveAuthorToMemberId($zoteroAuthor);
+                $yearFromInt = $yearFrom !== '' && is_numeric($yearFrom) ? (int) $yearFrom : null;
+                $yearToInt = $yearTo !== '' && is_numeric($yearTo) ? (int) $yearTo : null;
+
+                $page = max(1, (int) $request->query->get('page', 1));
+                $offset = ($page - 1) * self::PER_PAGE;
+                $limit = self::PER_PAGE;
+                if ($maxResults > 0) {
+                    $remaining = $maxResults - $offset;
+                    $limit = $remaining <= 0 ? 0 : min($limit, $remaining);
+                }
+
+                $locale = $request->getLocale();
+                $rawItems = [];
+                if ($limit > 0) {
+                    $fetchLimit = $limit + 1;
+                    $rawItems = $this->searchService->search(
+                    $libraryIds,
+                    $keywords,
+                    $authorMemberId,
+                    $yearFromInt,
+                    $yearToInt,
+                    $searchFields,
+                    $tokenMode,
+                    $maxTokens,
+                    $fetchLimit,
+                    $locale,
+                    $offset
+                    );
+                }
+                $hasMore = \count($rawItems) > $limit;
+                $items = array_slice($rawItems, 0, $limit);
+
+                $template->search_mode = true;
+                $template->search_keywords = $keywords;
+                $template->search_author = $zoteroAuthor;
+                $template->search_year_from = $yearFrom;
+                $template->search_year_to = $yearTo;
+                $template->pagination = $this->buildPagination($page, $hasMore, $request);
+            } else {
+                $items = $this->fetchItems($libraryIds, $collections);
+                $template->search_mode = false;
+                $template->pagination = null;
+            }
+        } else {
+            $items = $this->fetchItems($libraryIds, $collections);
+            $template->search_mode = false;
+            $template->pagination = null;
+        }
+
         $pageMap = $this->getLibraryReaderPageMap($libraryIds, $model->zotero_reader_module ?? 0);
 
         foreach ($items as $i => $item) {
@@ -201,5 +275,60 @@ final class ZoteroListController extends AbstractFrontendModuleController
         }
 
         return $items;
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function parseSearchFields(string $value): array
+    {
+        $parts = array_map('trim', explode(',', $value));
+        $allowed = ['title', 'tags', 'abstract'];
+
+        return array_values(array_filter($parts, static fn (string $p) => $p !== '' && \in_array($p, $allowed, true)));
+    }
+
+    private function resolveAuthorToMemberId(string $value): ?int
+    {
+        if ($value === '') {
+            return null;
+        }
+        if (is_numeric($value)) {
+            $id = (int) $value;
+
+            return $id > 0 ? $id : null;
+        }
+        $member = MemberModel::findByAlias($value);
+
+        return $member instanceof MemberModel ? (int) $member->id : null;
+    }
+
+    /**
+     * @return array{current_page: int, next_page: int|null, prev_page: int|null, next_url: string|null, prev_url: string|null}
+     */
+    private function buildPagination(int $page, bool $hasMore, Request $request): array
+    {
+        $baseParams = $request->query->all();
+        $nextUrl = null;
+        $prevUrl = null;
+        $prevPage = $page > 1 ? $page - 1 : null;
+        $nextPage = $hasMore ? $page + 1 : null;
+
+        if ($prevPage !== null) {
+            $prevParams = array_merge($baseParams, ['page' => $prevPage]);
+            $prevUrl = $request->getPathInfo() . '?' . http_build_query($prevParams);
+        }
+        if ($nextPage !== null) {
+            $nextParams = array_merge($baseParams, ['page' => $nextPage]);
+            $nextUrl = $request->getPathInfo() . '?' . http_build_query($nextParams);
+        }
+
+        return [
+            'current_page' => $page,
+            'next_page' => $nextPage,
+            'prev_page' => $prevPage,
+            'next_url' => $nextUrl,
+            'prev_url' => $prevUrl,
+        ];
     }
 }
