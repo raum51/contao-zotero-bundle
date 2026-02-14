@@ -1,0 +1,10 @@
+/**
+ * Zotero Bundle – Frontend-Styles
+ * raum51/contao-zotero-bundle
+ */
+
+ul.zotero-list__items {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
