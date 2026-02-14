@@ -2,11 +2,12 @@
 
 declare(strict_types=1);
 
-namespace Raum51\ContaoZoteroBundle\Controller\FrontendModule;
+namespace Raum51\ContaoZoteroBundle\Controller\ContentElement;
 
 use Contao\Config;
-use Contao\CoreBundle\Controller\FrontendModule\AbstractFrontendModuleController;
-use Contao\CoreBundle\DependencyInjection\Attribute\AsFrontendModule;
+use Contao\ContentModel;
+use Contao\CoreBundle\Controller\ContentElement\AbstractContentElementController;
+use Contao\CoreBundle\DependencyInjection\Attribute\AsContentElement;
 use Contao\CoreBundle\Twig\FragmentTemplate;
 use Contao\Input;
 use Contao\ModuleModel;
@@ -21,20 +22,19 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * Zotero-Listen-Modul: Publikationsliste aus Zotero-Bibliothek.
+ * Zotero-Listen-Inhaltselement: Publikationsliste aus Zotero-Bibliothek.
  *
- * Liegt in src/Controller/FrontendModule/, da Contao Fragment-Controller dort erwartet.
- * Zeigt Items aus der konfigurierten Library (optional gefiltert nach Collections),
- * gerendert über das gewählte Zotero-Item-Template (cite_content, json_dl, fields).
- * Optional: Bei gesetztem zotero_reader_module und auto_item in der URL wird das
- * Lesemodul gerendert (News-Pattern).
+ * Analog zum Listen-Modul (zotero_list), nutzt aber zotero_reader_element (CE)
+ * statt zotero_reader_module und unterstützt zotero_author als Listen-Filter.
+ *
+ * Liegt unter Controller/ContentElement/, da Contao CE-Controller dort erwartet.
  */
-#[AsFrontendModule(
+#[AsContentElement(
     type: 'zotero_list',
     category: 'zotero',
-    template: 'frontend_module/zotero_list',
+    template: 'content_element/zotero_list',
 )]
-final class ZoteroListController extends AbstractFrontendModuleController
+final class ZoteroListContentController extends AbstractContentElementController
 {
     private const DEFAULT_PER_PAGE = 12;
 
@@ -45,15 +45,15 @@ final class ZoteroListController extends AbstractFrontendModuleController
     ) {
     }
 
-    protected function getResponse(FragmentTemplate $template, ModuleModel $model, Request $request): Response
+    protected function getResponse(FragmentTemplate $template, ContentModel $model, Request $request): Response
     {
-        $readerModuleId = (int) ($model->zotero_reader_module ?? 0);
+        $readerElementId = (int) ($model->zotero_reader_element ?? 0);
         $autoItem = Input::get('auto_item');
 
-        // Reader auf derselben Seite: Lesemodul rendern statt Liste (News-Pattern)
-        if ($readerModuleId > 0 && $autoItem !== null && $autoItem !== '') {
+        // Reader auf derselben Seite: Reader-CE rendern statt Liste (News-Pattern)
+        if ($readerElementId > 0 && $autoItem !== null && $autoItem !== '') {
             $template->show_reader = true;
-            $template->reader_module_id = $readerModuleId;
+            $template->reader_element_id = $readerElementId;
 
             return $template->getResponse();
         }
@@ -69,6 +69,7 @@ final class ZoteroListController extends AbstractFrontendModuleController
         $libraryIds = $this->parseLibraryIds($model->zotero_libraries ?? '');
         $collections = $this->parseCollectionIds($model->zotero_collections ?? '');
         $itemTypes = $this->parseItemTypes($model->zotero_item_types ?? '');
+        $authorMemberId = (int) ($model->zotero_author ?? 0) ?: null;
         $itemTemplate = (string) ($model->zotero_template ?? 'cite_content');
         $requireCiteContent = ($itemTemplate === 'cite_content');
         $numberOfItems = (int) ($model->numberOfItems ?? 0);
@@ -94,7 +95,7 @@ final class ZoteroListController extends AbstractFrontendModuleController
                 $maxTokens = (int) ($searchModule->zotero_search_max_tokens ?? 10) ?: 0;
                 $maxResults = (int) ($searchModule->zotero_search_max_results ?? 0) ?: 0;
 
-                $authorMemberId = $this->resolveAuthorToMemberId($zoteroAuthor);
+                $searchAuthorMemberId = $this->resolveAuthorToMemberId($zoteroAuthor);
                 $yearFromInt = $this->parseYearParam($yearFrom);
                 $yearToInt = $this->parseYearParam($yearTo);
 
@@ -111,20 +112,20 @@ final class ZoteroListController extends AbstractFrontendModuleController
                 if ($limit > 0) {
                     $fetchLimit = $limit + 1;
                     $rawItems = $this->searchService->search(
-                    $libraryIds,
-                    $keywords,
-                    $authorMemberId,
-                    $yearFromInt,
-                    $yearToInt,
-                    $effectiveItemTypes,
-                    $searchFields,
-                    $tokenMode,
-                    $maxTokens,
-                    $fetchLimit,
-                    $locale,
-                    $offset,
-                    $requireCiteContent
-                );
+                        $libraryIds,
+                        $keywords,
+                        $searchAuthorMemberId,
+                        $yearFromInt,
+                        $yearToInt,
+                        $effectiveItemTypes,
+                        $searchFields,
+                        $tokenMode,
+                        $maxTokens,
+                        $fetchLimit,
+                        $locale,
+                        $offset,
+                        $requireCiteContent
+                    );
                 }
                 $hasMore = \count($rawItems) > $limit;
                 $items = array_slice($rawItems, 0, $limit);
@@ -141,7 +142,7 @@ final class ZoteroListController extends AbstractFrontendModuleController
                 $template->groups = null;
                 $template->pagination = $this->buildPaginationHtml($totalForSearch, $perPage, $page, (int) $model->id, $request);
             } else {
-                [$items, $total, $groups] = $this->fetchItemsWithMeta($libraryIds, $collections, $itemTypes, $sortOrder, $sortDirectionDate, $groupBy, $numberOfItems, $perPage, $request, $requireCiteContent);
+                [$items, $total, $groups] = $this->fetchItemsWithMeta($libraryIds, $collections, $itemTypes, $sortOrder, $sortDirectionDate, $groupBy, $numberOfItems, $perPage, $request, $requireCiteContent, $authorMemberId);
                 $template->search_mode = false;
                 $template->items = $items;
                 $template->total = $total;
@@ -149,7 +150,7 @@ final class ZoteroListController extends AbstractFrontendModuleController
                 $template->pagination = $this->buildPaginationHtml($total, $perPage, max(1, (int) $request->query->get('page', 1)), (int) $model->id, $request);
             }
         } else {
-            [$items, $total, $groups] = $this->fetchItemsWithMeta($libraryIds, $collections, $itemTypes, $sortOrder, $sortDirectionDate, $groupBy, $numberOfItems, $perPage, $request, $requireCiteContent);
+            [$items, $total, $groups] = $this->fetchItemsWithMeta($libraryIds, $collections, $itemTypes, $sortOrder, $sortDirectionDate, $groupBy, $numberOfItems, $perPage, $request, $requireCiteContent, $authorMemberId);
             $template->search_mode = false;
             $template->items = $items;
             $template->total = $total;
@@ -157,7 +158,7 @@ final class ZoteroListController extends AbstractFrontendModuleController
             $template->pagination = $this->buildPaginationHtml($total, $perPage, max(1, (int) $request->query->get('page', 1)), (int) $model->id, $request);
         }
 
-        $pageMap = $this->getLibraryReaderPageMap($libraryIds, $model->zotero_reader_module ?? 0);
+        $pageMap = $this->getLibraryReaderPageMap($libraryIds, $readerElementId > 0);
         $locale = $this->resolveLocale($request);
 
         foreach ($items as $i => $entry) {
@@ -199,28 +200,27 @@ final class ZoteroListController extends AbstractFrontendModuleController
     }
 
     /**
-     * Map libraryId => PageModel der Reader-Seite.
-     * Bei zotero_reader_module: aktuelle Seite für alle. Sonst: library.jumpTo pro Library.
-     * URLs mit getFrontendUrl('/' . $alias) erzeugen – damit Suffix (.html) und Routing korrekt.
+     * Map libraryId => PageModel. Bei Reader-CE: aktuelle Seite; sonst library.jumpTo.
      *
      * @param list<int> $libraryIds
      *
-     * @return array<int, PageModel> libraryId => page
+     * @return array<int, PageModel>
      */
-    private function getLibraryReaderPageMap(array $libraryIds, int $readerModuleId): array
+    private function getLibraryReaderPageMap(array $libraryIds, bool $hasReaderElement): array
     {
         $map = [];
         if ($libraryIds === []) {
             return $map;
         }
 
-        if ($readerModuleId > 0) {
+        if ($hasReaderElement) {
             $page = $this->getPageModel();
             if ($page instanceof PageModel) {
                 foreach ($libraryIds as $id) {
                     $map[$id] = $page;
                 }
             }
+
             return $map;
         }
 
@@ -254,6 +254,7 @@ final class ZoteroListController extends AbstractFrontendModuleController
         if (!\is_array($ids)) {
             return [];
         }
+
         return array_values(array_map('intval', array_filter($ids, 'is_numeric')));
     }
 
@@ -269,40 +270,12 @@ final class ZoteroListController extends AbstractFrontendModuleController
         if (!\is_array($ids)) {
             return [];
         }
+
         return array_map('intval', array_filter($ids, 'is_numeric'));
     }
 
     /**
-     * Ermittelt die effektiven Item-Typen für den Suchmodus.
-     * Schnittmenge: Listenmodul-Einschränkung (itemTypes) mit evtl. Form-Auswahl (zoteroItemType).
-     * Analog zur Library-Schnittmenge (Listen ∩ Such).
-     *
-     * @param list<string> $itemTypes     Vom Listenmodul erlaubte Typen (leer = alle)
-     * @param string      $zoteroItemType Vom Suchformular gewählter Typ (leer = alle)
-     *
-     * @return list<string>|null null = keine Einschränkung; [] = keine Treffer möglich; [x,y] = erlaubte Typen
-     */
-    private function resolveEffectiveItemTypesForSearch(array $itemTypes, string $zoteroItemType): ?array
-    {
-        $formType = $zoteroItemType !== '' ? $zoteroItemType : null;
-
-        if ($itemTypes === []) {
-            return $formType !== null ? [$formType] : null;
-        }
-
-        if ($formType !== null) {
-            $effective = \in_array($formType, $itemTypes, true) ? [$formType] : [];
-
-            return $effective;
-        }
-
-        return $itemTypes;
-    }
-
-    /**
-     * Parst die ausgewählten Item-Typen aus der Modul-Konfiguration.
-     *
-     * @return list<string> Zotero-Item-Typ-Keys (z. B. journalArticle, book)
+     * @return list<string>
      */
     private function parseItemTypes(string $value): array
     {
@@ -318,14 +291,88 @@ final class ZoteroListController extends AbstractFrontendModuleController
     }
 
     /**
-     * @param list<int>    $libraryIds
-     * @param list<int>    $collectionIds Leer = alle Collections
-     * @param list<string> $itemTypes     Leer = alle Typen
-     * @param int|null    $limit         Optional: maximale Anzahl (0/unbegrenzt = null)
-     *
+     * @param list<string> $itemTypes
+     */
+    private function resolveEffectiveItemTypesForSearch(array $itemTypes, string $zoteroItemType): ?array
+    {
+        $formType = $zoteroItemType !== '' ? $zoteroItemType : null;
+        if ($itemTypes === []) {
+            return $formType !== null ? [$formType] : null;
+        }
+        if ($formType !== null) {
+            return \in_array($formType, $itemTypes, true) ? [$formType] : [];
+        }
+
+        return $itemTypes;
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function parseSearchFields(string $value): array
+    {
+        $parts = array_map('trim', explode(',', $value));
+        $allowed = ['title', 'tags', 'abstract'];
+
+        return array_values(array_filter($parts, static fn (string $p) => $p !== '' && \in_array($p, $allowed, true)));
+    }
+
+    private function resolveAuthorToMemberId(string $value): ?int
+    {
+        if ($value === '' || !is_numeric($value)) {
+            return null;
+        }
+        $id = (int) $value;
+
+        return $id > 0 ? $id : null;
+    }
+
+    private function parseYearParam(string $value): ?int
+    {
+        if ($value === '' || !is_numeric($value)) {
+            return null;
+        }
+        $year = (int) $value;
+        if ($year < 1000 || $year > 9999) {
+            return null;
+        }
+
+        return $year;
+    }
+
+    /**
+     * @return array{0: list<array<string, mixed>>, 1: int, 2: list<array{key: string, label: string}>|null}
+     */
+    private function fetchItemsWithMeta(
+        array $libraryIds,
+        array $collectionIds,
+        array $itemTypes,
+        string $sortOrder,
+        string $sortDirectionDate,
+        string $groupBy,
+        int $numberOfItems,
+        int $perPage,
+        Request $request,
+        bool $requireCiteContent,
+        ?int $authorMemberId
+    ): array {
+        $baseItems = $this->fetchItems($libraryIds, $collectionIds, $itemTypes, $sortOrder, $sortDirectionDate, $numberOfItems > 0 ? $numberOfItems : null, $requireCiteContent, $authorMemberId);
+
+        if ($groupBy !== '') {
+            return $this->applyGroupingAndPagination($baseItems, $groupBy, $sortOrder, $sortDirectionDate, $perPage, $numberOfItems, $request);
+        }
+
+        $total = \count($baseItems);
+        $page = max(1, (int) $request->query->get('page', 1));
+        $items = $perPage <= 0 ? $baseItems : array_slice($baseItems, ($page - 1) * $perPage, $perPage);
+
+        return [$items, $total, null];
+    }
+
+    /**
      * @return list<array<string, mixed>>
      */
-    private function fetchItems(array $libraryIds, array $collectionIds, array $itemTypes = [], string $sortOrder = 'order_title', string $sortDirectionDate = 'desc', ?int $limit = null, bool $requireCiteContent = false, ?int $authorMemberId = null): array
+    private function fetchItems(array $libraryIds, array $collectionIds, array $itemTypes, string $sortOrder, string $sortDirectionDate, ?int $limit, bool $requireCiteContent, ?int $authorMemberId): array
     {
         if ($libraryIds === []) {
             return [];
@@ -341,11 +388,7 @@ final class ZoteroListController extends AbstractFrontendModuleController
             'i.id', 'i.pid', 'i.alias', 'i.title', 'i.year', 'i.date', 'i.publication_title',
             'i.item_type', 'i.cite_content', 'i.json_data',
         ];
-        if ($collectionIds !== []) {
-            $selectCols[] = 'MAX(' . $firstAuthorSub . ') AS first_author_sort';
-        } else {
-            $selectCols[] = $firstAuthorSub . ' AS first_author_sort';
-        }
+        $selectCols[] = $collectionIds !== [] ? 'MAX(' . $firstAuthorSub . ') AS first_author_sort' : $firstAuthorSub . ' AS first_author_sort';
 
         $qb = $this->connection->createQueryBuilder();
         $qb->select(...$selectCols)
@@ -354,8 +397,6 @@ final class ZoteroListController extends AbstractFrontendModuleController
             ->andWhere('i.published = :published')
             ->setParameter('pids', $libraryIds, ArrayParameterType::INTEGER)
             ->setParameter('published', '1');
-
-        $this->applyOrderBy($qb, $sortOrder, $sortDirectionDate);
 
         if ($collectionIds !== []) {
             $qb->innerJoin('i', 'tl_zotero_collection_item', 'ci', 'ci.item_id = i.id')
@@ -388,9 +429,16 @@ final class ZoteroListController extends AbstractFrontendModuleController
             $qb->setMaxResults($limit);
         }
 
+        $authorSub = '(SELECT COALESCE(cm.zotero_lastname,\'\') FROM tl_zotero_item_creator ic JOIN tl_zotero_creator_map cm ON cm.id = ic.creator_map_id WHERE ic.item_id = i.id ORDER BY ic.sorting ASC, ic.id ASC LIMIT 1)';
+        $dateDir = strtoupper($sortDirectionDate) === 'ASC' ? 'ASC' : 'DESC';
+        match ($sortOrder) {
+            'order_author_date' => $qb->orderBy($authorSub, 'ASC')->addOrderBy('i.date', $dateDir),
+            'order_year_author' => $qb->orderBy('i.year', $dateDir)->addOrderBy($authorSub, 'ASC'),
+            default => $qb->orderBy('i.title', 'ASC'),
+        };
+
         $rows = $qb->executeQuery()->fetchAllAssociative();
         $items = [];
-
         foreach ($rows as $row) {
             $jsonData = $row['json_data'] ?? '{}';
             $data = json_decode($jsonData, true);
@@ -412,70 +460,13 @@ final class ZoteroListController extends AbstractFrontendModuleController
         return $items;
     }
 
-    private function applyOrderBy(\Doctrine\DBAL\Query\QueryBuilder $qb, string $sortOrder, string $sortDirectionDate = 'desc'): void
-    {
-        $authorSub = '(SELECT COALESCE(cm.zotero_lastname,\'\') FROM tl_zotero_item_creator ic JOIN tl_zotero_creator_map cm ON cm.id = ic.creator_map_id WHERE ic.item_id = i.id ORDER BY ic.sorting ASC, ic.id ASC LIMIT 1)';
-        $dateDir = strtoupper($sortDirectionDate) === 'ASC' ? 'ASC' : 'DESC';
-
-        match ($sortOrder) {
-            'order_author_date' => $qb->orderBy($authorSub, 'ASC')->addOrderBy('i.date', $dateDir),
-            'order_year_author' => $qb->orderBy('i.year', $dateDir)->addOrderBy($authorSub, 'ASC'),
-            default => $qb->orderBy('i.title', 'ASC'),
-        };
-    }
-
     /**
-     * Lädt Items mit Pagination, Sortierung und optionaler Gruppierung.
-     *
-     * @return array{0: list<array<string, mixed>>, 1: int, 2: list<array{key: string, label: string}>|null}
-     */
-    private function fetchItemsWithMeta(
-        array $libraryIds,
-        array $collectionIds,
-        array $itemTypes,
-        string $sortOrder,
-        string $sortDirectionDate,
-        string $groupBy,
-        int $numberOfItems,
-        int $perPage,
-        Request $request,
-        bool $requireCiteContent = false,
-        ?int $authorMemberId = null
-    ): array {
-        $baseItems = $this->fetchItems($libraryIds, $collectionIds, $itemTypes, $sortOrder, $sortDirectionDate, $numberOfItems > 0 ? $numberOfItems : null, $requireCiteContent, $authorMemberId);
-
-        if ($groupBy !== '') {
-            return $this->applyGroupingAndPagination($baseItems, $groupBy, $sortOrder, $sortDirectionDate, $perPage, $numberOfItems, $request);
-        }
-
-        $total = \count($baseItems);
-        $page = max(1, (int) $request->query->get('page', 1));
-        if ($perPage <= 0) {
-            $items = $baseItems;
-        } else {
-            $offset = ($page - 1) * $perPage;
-            $items = array_slice($baseItems, $offset, $perPage);
-        }
-
-        return [$items, $total, null];
-    }
-
-    /**
-     * Gruppierung und Pagination auf Basis-Items anwenden.
-     *
      * @param list<array<string, mixed>> $baseItems
      *
      * @return array{0: list<array<string, mixed>>, 1: int, 2: list<array{key: string, label: string}>}
      */
-    private function applyGroupingAndPagination(
-        array $baseItems,
-        string $groupBy,
-        string $sortOrder,
-        string $sortDirectionDate,
-        int $perPage,
-        int $numberOfItems,
-        Request $request
-    ): array {
+    private function applyGroupingAndPagination(array $baseItems, string $groupBy, string $sortOrder, string $sortDirectionDate, int $perPage, int $numberOfItems, Request $request): array
+    {
         $rows = [];
         $libraryTitles = [];
         $collectionTitles = [];
@@ -483,8 +474,6 @@ final class ZoteroListController extends AbstractFrontendModuleController
         $locale = $this->resolveLocale($request);
 
         foreach ($baseItems as $item) {
-            $itemId = (int) $item['id'];
-
             if ($groupBy === 'library') {
                 $pid = (int) $item['pid'];
                 $key = 'lib_' . $pid;
@@ -506,13 +495,7 @@ final class ZoteroListController extends AbstractFrontendModuleController
 
         $this->sortGroupedRows($rows, $sortOrder, $sortDirectionDate, $groupBy);
         $total = \count($rows);
-        if ($perPage <= 0) {
-            $pageRows = $rows;
-        } else {
-            $page = max(1, (int) $request->query->get('page', 1));
-            $offset = ($page - 1) * $perPage;
-            $pageRows = array_slice($rows, $offset, $perPage);
-        }
+        $pageRows = $perPage <= 0 ? $rows : array_slice($rows, (max(1, (int) $request->query->get('page', 1)) - 1) * $perPage, $perPage);
 
         $groupOptions = [];
         $seen = [];
@@ -535,13 +518,10 @@ final class ZoteroListController extends AbstractFrontendModuleController
             'SELECT collection_id FROM tl_zotero_collection_item WHERE item_id = ?',
             [$itemId]
         );
-
         if ($collIds === []) {
             $rows[] = ['group_key' => 'coll_none', 'group_label' => '–', 'item' => $item];
-
             return;
         }
-
         foreach ($collIds as $cid) {
             $cid = (int) $cid;
             $label = $collectionTitles[$cid] ??= $this->getCollectionTitle($cid) ?: (string) $cid;
@@ -552,15 +532,14 @@ final class ZoteroListController extends AbstractFrontendModuleController
     private function sortGroupedRows(array &$rows, string $sortOrder, string $sortDirectionDate, string $groupBy): void
     {
         $getItem = static fn ($r) => $r['item'] ?? $r;
-        $getTitle = static fn ($r) => ($getItem($r)['title'] ?? '');
-        $getYear = static fn ($r) => ($getItem($r)['year'] ?? '');
-        $getDate = static fn ($r) => ($getItem($r)['date'] ?? '');
         $getAuthor = static fn ($r) => ($getItem($r)['first_author_sort'] ?? '');
+        $getDate = static fn ($r) => ($getItem($r)['date'] ?? '');
+        $getYear = static fn ($r) => ($getItem($r)['year'] ?? '');
         $dateDesc = strtoupper($sortDirectionDate) !== 'ASC';
 
-        usort($rows, static function ($a, $b) use ($sortOrder, $dateDesc, $groupBy, $getItem, $getTitle, $getYear, $getDate, $getAuthor) {
+        usort($rows, static function ($a, $b) use ($sortOrder, $dateDesc, $groupBy, $getItem, $getAuthor, $getDate, $getYear) {
             $cmp = 0;
-            if (isset($a['group_key']) && isset($b['group_key']) && $a['group_key'] !== $b['group_key']) {
+            if (isset($a['group_key'], $b['group_key']) && $a['group_key'] !== $b['group_key']) {
                 if ($groupBy === 'year') {
                     $yearA = (int) preg_replace('/^year_/', '', $a['group_key'], 1);
                     $yearB = (int) preg_replace('/^year_/', '', $b['group_key'], 1);
@@ -575,14 +554,12 @@ final class ZoteroListController extends AbstractFrontendModuleController
                     return $cmp;
                 }
             }
-
             $dateCmp = $dateDesc ? strcmp($getDate($b), $getDate($a)) : strcmp($getDate($a), $getDate($b));
             $yearCmp = $dateDesc ? strcmp($getYear($b), $getYear($a)) : strcmp($getYear($a), $getYear($b));
-
             return match ($sortOrder) {
                 'order_author_date' => $cmp ?: (strcmp($getAuthor($a), $getAuthor($b)) ?: $dateCmp),
                 'order_year_author' => $cmp ?: ($yearCmp ?: strcmp($getAuthor($a), $getAuthor($b))),
-                default => $cmp ?: strcmp($getTitle($a), $getTitle($b)),
+                default => $cmp ?: strcmp($getItem($a)['title'] ?? '', $getItem($b)['title'] ?? ''),
             };
         });
     }
@@ -590,42 +567,30 @@ final class ZoteroListController extends AbstractFrontendModuleController
     private function getLibraryTitle(int $id): string
     {
         $row = $this->connection->fetchOne('SELECT title FROM tl_zotero_library WHERE id = ?', [$id]);
-
         return \is_string($row) ? $row : '';
     }
 
     private function getCollectionTitle(int $id): string
     {
         $row = $this->connection->fetchOne('SELECT title FROM tl_zotero_collection WHERE id = ?', [$id]);
-
         return \is_string($row) ? $row : '';
     }
 
-    /**
-     * Pagination-HTML mit Contao Pagination-Klasse.
-     */
-    private function buildPaginationHtml(int $total, int $perPage, int $page, int $moduleId, Request $request): ?string
+    private function buildPaginationHtml(int $total, int $perPage, int $page, int $contentId, Request $request): ?string
     {
         if ($perPage <= 0 || $total <= $perPage) {
             return null;
         }
-
         $maxPage = (int) ceil($total / $perPage);
         if ($page < 1 || $page > $maxPage) {
             return null;
         }
-
         $config = $this->getContaoAdapter(Config::class);
         $param = 'page';
         $pagination = new Pagination($total, $perPage, $config->get('maxPaginationLinks'), $param);
-
         return $pagination->generate("\n  ");
     }
 
-    /**
-     * Ermittelt die Locale der aktuellen Seite (für Feld-Labels).
-     * Request-Locale oder Root-Sprache der Seite, Fallback en.
-     */
     private function resolveLocale(Request $request): string
     {
         $locale = $request->getLocale();
@@ -645,74 +610,6 @@ final class ZoteroListController extends AbstractFrontendModuleController
                 return (string) $page->language;
             }
         }
-
         return 'en';
-    }
-
-    /**
-     * @return list<string>
-     */
-    private function parseSearchFields(string $value): array
-    {
-        $parts = array_map('trim', explode(',', $value));
-        $allowed = ['title', 'tags', 'abstract'];
-
-        return array_values(array_filter($parts, static fn (string $p) => $p !== '' && \in_array($p, $allowed, true)));
-    }
-
-    private function resolveAuthorToMemberId(string $value): ?int
-    {
-        if ($value === '' || !is_numeric($value)) {
-            return null;
-        }
-        $id = (int) $value;
-
-        return $id > 0 ? $id : null;
-    }
-
-    /**
-     * Parst einen Jahres-Parameter aus dem Suchformular.
-     * Liefert null bei leerem, ungültigem oder 0-Wert (gültig: 1000–9999).
-     */
-    private function parseYearParam(string $value): ?int
-    {
-        if ($value === '' || !is_numeric($value)) {
-            return null;
-        }
-        $year = (int) $value;
-        if ($year < 1000 || $year > 9999) {
-            return null;
-        }
-
-        return $year;
-    }
-
-    /**
-     * @return array{current_page: int, next_page: int|null, prev_page: int|null, next_url: string|null, prev_url: string|null}
-     */
-    private function buildPagination(int $page, bool $hasMore, Request $request): array
-    {
-        $baseParams = $request->query->all();
-        $nextUrl = null;
-        $prevUrl = null;
-        $prevPage = $page > 1 ? $page - 1 : null;
-        $nextPage = $hasMore ? $page + 1 : null;
-
-        if ($prevPage !== null) {
-            $prevParams = array_merge($baseParams, ['page' => $prevPage]);
-            $prevUrl = $request->getPathInfo() . '?' . http_build_query($prevParams);
-        }
-        if ($nextPage !== null) {
-            $nextParams = array_merge($baseParams, ['page' => $nextPage]);
-            $nextUrl = $request->getPathInfo() . '?' . http_build_query($nextParams);
-        }
-
-        return [
-            'current_page' => $page,
-            'next_page' => $nextPage,
-            'prev_page' => $prevPage,
-            'next_url' => $nextUrl,
-            'prev_url' => $prevUrl,
-        ];
     }
 }

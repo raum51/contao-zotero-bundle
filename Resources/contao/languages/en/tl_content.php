@@ -22,3 +22,32 @@ $GLOBALS['TL_LANG']['tl_content']['zotero_collection_publications'] = ['Collecti
 $GLOBALS['TL_LANG']['tl_content']['zotero_member'] = ['Contao member', 'Member whose publications are displayed'];
 $GLOBALS['TL_LANG']['tl_content']['zotero_collection'] = ['Zotero collection', 'Collection whose items are displayed'];
 $GLOBALS['TL_LANG']['tl_content']['zotero_template'] = ['Template', 'e.g. cite_content, json_dl, fields'];
+
+// Zotero list (CE)
+$GLOBALS['TL_LANG']['tl_content']['config_legend'] = 'List settings';
+$GLOBALS['TL_LANG']['tl_content']['zotero_list'] = ['Zotero list', 'Publication list from Zotero library'];
+$GLOBALS['TL_LANG']['tl_content']['zotero_collections'] = ['Collections', 'Optional: only show these collections (empty = all)'];
+$GLOBALS['TL_LANG']['tl_content']['zotero_item_types'] = ['Item types', 'Optional: only show these types (empty = all)'];
+$GLOBALS['TL_LANG']['tl_content']['zotero_author'] = ['Author', 'Optional: only show publications by this member'];
+$GLOBALS['TL_LANG']['tl_content']['zotero_reader_element'] = ['Reader element', 'Zotero single element (from URL) for detail view on same page'];
+$GLOBALS['TL_LANG']['tl_content']['zotero_search_module'] = ['Search module', 'Optional: when in search mode, use this module\'s libraries and search config'];
+$GLOBALS['TL_LANG']['tl_content']['numberOfItems'] = ['Number of items', 'Number of items to display (0 = all)'];
+$GLOBALS['TL_LANG']['tl_content']['perPage'] = ['Items per page', 'Number per page for pagination (0 = no pagination)'];
+$GLOBALS['TL_LANG']['tl_content']['zotero_list_order'] = ['Sort order', 'Order of entries'];
+$GLOBALS['TL_LANG']['tl_content']['zotero_list_order_options'] = [
+    'order_author_date' => 'Author (first), publication date',
+    'order_year_author' => 'Year, author (first)',
+    'order_title' => 'Title',
+];
+$GLOBALS['TL_LANG']['tl_content']['zotero_list_sort_direction_date'] = ['Date/year sort direction', 'Applies to sort and grouping'];
+$GLOBALS['TL_LANG']['tl_content']['zotero_list_sort_direction_date_options'] = [
+    'asc' => 'Ascending (oldest first)',
+    'desc' => 'Descending (newest first)',
+];
+$GLOBALS['TL_LANG']['tl_content']['zotero_list_group'] = ['Grouping', 'Display list grouped (empty = no grouping)'];
+$GLOBALS['TL_LANG']['tl_content']['zotero_list_group_options'] = [
+    'library' => 'Library',
+    'collection' => 'Collection',
+    'item_type' => 'Item type',
+    'year' => 'Year',
+];

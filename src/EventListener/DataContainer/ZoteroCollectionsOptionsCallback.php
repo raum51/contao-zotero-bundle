@@ -18,6 +18,7 @@ use Doctrine\DBAL\Connection;
  * muss die Seite neu geladen werden (submitOnChange auf zotero_libraries).
  */
 #[AsCallback(table: 'tl_module', target: 'fields.zotero_collections.options')]
+#[AsCallback(table: 'tl_content', target: 'fields.zotero_collections.options')]
 final class ZoteroCollectionsOptionsCallback
 {
     public function __construct(

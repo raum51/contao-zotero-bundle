@@ -59,3 +59,5 @@ services:
         tags: [{ name: contao.migration, priority: -1 }]
     Raum51\ContaoZoteroBundle\Migration\ConvertLocalesToContaoFormatMigration:
         tags: [{ name: contao.migration, priority: -2 }]
+    Raum51\ContaoZoteroBundle\Migration\AddZoteroListContentElementMigration:
+        tags: [{ name: contao.migration, priority: 0 }]

@@ -22,3 +22,32 @@ $GLOBALS['TL_LANG']['tl_content']['zotero_collection_publications'] = ['Publikat
 $GLOBALS['TL_LANG']['tl_content']['zotero_member'] = ['Contao-Mitglied', 'Mitglied, dessen Publikationen angezeigt werden'];
 $GLOBALS['TL_LANG']['tl_content']['zotero_collection'] = ['Zotero-Collection', 'Collection, deren Items angezeigt werden'];
 $GLOBALS['TL_LANG']['tl_content']['zotero_template'] = ['Template', 'z. B. cite_content, json_dl, fields'];
+
+// Zotero-Liste (CE)
+$GLOBALS['TL_LANG']['tl_content']['config_legend'] = 'Listen-Einstellungen';
+$GLOBALS['TL_LANG']['tl_content']['zotero_list'] = ['Zotero-Liste', 'Publikationsliste aus Zotero-Bibliothek'];
+$GLOBALS['TL_LANG']['tl_content']['zotero_collections'] = ['Collections', 'Optional: nur diese Collections anzeigen (leer = alle)'];
+$GLOBALS['TL_LANG']['tl_content']['zotero_item_types'] = ['Item-Typen', 'Optional: nur diese Typen anzeigen (leer = alle)'];
+$GLOBALS['TL_LANG']['tl_content']['zotero_author'] = ['Autor', 'Optional: nur Publikationen dieses Mitglieds anzeigen'];
+$GLOBALS['TL_LANG']['tl_content']['zotero_reader_element'] = ['Reader-Element', 'Zotero-Einzelelement (aus URL) für Detailansicht auf derselben Seite'];
+$GLOBALS['TL_LANG']['tl_content']['zotero_search_module'] = ['Such-Modul', 'Optional: Beim Suchmodus Libraries und Such-Konfiguration von diesem Modul übernehmen'];
+$GLOBALS['TL_LANG']['tl_content']['numberOfItems'] = ['Anzahl Einträge', 'Anzahl der angezeigten Einträge (0 = alle)'];
+$GLOBALS['TL_LANG']['tl_content']['perPage'] = ['Einträge pro Seite', 'Anzahl pro Seite bei Pagination (0 = keine Pagination)'];
+$GLOBALS['TL_LANG']['tl_content']['zotero_list_order'] = ['Sortierung', 'Reihenfolge der Einträge'];
+$GLOBALS['TL_LANG']['tl_content']['zotero_list_order_options'] = [
+    'order_author_date' => 'Autor (erstgenannt), Publikationsdatum',
+    'order_year_author' => 'Jahr, Autor (erstgenannt)',
+    'order_title' => 'Titel',
+];
+$GLOBALS['TL_LANG']['tl_content']['zotero_list_sort_direction_date'] = ['Sortierrichtung Datum/Jahr', 'Gilt für Sortierung und Gruppierung'];
+$GLOBALS['TL_LANG']['tl_content']['zotero_list_sort_direction_date_options'] = [
+    'asc' => 'Aufsteigend (älteste zuerst)',
+    'desc' => 'Absteigend (neueste zuerst)',
+];
+$GLOBALS['TL_LANG']['tl_content']['zotero_list_group'] = ['Gruppierung', 'Liste gruppiert anzeigen (leer = keine Gruppierung)'];
+$GLOBALS['TL_LANG']['tl_content']['zotero_list_group_options'] = [
+    'library' => 'Library',
+    'collection' => 'Collection',
+    'item_type' => 'Item-Typ',
+    'year' => 'Jahr',
+];

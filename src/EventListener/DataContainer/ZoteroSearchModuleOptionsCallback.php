@@ -15,6 +15,7 @@ use Doctrine\DBAL\Connection;
  * Ermöglicht die Verknüpfung Listen-Modul → Such-Modul für Library-Schnittmenge und Such-Konfiguration.
  */
 #[AsCallback(table: 'tl_module', target: 'fields.zotero_search_module.options')]
+#[AsCallback(table: 'tl_content', target: 'fields.zotero_search_module.options')]
 final class ZoteroSearchModuleOptionsCallback
 {
     public function __construct(

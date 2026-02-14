@@ -153,8 +153,9 @@ Das Bundle bietet drei Frontend-Modul-Typen unter der Kategorie **Zotero**:
 | Element | Beschreibung |
 |---------|---------------|
 | **Zotero-Einzelelement** | Ein einzelnes Zotero-Item. **Modus „Fest gewähltes Item“:** Item im Backend per Select mit Suchfunktion (chosen) auswählen; Anzeigeformat „Autoren (Jahr): Titel (ID)“. **Modus „Item aus URL (Reader)“:** Libraries auswählen, Item aus `auto_item` in der URL aufgelöst – für Detailseiten im News-Pattern. Template-Auswahl: cite_content, json_dl, fields. |
+| **Zotero-Liste** | Publikationsliste aus Zotero-Bibliotheken (analog zum Listen-Modul). Filter: Libraries, Collections, Item-Typen, **Autor** (nur tl_member mit publizierten Zotero-Items; Anzeige „Nachname, Vorname (Anzahl)“). Optional: Reader-Element (CE vom Typ zotero_item, Modus from_url) für News-Pattern auf derselben Seite; Such-Modul für Suchmodus. Konfigurierbar: numberOfItems, perPage, Sortierung, Gruppierung. |
 
-**CE-only-Strategie:** Siehe [`docs/content-elemente-strategie.md`](docs/content-elemente-strategie.md). Weitere CE (Listenelement, Autorenelement, Such element) sind geplant; Frontend-Module werden perspektivisch ersetzt.
+**CE-only-Strategie:** Siehe [`docs/content-elemente-strategie.md`](docs/content-elemente-strategie.md). Weitere CE (Autorenelement, Suchelement) sind geplant; Frontend-Module werden perspektivisch ersetzt.
 
 ---
 
