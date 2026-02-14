@@ -259,12 +259,12 @@ Das Feld **citation_style** in `tl_zotero_library` wird bei der Zotero API für 
 
 Die vollständige Liste (über 10.000 Stile) durchsuchst du im [Zotero Style Repository](https://www.zotero.org/styles); der dort angezeigte Stil-Name (ohne Endung) ist der Wert für **citation_style**. Ungültige oder leere Werte führen beim Sync zu keiner Zitierausgabe; Platzhalter wie „CSL-URL“ können zu API-Fehlern führen.
 
-**cite_content Markup (`cite_content_markup`):** Pro Library kannst du festlegen, wie das HTML im Zitations-Output (`cite_content`) verarbeitet wird:
+**cite_content Markup (`cite_content_markup`):** Pro Library kannst du festlegen, wie das HTML im Zitations-Output (`cite_content`) verarbeitet wird. **Bei allen Optionen** werden unnötige Zeilenumbrüche und mehrfache Leerzeichen im Zotero-String bereinigt (zu einem Space kollabiert, getrimmt).
 
 | Option | Beschreibung |
 |--------|---------------|
-| `unchanged` | Unverändert übernehmen (Zotero-Standard) |
-| `remove_divs` | Nur `<div>`-Tags entfernen |
+| `unchanged` | Markup übernehmen – HTML (z. B. `<i>`, `<div>`) bleibt erhalten |
+| `remove_divs` | Nur `<div>`-Tags entfernen, restliches Markup bleibt |
 | `remove_all` | Enthaltenes Markup komplett entfernen (reiner Text) |
 
 ---

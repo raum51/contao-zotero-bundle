@@ -912,7 +912,7 @@ final class ZoteroSyncService
      * Einzelnes Item in die DB schreiben (ohne weiteren API-Request). Daten aus Batch-Response, bib/cite bereits nachgeladen.
      *
      * @param array $item Item von API mit key, version, data
-     * @param string $citeContentMarkup Option für cite_content: ''|'unchanged'=unverändert, 'remove_divs'=Divs entfernen, 'remove_all'=Markup komplett entfernen
+     * @param string $citeContentMarkup Option für cite_content: ''|'unchanged'=Markup übernehmen, 'remove_divs'=Divs entfernen, 'remove_all'=Markup komplett entfernen
      */
     private function upsertItemFromData(int $pid, array $item, string $bibContent, string $citeContent, string $citeContentMarkup, array &$result): int
     {
@@ -984,6 +984,7 @@ final class ZoteroSyncService
     /**
      * Entfernt HTML-Markup aus Text, der in DB-Felder übernommen wird.
      * Nutzt strip_tags und html_entity_decode (PHP-Standard).
+     * Mehrfache Leerzeichen/Zeilenumbrüche werden zu einem Space kollabiert.
      */
     private function stripHtmlFromText(string $text): string
     {
@@ -991,15 +992,27 @@ final class ZoteroSyncService
             return '';
         }
         $stripped = strip_tags($text);
+        $decoded = html_entity_decode($stripped, \ENT_QUOTES | \ENT_HTML5, 'UTF-8');
 
-        return trim(html_entity_decode($stripped, \ENT_QUOTES | \ENT_HTML5, 'UTF-8'));
+        return $this->collapseWhitespace($decoded);
+    }
+
+    /**
+     * Reduziert mehrfache Leerzeichen und Zeilenumbrüche zu einem Space, trimmt.
+     */
+    private function collapseWhitespace(string $text): string
+    {
+        $collapsed = preg_replace('/\s+/u', ' ', $text) ?? $text;
+
+        return trim($collapsed);
     }
 
     /**
      * Verarbeitet cite_content je nach Library-Option.
+     * Alle Modi: unnötige Zeilenumbrüche und mehrfache Leerzeichen werden bereinigt.
      *
      * @param string $citeContent Roh-HTML von Zotero
-     * @param string $mode ''|'unchanged'=unverändert, 'remove_divs'=Divs entfernen, 'remove_all'=Markup komplett entfernen
+     * @param string $mode ''|'unchanged'=Markup übernehmen, 'remove_divs'=Divs entfernen, 'remove_all'=Markup komplett entfernen
      */
     private function processCiteContent(string $citeContent, string $mode): string
     {
@@ -1010,10 +1023,12 @@ final class ZoteroSyncService
             return $this->stripHtmlFromText($citeContent);
         }
         if ($mode === 'remove_divs') {
-            return preg_replace('/<\/?div[^>]*>/i', '', $citeContent) ?? $citeContent;
+            $stripped = preg_replace('/<\/?div[^>]*>/i', '', $citeContent) ?? $citeContent;
+
+            return $this->collapseWhitespace($stripped);
         }
 
-        return $citeContent;
+        return $this->collapseWhitespace($citeContent);
     }
 
     /**

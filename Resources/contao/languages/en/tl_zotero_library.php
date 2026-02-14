@@ -24,7 +24,7 @@ $GLOBALS['TL_LANG']['tl_zotero_library'] = [
     'citation_locale' => ['Citation locale', 'e.g. de_DE, de_AT, en_US (Contao format)'],
     'cite_content_markup' => ['cite_content markup', 'How should HTML in citation output be processed?'],
     'cite_content_markup_options' => [
-        'unchanged' => 'Keep unchanged',
+        'unchanged' => 'Keep markup',
         'remove_divs' => 'Remove divs',
         'remove_all' => 'Remove all markup',
     ],
