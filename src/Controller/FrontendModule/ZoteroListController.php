@@ -126,20 +126,59 @@ final class ZoteroListController extends AbstractFrontendModuleController
                     $requireCiteContent
                 );
                 }
-                $hasMore = \count($rawItems) > $limit;
-                $items = array_slice($rawItems, 0, $limit);
-                $totalForSearch = $offset + \count($items) + ($hasMore ? ($perPage > 0 ? $perPage : $limit) : 0);
+                if ($groupBy !== '') {
+                    $fetchLimit = ($maxResults > 0 ? $maxResults : 9999) + 1;
+                    $allSearchItems = $this->searchService->search(
+                        $libraryIds,
+                        $keywords,
+                        $authorMemberId,
+                        $yearFromInt,
+                        $yearToInt,
+                        $effectiveItemTypes,
+                        $searchFields,
+                        $tokenMode,
+                        $maxTokens,
+                        $maxResults > 0 ? $maxResults : 9999,
+                        $locale,
+                        0,
+                        $requireCiteContent
+                    );
+                    [$items, $totalForSearch, $groups] = $this->applyGroupingAndPagination(
+                        $this->enrichSearchItemsWithAuthorSort($allSearchItems),
+                        $groupBy,
+                        $sortOrder,
+                        $sortDirectionDate,
+                        $perPage,
+                        $numberOfItems,
+                        $request
+                    );
+                    $page = max(1, (int) $request->query->get('page', 1));
+                    $template->search_mode = true;
+                    $template->items = $items;
+                    $template->search_keywords = $keywords;
+                    $template->search_author = $zoteroAuthor;
+                    $template->search_year_from = $yearFrom;
+                    $template->search_year_to = $yearTo;
+                    $template->search_item_type = $zoteroItemType;
+                    $template->total = $totalForSearch;
+                    $template->groups = $groups;
+                    $template->pagination = $this->buildPaginationHtml($totalForSearch, $perPage, $page, (int) $model->id, $request);
+                } else {
+                    $hasMore = \count($rawItems) > $limit;
+                    $items = array_slice($rawItems, 0, $limit);
+                    $totalForSearch = $offset + \count($items) + ($hasMore ? ($perPage > 0 ? $perPage : $limit) : 0);
 
-                $template->search_mode = true;
-                $template->items = $items;
-                $template->search_keywords = $keywords;
-                $template->search_author = $zoteroAuthor;
-                $template->search_year_from = $yearFrom;
-                $template->search_year_to = $yearTo;
-                $template->search_item_type = $zoteroItemType;
-                $template->total = $totalForSearch;
-                $template->groups = null;
-                $template->pagination = $this->buildPaginationHtml($totalForSearch, $perPage, $page, (int) $model->id, $request);
+                    $template->search_mode = true;
+                    $template->items = $items;
+                    $template->search_keywords = $keywords;
+                    $template->search_author = $zoteroAuthor;
+                    $template->search_year_from = $yearFrom;
+                    $template->search_year_to = $yearTo;
+                    $template->search_item_type = $zoteroItemType;
+                    $template->total = $totalForSearch;
+                    $template->groups = null;
+                    $template->pagination = $this->buildPaginationHtml($totalForSearch, $perPage, $page, (int) $model->id, $request);
+                }
             } else {
                 [$items, $total, $groups] = $this->fetchItemsWithMeta($libraryIds, $collections, $itemTypes, $sortOrder, $sortDirectionDate, $groupBy, $numberOfItems, $perPage, $request, $requireCiteContent);
                 $template->search_mode = false;
@@ -159,14 +198,18 @@ final class ZoteroListController extends AbstractFrontendModuleController
 
         $pageMap = $this->getLibraryReaderPageMap($libraryIds, $model->zotero_reader_module ?? 0);
         $locale = $this->resolveLocale($request);
+        $searchParamsQuery = $this->buildSearchParamsQueryString($request);
 
         foreach ($items as $i => $entry) {
             if (isset($entry['item'])) {
                 $pid = (int) $entry['item']['pid'];
                 $page = $pageMap[$pid] ?? null;
-                $items[$i]['item']['reader_url'] = $page instanceof PageModel
+                $baseUrl = $page instanceof PageModel
                     ? $page->getFrontendUrl('/' . ($entry['item']['alias'] ?: (string) $entry['item']['id']))
                     : null;
+                $items[$i]['item']['reader_url'] = $baseUrl !== null && $searchParamsQuery !== ''
+                    ? $baseUrl . '?' . $searchParamsQuery
+                    : $baseUrl;
                 if ($itemTemplate === 'json_dl') {
                     $data = $entry['item']['data'] ?? [];
                     $keys = \is_array($data) ? array_keys($data) : [];
@@ -174,9 +217,12 @@ final class ZoteroListController extends AbstractFrontendModuleController
                 }
             } else {
                 $page = $pageMap[$entry['pid']] ?? null;
-                $items[$i]['reader_url'] = $page instanceof PageModel
+                $baseUrl = $page instanceof PageModel
                     ? $page->getFrontendUrl('/' . ($entry['alias'] ?: (string) $entry['id']))
                     : null;
+                $items[$i]['reader_url'] = $baseUrl !== null && $searchParamsQuery !== ''
+                    ? $baseUrl . '?' . $searchParamsQuery
+                    : $baseUrl;
                 if ($itemTemplate === 'json_dl') {
                     $data = $entry['data'] ?? [];
                     $keys = \is_array($data) ? array_keys($data) : [];
@@ -196,6 +242,63 @@ final class ZoteroListController extends AbstractFrontendModuleController
         ];
 
         return $template->getResponse();
+    }
+
+    /**
+     * Ergänzt Search-Items um first_author_sort (für Gruppierung/Sortierung).
+     *
+     * @param list<array<string, mixed>> $items
+     *
+     * @return list<array<string, mixed>>
+     */
+    private function enrichSearchItemsWithAuthorSort(array $items): array
+    {
+        if ($items === []) {
+            return [];
+        }
+        $ids = array_map(static fn ($i) => (int) ($i['id'] ?? 0), $items);
+        $ids = array_values(array_filter(array_unique($ids)));
+        if ($ids === []) {
+            return $items;
+        }
+        $placeholders = implode(',', array_fill(0, \count($ids), '?'));
+        $rows = $this->connection->fetchAllAssociative(
+            'SELECT ic.item_id, CONCAT(COALESCE(cm.zotero_lastname,\'\'), \' \', COALESCE(cm.zotero_firstname,\'\')) AS first_author_sort
+             FROM tl_zotero_item_creator ic
+             JOIN tl_zotero_creator_map cm ON cm.id = ic.creator_map_id
+             WHERE ic.item_id IN (' . $placeholders . ')
+             ORDER BY ic.item_id, ic.sorting ASC, ic.id ASC',
+            $ids
+        );
+        $firstByItem = [];
+        foreach ($rows as $row) {
+            $itemId = (int) $row['item_id'];
+            if (!isset($firstByItem[$itemId])) {
+                $firstByItem[$itemId] = $row['first_author_sort'] ?? '';
+            }
+        }
+        foreach ($items as $i => $item) {
+            $items[$i]['first_author_sort'] = $firstByItem[(int) ($item['id'] ?? 0)] ?? '';
+        }
+
+        return $items;
+    }
+
+    /**
+     * Baut Query-String mit Such-Parametern für reader_url.
+     * Erhält Filterkontext beim Klick auf ein Listen-Item.
+     */
+    private function buildSearchParamsQueryString(Request $request): string
+    {
+        $params = [];
+        foreach (['keywords', 'zotero_author', 'zotero_year_from', 'zotero_year_to', 'zotero_item_type', 'page'] as $key) {
+            $value = $request->query->get($key);
+            if ($value !== null && $value !== '') {
+                $params[$key] = $value;
+            }
+        }
+
+        return $params !== [] ? http_build_query($params, '', '&', \PHP_QUERY_RFC3986) : '';
     }
 
     /**

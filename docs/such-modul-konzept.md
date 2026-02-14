@@ -1,8 +1,8 @@
 # Konzept: Zotero-Such-Modul für das Frontend
 
-**Stand:** 13. Februar 2025  
+**Stand:** 14. Februar 2025  
 **Bundle:** raum51/contao-zotero-bundle  
-**Ziel:** Vergleich verschiedener Ansätze zur Umsetzung eines Such-Moduls sowie Empfehlung einer Contao-konformen Lösung.
+**Ziel:** Vergleich verschiedener Ansätze zur Umsetzung eines Such-Moduls sowie Empfehlung einer Contao-konformen Lösung. Abschnitt 7: Erweiterungskonzept Version 2 (Februar 2025).
 
 ---
 
@@ -486,7 +486,161 @@ Contao verwendet **einen zentralen Suchindex** (`tl_search`, `tl_search_index`, 
 
 ---
 
-## 7. Referenzen
+## 7. Erweiterungskonzept Version 2 (Februar 2025)
+
+**Status:** Entwurf – Umsetzung erst nach Freigabe.
+
+### 7.1 Rollback: Gruppierung im Suchmodus
+
+Die vorherige Änderung (Gruppierung auf Suchergebnisse anwenden) wird **zurückgebaut**. Sie unterläuft die Sortierung nach Relevanz-Score. Die betroffenen Änderungen sind in `ZoteroListContentController`, `ZoteroListController` und `change-log.md` dokumentiert und können per Git zurückgerollt werden.
+
+---
+
+### 7.2 Filter vs. Suche – Sortier- und Gruppierungslogik
+
+| Situation | Verhalten |
+|-----------|-----------|
+| **Nur Filter** (kein Suchbegriff eingegeben) | Gruppierungs- und Sortiereinstellungen vom **Listen-CE/-Modul** werden verwendet. |
+| **Suche mit Suchbegriff** | Abhängig von neuer Backend-Option im CE Suche/Filter: |
+| → „Nach Gewicht sortieren“ aktiv | Sortierung nach Relevanz-Score (score DESC, title ASC). Listen-Sortierung und -Gruppierung werden ignoriert. |
+| → „Nach Gewicht sortieren“ deaktiviert | Listen-Sortierung und -Gruppierung bleiben aktiv – auch bei Suchbegriff. |
+
+**Bedingung für Gewichtssortierung:** Nur wenn **tatsächlich** ein Suchbegriff eingegeben wurde **und** die Gewichtung im Such-CE aktiviert ist, greift die Relevanz-Sortierung.
+
+---
+
+### 7.3 Durchsuchbare Felder – Erweiterung
+
+**Neue Felder (zusätzlich zu title, tags, abstract):**
+
+| Feld | Beschreibung | Datenquelle |
+|------|--------------|-------------|
+| **creators** | Autoren/Creators | `tl_zotero_creator_map.zotero_firstname`, `tl_zotero_creator_map.zotero_lastname` sowie verknüpfte `tl_member.firstname`, `tl_member.lastname` (falls member_id gesetzt) |
+| **zotero_key** | Zotero-Item-Key | `tl_zotero_item.zotero_key` |
+| **year** | Erscheinungsjahr | `tl_zotero_item.year` |
+| **publication_title** | Publikationstitel (Zeitschrift etc.) | `tl_zotero_item.publication_title` |
+
+**Abstract:** Wird als Spalte `abstract` (mediumtext NULL) in `tl_zotero_item` aufgenommen. ZoteroSyncService schreibt beim Sync den Inhalt aus `json_data.abstractNote` in die Spalte. Einheitliche Struktur für alle durchsuchbaren Felder außer Creators. **Migration:** Eine Einmal-Migration überführt `abstract` aus `json_data.abstractNote` in die neue Spalte für alle bestehenden Items.
+
+**Tags:** Bleiben als JSON gespeichert, z. B. `[{"tag":"health","type":1},{"tag":"hyperketonemia","type":1},{"tag":"ketosis diagnosis","type":1}]`. Für die LIKE-Suche wird das Roh-JSON durchsucht (der Suchbegriff wird im String gefunden). Keine Umstellung.
+
+**Indexe:** Keine zusätzlichen Indexe geplant. Die Suche erfolgt überwiegend mit LIKE (`%term%`); B-Tree-Indexe helfen bei Wildcard-Suche in der Mitte kaum. Bei typischen Zotero-Größen (< 10.000 Items) ausreichend performant.
+
+---
+
+### 7.4 Gewichtung pro Feld – Backend-Konfiguration
+
+**Ersetzung des Textfelds „Durchsuchbare Felder“ durch 7 numerische Gewichtsfelder:**
+
+| Feld | Default-Gewicht | Bedeutung |
+|------|-----------------|-----------|
+| zotero_search_weight_title | 100 | Titel |
+| zotero_search_weight_creators | 10 | Creators (tl_zotero_creator_map + tl_member) |
+| zotero_search_weight_tags | 10 | Tags |
+| zotero_search_weight_publication_title | 1 | Publication Title |
+| zotero_search_weight_year | 1 | Jahr |
+| zotero_search_weight_abstract | 1 | Abstract |
+| zotero_search_weight_zotero_key | 1 | Zotero-Key |
+
+**Regel:** Gewicht `0` = Feld wird **nicht** durchsucht (deaktiviert).
+
+**Backend:** Jedes Feld ein eigenes numerisches Eingabefeld (z. B. `eval: ['rgxp'=>'natural', 'minval'=>0]`). Reihenfolge im Formular entspricht der Tabelle; die numerische Gewichtung ersetzt die bisherige Reihenfolge als Priorität.
+
+---
+
+### 7.5 Suche optional – CE als reiner Filter
+
+- **Backend-Option:** `zotero_search_enabled` (Checkbox). Wenn **nicht** aktiviert: CE fungiert als **reiner Filter** (Autor, Jahr, Item-Typ), kein Suchfeld im Frontend. **Standard: aktiviert** – bestehende CEs/Module behalten das Suchfeld.
+- **Filter-Felder (Autor, Jahr, Item-Typ):** `zotero_search_show_author`, `zotero_search_show_year`, `zotero_search_show_item_type` – **Standard: deaktiviert**. Im Frontend erscheinen nur die Filter, die explizit im Backend aktiviert wurden.
+- **Dynamische Paletten:** Die Such-Konfigurationsfelder (Gewichte, Token-Logik, Max. Tokens, Max. Treffer) werden nur angezeigt, wenn `zotero_search_enabled` aktiv ist (`__selector__` + `subpalettes`).
+- **Umbenennung:** CE und Modul „Zotero-Suche“ → **„Zotero-Suche/Filter“** (Sprachdateien, DCA-Reference). CE und Modul haben dieselbe Konfiguration; Änderungen betreffen beide.
+
+---
+
+### 7.6 Sortier-Option im CE Suche/Filter
+
+**Neue Backend-Option:** `zotero_search_sort_by_weight` (Checkbox, Standard: aktiv).
+
+| zotero_search_sort_by_weight | keywords gesetzt | Verhalten |
+|------------------------------|------------------|-----------|
+| aktiviert | ja | Sortierung nach Relevanz-Score (Listen-Sortierung/Gruppierung ignoriert) |
+| aktiviert | nein | Nur Filter → Listen-Sortierung/Gruppierung |
+| deaktiviert | ja | Listen-Sortierung und -Gruppierung auch bei Suchbegriff |
+| deaktiviert | nein | Nur Filter → Listen-Sortierung/Gruppierung |
+
+**Kernlogik:** Wenn `keywords` leer ist, gilt **immer** die Listen-Sortierung und -Gruppierung. Die Option greift nur, wenn ein Suchbegriff eingegeben wurde.
+
+**Wichtig:** Auch wenn die Sortierung nach Gewicht deaktiviert ist, bleiben die **Gewichtseinstellungen der durchsuchbaren Felder** wirksam: Felder mit Gewicht 0 werden gar nicht durchsucht. Die Gewichtung steuert also stets, welche Felder in die Suche einbezogen werden; `zotero_search_sort_by_weight` betrifft nur die **Sortierung** der Treffer, nicht die Auswahl der Suchfelder.
+
+---
+
+### 7.7 Token-Logik im Frontend wählbar
+
+**Erweiterung von `zotero_search_token_mode`:**
+
+| Wert | Bedeutung |
+|------|-----------|
+| `and` | AND (alle Begriffe) – fest im Backend |
+| `or` | OR (mindestens ein Begriff) – fest im Backend |
+| `frontend` | **Im Frontend wählbar** – der Nutzer wählt per Radio-Buttons |
+
+**Backend:** Dropdown bleibt unverändert (3 Optionen: AND, OR, Frontend wählbar).
+
+**Frontend:** Bei `frontend` – Radio-Buttons „Alle Begriffe / Mindestens ein Begriff“. GET-Parameter `query_type` (Werte: `and`, `or`). Bei `and`/`or` wird die Auswahl nicht angezeigt, der Wert ist fest.
+
+---
+
+### 7.8 Max. Token-Anzahl – Frontend-Hinweis
+
+Wenn die eingegebene Suchphrase nach Tokenisierung **mehr** Tokens ergibt als `zotero_search_max_tokens` erlaubt:
+
+- **Backend:** Tokens werden wie bisher auf das Limit gekürzt (Überschuss verworfen).
+- **Frontend:** Zusätzlich eine **Info-Nachricht** anzeigen, z. B.: „Ihre Suche wurde auf X Begriffe gekürzt. Weitere Begriffe wurden ignoriert.“ Die Meldung erscheint **immer oberhalb der Trefferliste** – auch bei 0 Treffern –, damit der Nutzer die Kürzung bemerkt.
+
+**Umsetzung:** Listen-Controller prüft, ob `count(tokenize(keywords)) > maxTokens`. Wenn ja, `template->token_limit_exceeded = true` und `template->token_limit = maxTokens` setzen. Im Listen-Template Hinweis-Box oberhalb der Ergebnisse rendern.
+
+---
+
+### 7.9 Creators-Suche – technische Umsetzung
+
+Die Creators-Suche muss zwei Quellen abdecken:
+
+1. **tl_zotero_creator_map:** `zotero_firstname`, `zotero_lastname` (pro Item über `tl_zotero_item_creator`).
+2. **tl_member:** `firstname`, `lastname` (wenn `tl_zotero_creator_map.member_id` gesetzt).
+
+**SQL-Strategie:** Subquery oder EXISTS-Klausel, die für jedes Item prüft, ob ein Token in einer der vier Spalten vorkommt:
+
+```sql
+-- Vereinfacht: Token "mueller" findet Items, bei denen
+-- (cm.zotero_firstname LIKE '%mueller%' OR cm.zotero_lastname LIKE '%mueller%'
+--  OR m.firstname LIKE '%mueller%' OR m.lastname LIKE '%mueller%')
+-- für mindestens einen Creator des Items gilt.
+```
+
+**JOIN-Struktur:** `tl_zotero_item` → `tl_zotero_item_creator` → `tl_zotero_creator_map` [LEFT JOIN `tl_member` ON member_id]. Die LIKE-Bedingungen werden in die WHERE-Klausel integriert. Bei mehreren Tokens (AND/OR) je nach Modus verknüpfen.
+
+---
+
+### 7.10 Zusammenfassung der Änderungen (Version 2)
+
+| Bereich | Änderung |
+|---------|----------|
+| **Rollback** | Gruppierung im Suchmodus entfernen |
+| **Filter vs. Suche** | Kein keywords → Listen-Sortierung/Gruppierung; mit keywords → abhängig von `zotero_search_sort_by_weight` |
+| **Durchsuchbare Felder** | 7 Felder: title, creators, tags, publication_title, year, abstract, zotero_key |
+| **Abstract-Spalte** | `tl_zotero_item.abstract` (mediumtext); ZoteroSync befüllt; Einmal-Migration für bestehende Items |
+| **Tags** | JSON bleiben; LIKE-Suche auf Roh-JSON |
+| **Indexe** | Keine zusätzlichen – LIKE-Suche, B-Tree hilft kaum |
+| **Gewichtung** | 7 numerische Felder, 0 = deaktiviert; **immer** wirksam (auch wenn Sortierung nach Gewicht aus) |
+| **CE als Filter** | `zotero_search_enabled` (Default: aktiv); Filter-Felder Autor/Jahr/Item-Typ (Default: deaktiviert) |
+| **Umbenennung** | „Zotero-Suche“ → „Zotero-Suche/Filter“ |
+| **Sortier-Option** | `zotero_search_sort_by_weight` – bei deaktiviert: Listen-Sortierung/Gruppierung auch bei Suche; Feldgewichte bleiben aktiv |
+| **Token-Logik** | Backend: Dropdown (AND/OR/frontend); Frontend bei `frontend`: Radio-Buttons |
+| **Token-Limit** | Frontend-Hinweis oberhalb der Liste (auch bei 0 Treffern), wenn Begriffe gekürzt wurden |
+
+---
+
+## 8. Referenzen
 
 - `schema-org-json-ld-konzept.md` – Schema.org/JSON-LD für Publikationen (optional: ItemCollection in Suchergebnissen)
 - [Contao: Website search](https://docs.contao.org/manual/en/layout/module-management/website-search)

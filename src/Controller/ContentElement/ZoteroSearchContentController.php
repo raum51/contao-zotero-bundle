@@ -54,7 +54,6 @@ final class ZoteroSearchContentController extends AbstractContentElementControll
         $template->show_year = $showYear;
         $template->show_item_type = $showItemType;
         $template->authors = $showAuthor ? $this->searchService->getMembersWithCreatorMapping() : [];
-        $template->item_types = $showItemType ? $this->localeLabelService->getAllItemTypeLabels($locale) : [];
 
         $template->label_keywords = $this->translator->trans('MSC.keywords', [], 'contao_default');
         $template->label_author = $this->translator->trans('tl_module.zotero_search_author_label', [], 'contao_tl_module');
@@ -70,6 +69,14 @@ final class ZoteroSearchContentController extends AbstractContentElementControll
         $template->zotero_year_from = $request->query->get('zotero_year_from', '');
         $template->zotero_year_to = $request->query->get('zotero_year_to', '');
         $template->zotero_item_type = $request->query->get('zotero_item_type', '');
+
+        $template->year_placeholder = str_starts_with($locale, 'de') ? 'JJJJ' : 'YYYY';
+
+        $allItemTypes = $showItemType ? $this->localeLabelService->getAllItemTypeLabels($locale) : [];
+        $typesWithItems = $this->searchService->getItemTypesWithPublishedItems();
+        $template->item_types = $typesWithItems !== []
+            ? array_intersect_key($allItemTypes, array_flip($typesWithItems))
+            : $allItemTypes;
 
         $headlineData = StringUtil::deserialize($model->headline ?? '', true);
         $template->headline = [

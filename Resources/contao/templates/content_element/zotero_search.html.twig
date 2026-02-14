@@ -23,11 +23,11 @@
                     {% if show_year %}
                         <div class="widget widget-text">
                             <label for="zotero_year_from">{{ label_year_from }}</label>
-                            <input type="number" name="zotero_year_from" id="zotero_year_from" value="{{ zotero_year_from }}" min="1000" max="9999" placeholder="2020" class="text">
+                            <input type="number" name="zotero_year_from" id="zotero_year_from" value="{{ zotero_year_from }}" min="1000" max="9999" placeholder="{{ year_placeholder|default('YYYY') }}" class="text">
                         </div>
                         <div class="widget widget-text">
                             <label for="zotero_year_to">{{ label_year_to }}</label>
-                            <input type="number" name="zotero_year_to" id="zotero_year_to" value="{{ zotero_year_to }}" min="1000" max="9999" placeholder="2024" class="text">
+                            <input type="number" name="zotero_year_to" id="zotero_year_to" value="{{ zotero_year_to }}" min="1000" max="9999" placeholder="{{ year_placeholder|default('YYYY') }}" class="text">
                         </div>
                     {% endif %}
                     {% if show_item_type and item_types|length > 0 %}

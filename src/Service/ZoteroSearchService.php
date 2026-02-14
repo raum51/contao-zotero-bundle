@@ -131,6 +131,21 @@ final class ZoteroSearchService
     }
 
     /**
+     * Item-Typen, für die mindestens ein publiziertes Item existiert.
+     *
+     * @return list<string>
+     */
+    public function getItemTypesWithPublishedItems(): array
+    {
+        $rows = $this->connection->fetchFirstColumn(
+            'SELECT DISTINCT item_type FROM tl_zotero_item WHERE published = ? AND item_type != ? ORDER BY item_type',
+            ['1', '']
+        );
+
+        return \is_array($rows) ? array_values(array_filter($rows, static fn ($v) => \is_string($v) && $v !== '')) : [];
+    }
+
+    /**
      * @return list<array{id: int, username: string|null, label: string}>
      */
     public function getMembersWithCreatorMapping(): array
