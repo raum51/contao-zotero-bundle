@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+$GLOBALS['TL_LANG']['tl_content']['title'] = ['Titel', 'Hier können Sie einen optionalen Titel für das Inhaltselement eingeben.'];
 $GLOBALS['TL_LANG']['tl_content']['zotero_item'] = ['Zotero-Einzelelement', 'Ein einzelnes Zotero-Item (fix oder aus URL)'];
 $GLOBALS['TL_LANG']['tl_content']['zotero_item_mode'] = ['Modus', 'Fest gewähltes Item oder Item aus URL (Reader)'];
 $GLOBALS['TL_LANG']['tl_content']['zotero_item_mode_options'] = [

@@ -9,18 +9,18 @@ declare(strict_types=1);
 
 $GLOBALS['TL_DCA']['tl_content']['palettes']['__selector__'][] = 'zotero_item_mode';
 $GLOBALS['TL_DCA']['tl_content']['palettes']['zotero_item'] =
-    '{type_legend},type,headline;{zotero_legend},zotero_item_mode,zotero_template;{template_legend:hide},customTpl;{protected_legend:hide},protected;{expert_legend:hide},guests,cssID;{invisible_legend:hide},invisible,start,stop';
+    '{type_legend},title,type,headline;{zotero_legend},zotero_item_mode,zotero_template;{template_legend:hide},customTpl;{protected_legend:hide},protected;{expert_legend:hide},guests,cssID;{invisible_legend:hide},invisible,start,stop';
 $GLOBALS['TL_DCA']['tl_content']['subpalettes']['zotero_item_mode_fixed'] = 'zotero_item_id';
 $GLOBALS['TL_DCA']['tl_content']['subpalettes']['zotero_item_mode_from_url'] = 'zotero_libraries';
 
 $GLOBALS['TL_DCA']['tl_content']['palettes']['zotero_items'] =
-    '{type_legend},type,headline;{zotero_legend},zotero_items,zotero_template;{template_legend:hide},customTpl;{expert_legend:hide},cssID';
+    '{type_legend},title,type,headline;{zotero_legend},zotero_items,zotero_template;{template_legend:hide},customTpl;{expert_legend:hide},cssID';
 
 $GLOBALS['TL_DCA']['tl_content']['palettes']['zotero_member_publications'] =
-    '{type_legend},type,headline;{zotero_legend},zotero_member,zotero_template;{template_legend:hide},customTpl;{expert_legend:hide},cssID';
+    '{type_legend},title,type,headline;{zotero_legend},zotero_member,zotero_template;{template_legend:hide},customTpl;{expert_legend:hide},cssID';
 
 $GLOBALS['TL_DCA']['tl_content']['palettes']['zotero_collection_publications'] =
-    '{type_legend},type,headline;{zotero_legend},zotero_collection,zotero_template;{template_legend:hide},customTpl;{expert_legend:hide},cssID';
+    '{type_legend},title,type,headline;{zotero_legend},zotero_collection,zotero_template;{template_legend:hide},customTpl;{expert_legend:hide},cssID';
 
 $GLOBALS['TL_DCA']['tl_content']['fields']['type']['options'][] = 'zotero_item';
 $GLOBALS['TL_DCA']['tl_content']['fields']['type']['options'][] = 'zotero_items';
