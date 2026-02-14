@@ -40,15 +40,27 @@ final class ZoteroSearchController extends AbstractFrontendModuleController
     protected function getResponse(FragmentTemplate $template, ModuleModel $model, Request $request): Response
     {
         $listPageId = (int) ($model->zotero_list_page ?? 0);
-        $showAuthor = (bool) ($model->zotero_search_show_author ?? true);
-        $showYear = (bool) ($model->zotero_search_show_year ?? true);
-        $showItemType = (bool) ($model->zotero_search_show_item_type ?? false);
+        $searchEnabled = ($model->zotero_search_enabled ?? '1') === '1';
+        $showAuthor = ($model->zotero_search_show_author ?? '') === '1';
+        $showYear = ($model->zotero_search_show_year ?? '') === '1';
+        $showItemType = ($model->zotero_search_show_item_type ?? '') === '1';
 
         $page = $listPageId > 0 ? PageModel::findPublishedById($listPageId) : null;
         $formAction = $page instanceof PageModel ? $page->getFrontendUrl() : '';
 
         $locale = $request->getLocale() ?: 'en';
+        $tokenMode = (string) ($model->zotero_search_token_mode ?? 'and');
+        $showQueryTypeChoice = $tokenMode === 'frontend';
+        $queryType = $request->query->getString('query_type', 'and');
+        if ($queryType !== 'or') {
+            $queryType = 'and';
+        }
+
         $template->form_action = $formAction;
+        $template->form_id = 'zotero_search_mod_' . (int) $model->id;
+        $template->search_enabled = $searchEnabled;
+        $template->show_query_type_choice = $showQueryTypeChoice;
+        $template->query_type = $queryType;
         $template->show_author = $showAuthor;
         $template->show_year = $showYear;
         $template->show_item_type = $showItemType;
@@ -62,6 +74,10 @@ final class ZoteroSearchController extends AbstractFrontendModuleController
         $template->label_item_type = $this->translator->trans('tl_module.zotero_search_item_type_label', [], 'contao_tl_module');
         $template->label_item_type_all = $this->translator->trans('tl_module.zotero_search_item_type_all', [], 'contao_tl_module');
         $template->label_search = $this->translator->trans('MSC.search', [], 'contao_default');
+        $template->label_query_type = $this->translator->trans('tl_module.zotero_search_query_type_label', [], 'contao_tl_module');
+        $opts = $GLOBALS['TL_LANG']['tl_module']['zotero_search_token_mode_options'] ?? [];
+        $template->label_query_type_and = (\is_array($opts) ? ($opts['and'] ?? 'AND') : 'AND');
+        $template->label_query_type_or = (\is_array($opts) ? ($opts['or'] ?? 'OR') : 'OR');
 
         $template->keywords = $request->query->getString('keywords');
         $template->zotero_author = $request->query->get('zotero_author', '');

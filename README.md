@@ -127,7 +127,7 @@ Das Bundle bietet drei Frontend-Modul-Typen unter der Kategorie **Zotero**:
 
 ### Suchmodus (Zotero-Liste + Zotero-Suche)
 
-1. **Zotero-Such-Modul** anlegen: Bibliotheken, **Zielseite Listen-Modul** (Seite mit Zotero-Listen-Modul), Filter-Optionen (Autor anzeigen, Jahr anzeigen, Item-Typ anzeigen), Such-Konfiguration (Felder, Token-Logik AND/OR, max. Token, max. Treffer).
+1. **Zotero-Such-Modul** anlegen: Bibliotheken, **Zielseite Listen-Modul** (Seite mit Zotero-Listen-Modul), Filter-Optionen (Autor anzeigen, Jahr anzeigen, Item-Typ anzeigen), Such-Konfiguration (7 Gewichtsfelder, Token-Logik AND/OR oder „Frontend wählbar“, max. Token, max. Treffer, Sortierung nach Gewicht vs. Listen-Einstellungen).
 2. **Zotero-Listen-Modul** auf der Zielseite: **Such-Modul** referenzieren (für Library-Schnittmenge, Item-Typ-Schnittmenge und Such-Konfiguration).
 3. Bei GET-Parametern zeigt das Listen-Modul Suchergebnisse statt der normalen Liste.
 
@@ -137,11 +137,12 @@ Das Bundle bietet drei Frontend-Modul-Typen unter der Kategorie **Zotero**:
 
 | Parameter | Beschreibung |
 |-----------|--------------|
-| `keywords` | Textsuche (Titel, Tags, Abstract) |
+| `keywords` | Textsuche (7 Felder mit Gewichtung: title, creators, tags, publication_title, year, abstract, zotero_key) |
 | `zotero_author` | Member-Alias oder member_id (nur Mitglieder mit Creator-Zuordnung) |
 | `zotero_year_from` | Erscheinungsjahr von (4-stellig) |
 | `zotero_year_to` | Erscheinungsjahr bis (4-stellig) |
 | `zotero_item_type` | Zotero-Item-Typ (z. B. journalArticle, book) – nur wenn „Filter Item-Typ anzeigen“ aktiv |
+| `query_type` | Token-Logik: `and` oder `or` – nur wenn Such-Konfiguration „Frontend wählbar“ verwendet |
 | `page` | Seite für Pagination (bei vielen Treffern) |
 
 **Stop-Wörter:** Das Bundle enthält Stop-Wörter für Deutsch und Englisch (MIT, stopwords-iso). Projektüberschreibung: `config/zotero_stopwords_de.php`, `config/zotero_stopwords_en.php` (PHP-Array `return [...];`).

@@ -63,3 +63,7 @@ services:
         tags: [{ name: contao.migration, priority: 0 }]
     Raum51\ContaoZoteroBundle\Migration\AddZoteroSearchContentElementMigration:
         tags: [{ name: contao.migration, priority: 0 }]
+    Raum51\ContaoZoteroBundle\Migration\AddAbstractColumnMigration:
+        tags: [{ name: contao.migration, priority: 0 }]
+    Raum51\ContaoZoteroBundle\Migration\AddZoteroSearchWeightsMigration:
+        tags: [{ name: contao.migration, priority: 0 }]

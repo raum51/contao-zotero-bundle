@@ -6,6 +6,9 @@
             {# Liste + Reader kombiniert: Lesemodul rendern (News-Pattern) #}
             {{ frontend_module(reader_module_id) }}
         {% elseif items|length > 0 %}
+            {% if token_limit_exceeded|default(false) %}
+                <p class="zotero-list__token-limit-info message-info">{{ 'tl_module.zotero_search_token_limit_exceeded'|trans([token_limit|default(10)], 'contao_tl_module') }}</p>
+            {% endif %}
             {% if search_mode|default(false) %}
                 <p class="zotero-list__search-info">
                     {{ 'tl_module.zotero_search_results'|trans({}, 'contao_tl_module') }}{% if search_keywords|default %} „{{ search_keywords }}“{% endif %}
@@ -33,6 +36,9 @@
                                             {% else %}
                                                 {% include "@Contao_Raum51ContaoZoteroBundle/zotero_item/" ~ item_template ~ ".html.twig" with {item: item} %}
                                             {% endif %}
+                                            {% if search_mode|default(false) and search_keywords|default and item.score is defined and item.score is not null %}
+                                                <span class="zotero-list__score" title="Relevanz-Score (Test)">Gewicht: {{ item.score }}</span>
+                                            {% endif %}
                                         </li>
                                     {% endfor %}
                                 </ul>
@@ -51,6 +57,9 @@
                             {% else %}
                                 {% include "@Contao_Raum51ContaoZoteroBundle/zotero_item/" ~ item_template ~ ".html.twig" with {item: item} %}
                             {% endif %}
+                            {% if search_mode|default(false) and search_keywords|default and item.score is defined and item.score is not null %}
+                                <span class="zotero-list__score" title="Relevanz-Score (Test)">Gewicht: {{ item.score }}</span>
+                            {% endif %}
                         </li>
                     {% endfor %}
                 {% endif %}
@@ -61,6 +70,9 @@
                 </nav>
             {% endif %}
         {% elseif search_mode|default(false) %}
+            {% if token_limit_exceeded|default(false) %}
+                <p class="zotero-list__token-limit-info message-info">{{ 'tl_module.zotero_search_token_limit_exceeded'|trans([token_limit|default(10)], 'contao_tl_module') }}</p>
+            {% endif %}
             <p class="zotero-list__no-results">{{ 'tl_module.zotero_search_no_results'|trans({}, 'contao_tl_module') }}</p>
         {% endif %}
     </div>

@@ -25,8 +25,11 @@ $GLOBALS['TL_DCA']['tl_content']['palettes']['zotero_collection_publications'] =
 $GLOBALS['TL_DCA']['tl_content']['palettes']['zotero_list'] =
     '{type_legend},title,type,headline;{zotero_legend},zotero_libraries,zotero_collections,zotero_item_types,zotero_author,zotero_template,zotero_reader_element,zotero_search_element,zotero_search_module;{config_legend},numberOfItems,perPage,zotero_list_order,zotero_list_sort_direction_date,zotero_list_group;{template_legend:hide},customTpl;{protected_legend:hide},protected;{expert_legend:hide},guests,cssID;{invisible_legend:hide},invisible,start,stop';
 
+$GLOBALS['TL_DCA']['tl_content']['palettes']['__selector__'][] = 'zotero_search_enabled';
 $GLOBALS['TL_DCA']['tl_content']['palettes']['zotero_search'] =
-    '{type_legend},title,type,headline;{zotero_legend},zotero_libraries,zotero_list_page,zotero_search_show_author,zotero_search_show_year,zotero_search_show_item_type;{search_config_legend},zotero_search_fields,zotero_search_token_mode,zotero_search_max_tokens,zotero_search_max_results;{template_legend:hide},customTpl;{protected_legend:hide},protected;{expert_legend:hide},guests,cssID;{invisible_legend:hide},invisible,start,stop';
+    '{type_legend},title,type,headline;{zotero_legend},zotero_libraries,zotero_list_page,zotero_search_enabled,zotero_search_show_author,zotero_search_show_year,zotero_search_show_item_type;{template_legend:hide},customTpl;{protected_legend:hide},protected;{expert_legend:hide},guests,cssID;{invisible_legend:hide},invisible,start,stop';
+$GLOBALS['TL_DCA']['tl_content']['subpalettes']['zotero_search_enabled'] =
+    'zotero_search_sort_by_weight,zotero_search_weight_title,zotero_search_weight_creators,zotero_search_weight_tags,zotero_search_weight_publication_title,zotero_search_weight_year,zotero_search_weight_abstract,zotero_search_weight_zotero_key,zotero_search_token_mode,zotero_search_max_tokens';
 
 $GLOBALS['TL_DCA']['tl_content']['fields']['type']['options'][] = 'zotero_item';
 $GLOBALS['TL_DCA']['tl_content']['fields']['type']['options'][] = 'zotero_items';
@@ -157,6 +160,69 @@ $GLOBALS['TL_DCA']['tl_content']['fields']['zotero_search_module'] = [
 ];
 
 // Felder für zotero_search (CE)
+$GLOBALS['TL_DCA']['tl_content']['fields']['zotero_search_enabled'] = [
+    'label' => &$GLOBALS['TL_LANG']['tl_content']['zotero_search_enabled'],
+    'exclude' => true,
+    'inputType' => 'checkbox',
+    'eval' => ['submitOnChange' => true, 'tl_class' => 'w50 m12'],
+    'sql' => "char(1) NOT NULL default '1'",
+];
+$GLOBALS['TL_DCA']['tl_content']['fields']['zotero_search_sort_by_weight'] = [
+    'label' => &$GLOBALS['TL_LANG']['tl_content']['zotero_search_sort_by_weight'],
+    'exclude' => true,
+    'inputType' => 'checkbox',
+    'eval' => ['tl_class' => 'w50 m12'],
+    'sql' => "char(1) NOT NULL default '1'",
+];
+$GLOBALS['TL_DCA']['tl_content']['fields']['zotero_search_weight_title'] = [
+    'label' => &$GLOBALS['TL_LANG']['tl_content']['zotero_search_weight_title'],
+    'exclude' => true,
+    'inputType' => 'text',
+    'eval' => ['rgxp' => 'natural', 'tl_class' => 'w50', 'minval' => 0],
+    'sql' => "varchar(8) NOT NULL default '100'",
+];
+$GLOBALS['TL_DCA']['tl_content']['fields']['zotero_search_weight_creators'] = [
+    'label' => &$GLOBALS['TL_LANG']['tl_content']['zotero_search_weight_creators'],
+    'exclude' => true,
+    'inputType' => 'text',
+    'eval' => ['rgxp' => 'natural', 'tl_class' => 'w50', 'minval' => 0],
+    'sql' => "varchar(8) NOT NULL default '10'",
+];
+$GLOBALS['TL_DCA']['tl_content']['fields']['zotero_search_weight_tags'] = [
+    'label' => &$GLOBALS['TL_LANG']['tl_content']['zotero_search_weight_tags'],
+    'exclude' => true,
+    'inputType' => 'text',
+    'eval' => ['rgxp' => 'natural', 'tl_class' => 'w50', 'minval' => 0],
+    'sql' => "varchar(8) NOT NULL default '10'",
+];
+$GLOBALS['TL_DCA']['tl_content']['fields']['zotero_search_weight_publication_title'] = [
+    'label' => &$GLOBALS['TL_LANG']['tl_content']['zotero_search_weight_publication_title'],
+    'exclude' => true,
+    'inputType' => 'text',
+    'eval' => ['rgxp' => 'natural', 'tl_class' => 'w50', 'minval' => 0],
+    'sql' => "varchar(8) NOT NULL default '1'",
+];
+$GLOBALS['TL_DCA']['tl_content']['fields']['zotero_search_weight_year'] = [
+    'label' => &$GLOBALS['TL_LANG']['tl_content']['zotero_search_weight_year'],
+    'exclude' => true,
+    'inputType' => 'text',
+    'eval' => ['rgxp' => 'natural', 'tl_class' => 'w50', 'minval' => 0],
+    'sql' => "varchar(8) NOT NULL default '1'",
+];
+$GLOBALS['TL_DCA']['tl_content']['fields']['zotero_search_weight_abstract'] = [
+    'label' => &$GLOBALS['TL_LANG']['tl_content']['zotero_search_weight_abstract'],
+    'exclude' => true,
+    'inputType' => 'text',
+    'eval' => ['rgxp' => 'natural', 'tl_class' => 'w50', 'minval' => 0],
+    'sql' => "varchar(8) NOT NULL default '1'",
+];
+$GLOBALS['TL_DCA']['tl_content']['fields']['zotero_search_weight_zotero_key'] = [
+    'label' => &$GLOBALS['TL_LANG']['tl_content']['zotero_search_weight_zotero_key'],
+    'exclude' => true,
+    'inputType' => 'text',
+    'eval' => ['rgxp' => 'natural', 'tl_class' => 'w50', 'minval' => 0],
+    'sql' => "varchar(8) NOT NULL default '1'",
+];
 $GLOBALS['TL_DCA']['tl_content']['fields']['zotero_list_page'] = [
     'label' => &$GLOBALS['TL_LANG']['tl_content']['zotero_list_page'],
     'exclude' => true,
@@ -170,14 +236,14 @@ $GLOBALS['TL_DCA']['tl_content']['fields']['zotero_search_show_author'] = [
     'exclude' => true,
     'inputType' => 'checkbox',
     'eval' => ['tl_class' => 'w50 m12'],
-    'sql' => "char(1) NOT NULL default '1'",
+    'sql' => "char(1) NOT NULL default ''",
 ];
 $GLOBALS['TL_DCA']['tl_content']['fields']['zotero_search_show_year'] = [
     'label' => &$GLOBALS['TL_LANG']['tl_content']['zotero_search_show_year'],
     'exclude' => true,
     'inputType' => 'checkbox',
     'eval' => ['tl_class' => 'w50 m12'],
-    'sql' => "char(1) NOT NULL default '1'",
+    'sql' => "char(1) NOT NULL default ''",
 ];
 $GLOBALS['TL_DCA']['tl_content']['fields']['zotero_search_show_item_type'] = [
     'label' => &$GLOBALS['TL_LANG']['tl_content']['zotero_search_show_item_type'],
@@ -197,10 +263,10 @@ $GLOBALS['TL_DCA']['tl_content']['fields']['zotero_search_token_mode'] = [
     'label' => &$GLOBALS['TL_LANG']['tl_content']['zotero_search_token_mode'],
     'exclude' => true,
     'inputType' => 'select',
-    'options' => ['and', 'or'],
+    'options' => ['and', 'or', 'frontend'],
     'reference' => &$GLOBALS['TL_LANG']['tl_content']['zotero_search_token_mode_options'],
     'eval' => ['tl_class' => 'w50'],
-    'sql' => "varchar(4) NOT NULL default 'and'",
+    'sql' => "varchar(16) NOT NULL default 'and'",
 ];
 $GLOBALS['TL_DCA']['tl_content']['fields']['zotero_search_max_tokens'] = [
     'label' => &$GLOBALS['TL_LANG']['tl_content']['zotero_search_max_tokens'],

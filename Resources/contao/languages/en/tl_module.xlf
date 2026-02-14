@@ -26,6 +26,9 @@
       <trans-unit id="tl_module.zotero_search_no_results">
         <source>No publications found.</source>
       </trans-unit>
+      <trans-unit id="tl_module.zotero_search_query_type_label">
+        <source>Token logic</source>
+      </trans-unit>
     </body>
   </file>
 </xliff>

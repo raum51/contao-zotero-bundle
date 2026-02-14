@@ -5,10 +5,19 @@
         <form action="{{ form_action }}" method="get">
             <div class="formbody">
                 <fieldset>
+                    {% if search_enabled %}
                     <div class="widget widget-text">
                         <label for="keywords">{{ label_keywords }}</label>
                         <input type="text" name="keywords" id="keywords" value="{{ keywords }}" placeholder="{{ label_keywords }}" class="text">
                     </div>
+                    {% if show_query_type_choice|default(false) %}
+                    <fieldset class="radio_container">
+                        <legend>{{ label_query_type|default('Token-Logik') }}</legend>
+                        <span><input type="radio" name="query_type" id="{{ form_id|default('zotero_search') }}_query_type_and" class="radio" value="and"{% if query_type|default('and') == 'and' %} checked{% endif %}> <label for="{{ form_id|default('zotero_search') }}_query_type_and">{{ label_query_type_and|default('AND (alle Begriffe)') }}</label></span>
+                        <span><input type="radio" name="query_type" id="{{ form_id|default('zotero_search') }}_query_type_or" class="radio" value="or"{% if query_type|default('and') == 'or' %} checked{% endif %}> <label for="{{ form_id|default('zotero_search') }}_query_type_or">{{ label_query_type_or|default('OR (mindestens ein Begriff)') }}</label></span>
+                    </fieldset>
+                    {% endif %}
+                    {% endif %}
                     {% if show_author and authors|length > 0 %}
                         <div class="widget widget-select">
                             <label for="zotero_author">{{ label_author }}</label>

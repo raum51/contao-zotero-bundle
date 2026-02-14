@@ -34,15 +34,24 @@ $GLOBALS['TL_LANG']['tl_content']['zotero_search_element'] = ['Search element', 
 $GLOBALS['TL_LANG']['tl_content']['zotero_search_module'] = ['Search module', 'Alternatively: Zotero search module (if no search CE is used)'];
 
 // Zotero search (CE)
-$GLOBALS['TL_LANG']['tl_content']['zotero_search'] = ['Zotero search', 'Search form for publications'];
+$GLOBALS['TL_LANG']['tl_content']['zotero_search'] = ['Zotero Search/Filter', 'Search form and filter for publications'];
+$GLOBALS['TL_LANG']['tl_content']['zotero_search_enabled'] = ['Enable search field', 'Unchecked: Filter only (author, year, item type), no search field'];
+$GLOBALS['TL_LANG']['tl_content']['zotero_search_sort_by_weight'] = ['Sort by relevance', 'When searching: sort by weight (otherwise use list sort/group)'];
+$GLOBALS['TL_LANG']['tl_content']['zotero_search_weight_title'] = ['Weight title', '0 = do not search'];
+$GLOBALS['TL_LANG']['tl_content']['zotero_search_weight_creators'] = ['Weight creators', '0 = do not search'];
+$GLOBALS['TL_LANG']['tl_content']['zotero_search_weight_tags'] = ['Weight tags', '0 = do not search'];
+$GLOBALS['TL_LANG']['tl_content']['zotero_search_weight_publication_title'] = ['Weight publication title', '0 = do not search'];
+$GLOBALS['TL_LANG']['tl_content']['zotero_search_weight_year'] = ['Weight year', '0 = do not search'];
+$GLOBALS['TL_LANG']['tl_content']['zotero_search_weight_abstract'] = ['Weight abstract', '0 = do not search'];
+$GLOBALS['TL_LANG']['tl_content']['zotero_search_weight_zotero_key'] = ['Weight Zotero key', '0 = do not search'];
 $GLOBALS['TL_LANG']['tl_content']['search_config_legend'] = 'Search configuration';
 $GLOBALS['TL_LANG']['tl_content']['zotero_list_page'] = ['Target page list element', 'Page with Zotero list for search results'];
 $GLOBALS['TL_LANG']['tl_content']['zotero_search_show_author'] = ['Show author filter', 'Author dropdown in search form'];
 $GLOBALS['TL_LANG']['tl_content']['zotero_search_show_year'] = ['Show year filter', 'Year from/to fields in search form'];
 $GLOBALS['TL_LANG']['tl_content']['zotero_search_show_item_type'] = ['Show item type filter', 'Item type dropdown in search form'];
 $GLOBALS['TL_LANG']['tl_content']['zotero_search_fields'] = ['Searchable fields', 'Order = priority (e.g. title,tags,abstract)'];
-$GLOBALS['TL_LANG']['tl_content']['zotero_search_token_mode'] = ['Token logic', 'AND: all terms required; OR: at least one'];
-$GLOBALS['TL_LANG']['tl_content']['zotero_search_token_mode_options'] = ['and' => 'AND (all terms)', 'or' => 'OR (at least one)'];
+$GLOBALS['TL_LANG']['tl_content']['zotero_search_token_mode'] = ['Token logic', 'AND: all terms; OR: at least one; Frontend: user selects'];
+$GLOBALS['TL_LANG']['tl_content']['zotero_search_token_mode_options'] = ['and' => 'AND (all terms)', 'or' => 'OR (at least one)', 'frontend' => 'Selectable in frontend'];
 $GLOBALS['TL_LANG']['tl_content']['zotero_search_max_tokens'] = ['Max. token count', 'Limit for multi-word search (0 = unlimited)'];
 $GLOBALS['TL_LANG']['tl_content']['zotero_search_max_results'] = ['Max. results', 'Limit for search results (0 = unlimited)'];
 $GLOBALS['TL_LANG']['tl_content']['numberOfItems'] = ['Number of items', 'Number of items to display (0 = all)'];

@@ -19,6 +19,7 @@ $GLOBALS['TL_LANG']['tl_zotero_item'] = [
     'publication_title' => ['Publication (journal/book)', ''],
     'cite_content' => ['Citation (HTML)', 'From Zotero (include=bib)'],
     'bib_content' => ['BibTeX', 'From Zotero API (format=bibtex)'],
+    'abstract' => ['Abstract', 'From json_data.abstractNote'],
     'json_data' => ['JSON data', 'Raw Zotero metadata'],
     'tags' => ['Tags', 'From Zotero (e.g. JSON)'],
     'download_attachments' => ['Attachments downloadable', ''],

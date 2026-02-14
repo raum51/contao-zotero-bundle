@@ -87,11 +87,12 @@ final class ZoteroListContentController extends AbstractContentElementController
             $searchLibraryIds = $this->parseLibraryIds($searchSource['zotero_libraries'] ?? '');
             $libraryIds = array_values(array_intersect($libraryIds, $searchLibraryIds));
             $effectiveItemTypes = $this->resolveEffectiveItemTypesForSearch($itemTypes, $zoteroItemType);
-            $searchFields = $this->parseSearchFields((string) ($searchSource['zotero_search_fields'] ?? 'title,tags,abstract'));
-            if ($searchFields === []) {
-                $searchFields = ['title', 'tags', 'abstract'];
-            }
+            $fieldWeights = $this->buildFieldWeights($searchSource);
             $tokenMode = (string) ($searchSource['zotero_search_token_mode'] ?? 'and');
+            if ($tokenMode === 'frontend') {
+                $qt = (string) $request->query->get('query_type', 'and');
+                $tokenMode = ($qt === 'or') ? 'or' : 'and';
+            }
             $maxTokens = (int) ($searchSource['zotero_search_max_tokens'] ?? 10) ?: 0;
             $maxResults = (int) ($searchSource['zotero_search_max_results'] ?? 0) ?: 0;
 
@@ -108,18 +109,18 @@ final class ZoteroListContentController extends AbstractContentElementController
             }
 
             $locale = $request->getLocale();
-            $rawItems = [];
+            $sortByWeight = ($searchSource['zotero_search_sort_by_weight'] ?? '1') === '1';
 
-            if ($groupBy !== '') {
+            if ($keywords !== '' && !$sortByWeight && $groupBy !== '') {
                 $fetchLimit = ($maxResults > 0 ? $maxResults : 9999) + 1;
-                $rawItems = $this->searchService->search(
+                $allSearchItems = $this->searchService->search(
                     $libraryIds,
                     $keywords,
                     $searchAuthorMemberId,
                     $yearFromInt,
                     $yearToInt,
                     $effectiveItemTypes,
-                    $searchFields,
+                    $fieldWeights,
                     $tokenMode,
                     $maxTokens,
                     $maxResults > 0 ? $maxResults : 9999,
@@ -128,7 +129,7 @@ final class ZoteroListContentController extends AbstractContentElementController
                     $requireCiteContent
                 );
                 [$items, $totalForSearch, $groups] = $this->applyGroupingAndPagination(
-                    $this->enrichSearchItemsWithAuthorSort($rawItems),
+                    $this->enrichSearchItemsWithAuthorSort($allSearchItems),
                     $groupBy,
                     $sortOrder,
                     $sortDirectionDate,
@@ -137,17 +138,8 @@ final class ZoteroListContentController extends AbstractContentElementController
                     $request
                 );
                 $page = max(1, (int) $request->query->get('page', 1));
-                $template->search_mode = true;
-                $template->items = $items;
-                $template->search_keywords = $keywords;
-                $template->search_author = $zoteroAuthor;
-                $template->search_year_from = $yearFrom;
-                $template->search_year_to = $yearTo;
-                $template->search_item_type = $zoteroItemType;
-                $template->total = $totalForSearch;
-                $template->groups = $groups;
-                $template->pagination = $this->buildPaginationHtml($totalForSearch, $perPage, $page, (int) $model->id, $request);
             } else {
+                $rawItems = [];
                 if ($limit > 0) {
                     $fetchLimit = $limit + 1;
                     $rawItems = $this->searchService->search(
@@ -157,7 +149,7 @@ final class ZoteroListContentController extends AbstractContentElementController
                         $yearFromInt,
                         $yearToInt,
                         $effectiveItemTypes,
-                        $searchFields,
+                        $fieldWeights,
                         $tokenMode,
                         $maxTokens,
                         $fetchLimit,
@@ -169,18 +161,23 @@ final class ZoteroListContentController extends AbstractContentElementController
                 $hasMore = \count($rawItems) > $limit;
                 $items = array_slice($rawItems, 0, $limit);
                 $totalForSearch = $offset + \count($items) + ($hasMore ? ($perPage > 0 ? $perPage : $limit) : 0);
-
-                $template->search_mode = true;
-                $template->items = $items;
-                $template->search_keywords = $keywords;
-                $template->search_author = $zoteroAuthor;
-                $template->search_year_from = $yearFrom;
-                $template->search_year_to = $yearTo;
-                $template->search_item_type = $zoteroItemType;
-                $template->total = $totalForSearch;
-                $template->groups = null;
-                $template->pagination = $this->buildPaginationHtml($totalForSearch, $perPage, $page, (int) $model->id, $request);
+                $groups = null;
             }
+
+            $tokens = $keywords !== '' ? $this->searchService->tokenizeForLocale($keywords, $locale, 0) : [];
+            $template->token_limit_exceeded = $maxTokens > 0 && \count($tokens) > $maxTokens;
+            $template->token_limit = $maxTokens;
+
+            $template->search_mode = true;
+            $template->items = $items;
+            $template->search_keywords = $keywords;
+            $template->search_author = $zoteroAuthor;
+            $template->search_year_from = $yearFrom;
+            $template->search_year_to = $yearTo;
+            $template->search_item_type = $zoteroItemType;
+            $template->total = $totalForSearch;
+            $template->groups = $groups ?? null;
+            $template->pagination = $this->buildPaginationHtml($totalForSearch, $perPage, $page, (int) $model->id, $request);
         } else {
             [$items, $total, $groups] = $this->fetchItemsWithMeta($libraryIds, $collections, $itemTypes, $sortOrder, $sortDirectionDate, $groupBy, $numberOfItems, $perPage, $request, $requireCiteContent, $authorMemberId);
             $template->search_mode = false;
@@ -348,6 +345,43 @@ final class ZoteroListContentController extends AbstractContentElementController
     /**
      * @return list<string>
      */
+    /**
+     * Baut fieldWeights aus Such-Konfiguration (7 Gewichtsfelder oder Fallback).
+     *
+     * @param array<string, mixed> $searchSource
+     *
+     * @return array<string, int>
+     */
+    private function buildFieldWeights(array $searchSource): array
+    {
+        $weightTitle = (int) ($searchSource['zotero_search_weight_title'] ?? 0);
+        if ($weightTitle > 0 || isset($searchSource['zotero_search_weight_title'])) {
+            return [
+                'title' => (int) ($searchSource['zotero_search_weight_title'] ?? 100),
+                'creators' => (int) ($searchSource['zotero_search_weight_creators'] ?? 10),
+                'tags' => (int) ($searchSource['zotero_search_weight_tags'] ?? 10),
+                'publication_title' => (int) ($searchSource['zotero_search_weight_publication_title'] ?? 1),
+                'year' => (int) ($searchSource['zotero_search_weight_year'] ?? 1),
+                'abstract' => (int) ($searchSource['zotero_search_weight_abstract'] ?? 1),
+                'zotero_key' => (int) ($searchSource['zotero_search_weight_zotero_key'] ?? 1),
+            ];
+        }
+        $searchFields = $this->parseSearchFields((string) ($searchSource['zotero_search_fields'] ?? 'title,tags,abstract'));
+        if ($searchFields === []) {
+            $searchFields = ['title', 'tags', 'abstract'];
+        }
+        $weights = ['title' => 0, 'creators' => 0, 'tags' => 0, 'publication_title' => 0, 'year' => 0, 'abstract' => 0, 'zotero_key' => 0];
+        $prio = 100;
+        foreach ($searchFields as $f) {
+            if (isset($weights[$f])) {
+                $weights[$f] = $prio;
+                $prio = max(1, (int) ($prio / 10));
+            }
+        }
+
+        return $weights;
+    }
+
     private function parseSearchFields(string $value): array
     {
         $parts = array_map('trim', explode(',', $value));
@@ -677,7 +711,7 @@ final class ZoteroListContentController extends AbstractContentElementController
     private function buildSearchParamsQueryString(Request $request): string
     {
         $params = [];
-        foreach (['keywords', 'zotero_author', 'zotero_year_from', 'zotero_year_to', 'zotero_item_type', 'page'] as $key) {
+        foreach (['keywords', 'zotero_author', 'zotero_year_from', 'zotero_year_to', 'zotero_item_type', 'query_type', 'page'] as $key) {
             $value = $request->query->get($key);
             if ($value !== null && $value !== '') {
                 $params[$key] = $value;
@@ -704,6 +738,15 @@ final class ZoteroListContentController extends AbstractContentElementController
                     'zotero_search_token_mode' => $ce->zotero_search_token_mode ?? 'and',
                     'zotero_search_max_tokens' => $ce->zotero_search_max_tokens ?? 10,
                     'zotero_search_max_results' => $ce->zotero_search_max_results ?? 0,
+                    'zotero_search_enabled' => $ce->zotero_search_enabled ?? '1',
+                    'zotero_search_sort_by_weight' => $ce->zotero_search_sort_by_weight ?? '1',
+                    'zotero_search_weight_title' => $ce->zotero_search_weight_title ?? null,
+                    'zotero_search_weight_creators' => $ce->zotero_search_weight_creators ?? null,
+                    'zotero_search_weight_tags' => $ce->zotero_search_weight_tags ?? null,
+                    'zotero_search_weight_publication_title' => $ce->zotero_search_weight_publication_title ?? null,
+                    'zotero_search_weight_year' => $ce->zotero_search_weight_year ?? null,
+                    'zotero_search_weight_abstract' => $ce->zotero_search_weight_abstract ?? null,
+                    'zotero_search_weight_zotero_key' => $ce->zotero_search_weight_zotero_key ?? null,
                 ];
             }
         }
@@ -716,6 +759,15 @@ final class ZoteroListContentController extends AbstractContentElementController
                     'zotero_search_token_mode' => $mod->zotero_search_token_mode ?? 'and',
                     'zotero_search_max_tokens' => $mod->zotero_search_max_tokens ?? 10,
                     'zotero_search_max_results' => $mod->zotero_search_max_results ?? 0,
+                    'zotero_search_enabled' => $mod->zotero_search_enabled ?? '1',
+                    'zotero_search_sort_by_weight' => $mod->zotero_search_sort_by_weight ?? '1',
+                    'zotero_search_weight_title' => $mod->zotero_search_weight_title ?? null,
+                    'zotero_search_weight_creators' => $mod->zotero_search_weight_creators ?? null,
+                    'zotero_search_weight_tags' => $mod->zotero_search_weight_tags ?? null,
+                    'zotero_search_weight_publication_title' => $mod->zotero_search_weight_publication_title ?? null,
+                    'zotero_search_weight_year' => $mod->zotero_search_weight_year ?? null,
+                    'zotero_search_weight_abstract' => $mod->zotero_search_weight_abstract ?? null,
+                    'zotero_search_weight_zotero_key' => $mod->zotero_search_weight_zotero_key ?? null,
                 ];
             }
         }

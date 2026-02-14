@@ -67,7 +67,7 @@ $GLOBALS['TL_DCA']['tl_zotero_item'] = [
         ],
     ],
     'palettes' => [
-        'default' => '{zotero_legend},zotero_key,alias,zotero_version,title,item_type,year,date,publication_title;{content_legend},cite_content,bib_content;{data_legend},json_data,tags;{options_legend},download_attachments,published',
+        'default' => '{zotero_legend},zotero_key,alias,zotero_version,title,item_type,year,date,publication_title;{content_legend},cite_content,bib_content,abstract;{data_legend},json_data,tags;{options_legend},download_attachments,published',
     ],
     'fields' => [
         'id' => [
@@ -153,6 +153,13 @@ $GLOBALS['TL_DCA']['tl_zotero_item'] = [
         ],
         'bib_content' => [
             'label' => &$GLOBALS['TL_LANG']['tl_zotero_item']['bib_content'],
+            'exclude' => true,
+            'inputType' => 'textarea',
+            'eval' => ['readonly' => true, 'tl_class' => 'clr long'],
+            'sql' => 'mediumtext NULL',
+        ],
+        'abstract' => [
+            'label' => &$GLOBALS['TL_LANG']['tl_zotero_item']['abstract'],
             'exclude' => true,
             'inputType' => 'textarea',
             'eval' => ['readonly' => true, 'tl_class' => 'clr long'],

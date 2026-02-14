@@ -34,6 +34,10 @@
         <source>No publications found.</source>
         <target>Keine Publikationen gefunden.</target>
       </trans-unit>
+      <trans-unit id="tl_module.zotero_search_query_type_label">
+        <source>Token logic</source>
+        <target>Token-Logik</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

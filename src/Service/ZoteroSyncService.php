@@ -929,6 +929,7 @@ final class ZoteroSyncService
             $year = $m[0];
         }
         $publicationTitle = $this->stripHtmlFromText((string) ($data['publicationTitle'] ?? ''));
+        $abstract = $this->stripHtmlFromText((string) ($data['abstractNote'] ?? ''));
         $tags = $data['tags'] ?? [];
         $tagsJson = $tags !== [] ? json_encode($tags, \JSON_UNESCAPED_UNICODE) : null;
         $jsonData = json_encode($data, \JSON_UNESCAPED_UNICODE | \JSON_THROW_ON_ERROR);
@@ -961,6 +962,7 @@ final class ZoteroSyncService
             'publication_title' => $publicationTitle,
             'cite_content' => $this->processCiteContent($citeContent, $citeContentMarkup),
             'bib_content' => $bibContent,
+            'abstract' => $abstract !== '' ? $abstract : null,
             'json_data' => $jsonData,
             'tags' => $tagsJson,
             'download_attachments' => '',

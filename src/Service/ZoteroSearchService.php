@@ -22,9 +22,9 @@ final class ZoteroSearchService
     }
 
     /**
-     * @param list<int>    $libraryIds
-     * @param list<string>|null $itemTypes null = alle; [] = keine Treffer; [x,y] = nur diese Typen
-     * @param list<string> $searchFields Reihenfolge = Priorität (z. B. ['title', 'tags', 'abstract'])
+     * @param list<int>             $libraryIds
+     * @param array<string, int>    $fieldWeights Feld => Gewicht (0 = nicht durchsuchen). Keys: title, creators, tags, publication_title, year, abstract, zotero_key
+     * @param list<string>|null     $itemTypes    null = alle; [] = keine Treffer; [x,y] = nur diese Typen
      *
      * @return list<array<string, mixed>>
      */
@@ -35,7 +35,7 @@ final class ZoteroSearchService
         ?int $yearFrom,
         ?int $yearTo,
         ?array $itemTypes,
-        array $searchFields,
+        array $fieldWeights,
         string $tokenMode,
         int $maxTokens,
         int $maxResults,
@@ -51,7 +51,7 @@ final class ZoteroSearchService
         $stopwords = $this->stopwordService->getStopwordsForLocale($locale);
 
         $qb = $this->connection->createQueryBuilder();
-        $qb->select('i.id', 'i.pid', 'i.alias', 'i.title', 'i.year', 'i.date', 'i.publication_title', 'i.item_type', 'i.cite_content', 'i.json_data', 'i.tags')
+        $qb->select('i.id', 'i.pid', 'i.alias', 'i.title', 'i.year', 'i.date', 'i.publication_title', 'i.item_type', 'i.cite_content', 'i.json_data', 'i.tags', 'i.abstract', 'i.zotero_key')
             ->from('tl_zotero_item', 'i')
             ->where($qb->expr()->in('i.pid', ':pids'))
             ->andWhere('i.published = :published')
@@ -109,12 +109,17 @@ final class ZoteroSearchService
             $tokens = $this->tokenize($keywords, $stopwords, $maxTokens);
         }
 
+        $searchFields = $this->getActiveSearchFields($fieldWeights);
+        if ($searchFields === []) {
+            return [];
+        }
+
         if ($hasSpaces && \count($tokens) > 1) {
-            $this->applyTokenSearch($qb, $tokens, $searchFields, $tokenMode);
+            $this->applyTokenSearch($qb, $tokens, $searchFields, $fieldWeights, $tokenMode);
         } elseif ($hasSpaces) {
-            $this->applyPhraseOrSingleSearch($qb, $keywordsLower, $searchFields);
+            $this->applyPhraseOrSingleSearch($qb, $keywordsLower, $searchFields, $fieldWeights);
         } else {
-            $this->applyPhraseOrSingleSearch($qb, $keywordsLower, $searchFields);
+            $this->applyPhraseOrSingleSearch($qb, $keywordsLower, $searchFields, $fieldWeights);
         }
 
         $qb->orderBy('score', 'DESC')->addOrderBy('i.title', 'ASC');
@@ -177,6 +182,35 @@ final class ZoteroSearchService
 
 
     /**
+     * @param array<string, int> $fieldWeights
+     *
+     * @return list<string>
+     */
+    private function getActiveSearchFields(array $fieldWeights): array
+    {
+        $result = [];
+        foreach ($fieldWeights as $field => $weight) {
+            if ($weight > 0 && \in_array($field, ['title', 'creators', 'tags', 'publication_title', 'year', 'abstract', 'zotero_key'], true)) {
+                $result[] = $field;
+            }
+        }
+
+        return $result;
+    }
+
+    /**
+     * Zerlegt Suchtext in Tokens (für Token-Limit-Prüfung und -Anzeige).
+     *
+     * @return list<string>
+     */
+    public function tokenizeForLocale(string $input, string $locale, int $maxTokens = 0): array
+    {
+        $stopwords = $this->stopwordService->getStopwordsForLocale($locale);
+
+        return $this->tokenize($input, $stopwords, $maxTokens);
+    }
+
+    /**
      * @return list<string>
      */
     private function tokenize(string $input, array $stopwords, int $maxTokens): array
@@ -200,36 +234,66 @@ final class ZoteroSearchService
         return $tokens;
     }
 
+    /**
+     * @param list<string>         $searchFields
+     * @param array<string, int>   $fieldWeights
+     */
     private function applyPhraseOrSingleSearch(
         \Doctrine\DBAL\Query\QueryBuilder $qb,
         string $keyword,
-        array $searchFields
+        array $searchFields,
+        array $fieldWeights
     ): void {
         $likeArg = '%' . addcslashes($keyword, '%_\\') . '%';
         $scoreParts = [];
         $condParts = [];
 
         foreach ($searchFields as $i => $field) {
-            $weight = \count($searchFields) - $i;
-            $col = $this->getColumnExpression($qb, $field);
-            $scoreParts[] = "(CASE WHEN LOWER($col) LIKE :like_$i THEN $weight ELSE 0 END)";
-            $condParts[] = "LOWER($col) LIKE :like_$i";
+            $weight = $fieldWeights[$field] ?? 1;
+            if ($field === 'creators') {
+                $paramName = 'like_creators_' . $i;
+                $creatorsExists = $this->getCreatorsExistsCondition($paramName);
+                $scoreParts[] = "(CASE WHEN $creatorsExists THEN $weight ELSE 0 END)";
+                $condParts[] = $creatorsExists;
+                $qb->setParameter($paramName, $likeArg);
+            } else {
+                $col = $this->getColumnExpression($qb, $field);
+                $paramName = "like_$i";
+                $scoreParts[] = "(CASE WHEN LOWER($col) LIKE :$paramName THEN $weight ELSE 0 END)";
+                $condParts[] = "LOWER($col) LIKE :$paramName";
+                $qb->setParameter($paramName, $likeArg);
+            }
         }
 
         $qb->addSelect('(' . implode(' + ', $scoreParts) . ') AS score');
         $qb->andWhere('(' . implode(' OR ', $condParts) . ')');
-        foreach ($searchFields as $i => $field) {
-            $qb->setParameter("like_$i", $likeArg);
-        }
+    }
+
+    private function getCreatorsExistsCondition(string $paramName): string
+    {
+        return "EXISTS (
+            SELECT 1 FROM tl_zotero_item_creator ic
+            JOIN tl_zotero_creator_map cm ON cm.id = ic.creator_map_id
+            LEFT JOIN tl_member m ON m.id = cm.member_id
+            WHERE ic.item_id = i.id
+            AND (
+                LOWER(COALESCE(cm.zotero_firstname,'')) LIKE :$paramName
+                OR LOWER(COALESCE(cm.zotero_lastname,'')) LIKE :$paramName
+                OR LOWER(COALESCE(m.firstname,'')) LIKE :$paramName
+                OR LOWER(COALESCE(m.lastname,'')) LIKE :$paramName
+            )
+        )";
     }
 
     /**
-     * @param list<string> $tokens
+     * @param list<string>       $tokens
+     * @param array<string, int> $fieldWeights
      */
     private function applyTokenSearch(
         \Doctrine\DBAL\Query\QueryBuilder $qb,
         array $tokens,
         array $searchFields,
+        array $fieldWeights,
         string $tokenMode
     ): void {
         $scoreParts = [];
@@ -241,22 +305,23 @@ final class ZoteroSearchService
             $tokenCondParts = [];
 
             foreach ($searchFields as $fi => $field) {
-                $weight = \count($searchFields) - $fi;
-                $col = $this->getColumnExpression($qb, $field);
+                $weight = $fieldWeights[$field] ?? 1;
                 $paramName = "t{$ti}_f{$fi}";
-                $tokenScoreParts[] = "(CASE WHEN LOWER($col) LIKE :$paramName THEN $weight ELSE 0 END)";
-                $tokenCondParts[] = "LOWER($col) LIKE :$paramName";
+                if ($field === 'creators') {
+                    $creatorsExists = $this->getCreatorsExistsCondition($paramName);
+                    $tokenScoreParts[] = "(CASE WHEN $creatorsExists THEN $weight ELSE 0 END)";
+                    $tokenCondParts[] = $creatorsExists;
+                } else {
+                    $col = $this->getColumnExpression($qb, $field);
+                    $tokenScoreParts[] = "(CASE WHEN LOWER($col) LIKE :$paramName THEN $weight ELSE 0 END)";
+                    $tokenCondParts[] = "LOWER($col) LIKE :$paramName";
+                }
                 $qb->setParameter($paramName, $likeArg);
             }
 
             $scoreParts[] = '(' . implode(' + ', $tokenScoreParts) . ')';
             $groupCond = '(' . implode(' OR ', $tokenCondParts) . ')';
-
-            if ($tokenMode === 'and') {
-                $conditions[] = $groupCond;
-            } else {
-                $conditions[] = $groupCond;
-            }
+            $conditions[] = $groupCond;
         }
 
         $qb->addSelect('(' . implode(' + ', $scoreParts) . ') AS score');
@@ -273,7 +338,10 @@ final class ZoteroSearchService
         return match ($field) {
             'title' => 'i.title',
             'tags' => 'i.tags',
-            'abstract' => "COALESCE(JSON_UNQUOTE(JSON_EXTRACT(i.json_data, '$.abstractNote')), '')",
+            'abstract' => "COALESCE(i.abstract, '')",
+            'publication_title' => 'i.publication_title',
+            'year' => 'i.year',
+            'zotero_key' => 'i.zotero_key',
             default => 'i.title',
         };
     }
@@ -300,6 +368,7 @@ final class ZoteroSearchService
                 'item_type' => $row['item_type'] ?? '',
                 'cite_content' => $row['cite_content'] ?? '',
                 'data' => \is_array($data) ? $data : [],
+                'score' => isset($row['score']) ? (int) $row['score'] : null,
             ];
         }
 
