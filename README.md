@@ -148,6 +148,16 @@ Das Bundle bietet drei Frontend-Modul-Typen unter der Kategorie **Zotero**:
 
 ---
 
+## Content-Elemente (Kategorie Zotero)
+
+| Element | Beschreibung |
+|---------|---------------|
+| **Zotero-Einzelelement** | Ein einzelnes Zotero-Item. **Modus „Fest gewähltes Item“:** Item im Backend auswählen (z. B. für Artikel, Sidebar). **Modus „Item aus URL (Reader)“:** Item wird aus `auto_item` in der URL aufgelöst – für Detailseiten im News-Pattern. Bei Modus from_url: Libraries angeben, in denen gesucht wird. Template-Auswahl: cite_content, json_dl, fields. |
+
+**CE-only-Strategie:** Siehe [`docs/content-elemente-strategie.md`](docs/content-elemente-strategie.md). Weitere CE (Listenelement, Autorenelement, Such element) sind geplant; Frontend-Module werden perspektivisch ersetzt.
+
+---
+
 ## Frontend-Routen (Bib-Export & Attachments)
 
 Die Routen werden im Bundle über `Resources/config/routes.yaml` definiert und in der **Contao Managed Edition** automatisch per **RoutingPluginInterface** im Manager-Plugin geladen (vor dem Contao-Content-Routing). Kein manueller Eintrag in der App nötig.

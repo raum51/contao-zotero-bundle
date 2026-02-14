@@ -41,6 +41,8 @@ services:
     Raum51\ContaoZoteroBundle\Command\FetchLocalesCommand:
         tags: [{ name: console.command }]
 
+    Raum51\ContaoZoteroBundle\EventListener\DataContainer\ZoteroItemOptionsCallback:
+        public: true
     Raum51\ContaoZoteroBundle\EventListener\DataContainer\ZoteroReaderModuleOptionsCallback:
         public: true
     Raum51\ContaoZoteroBundle\EventListener\DataContainer\ZoteroLibraryOptionsCallback:

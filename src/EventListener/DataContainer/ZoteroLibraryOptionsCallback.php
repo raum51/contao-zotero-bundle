@@ -18,6 +18,7 @@ use Doctrine\DBAL\Connection;
  * Callback lädt die Optionen explizit aus der Datenbank.
  */
 #[AsCallback(table: 'tl_module', target: 'fields.zotero_libraries.options')]
+#[AsCallback(table: 'tl_content', target: 'fields.zotero_libraries.options')]
 final class ZoteroLibraryOptionsCallback
 {
     public function __construct(
