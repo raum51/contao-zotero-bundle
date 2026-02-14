@@ -280,3 +280,9 @@ Beim Sync werden **Textfelder**, die in die Datenbank übernommen werden (z. B
 Strukturierte Daten für Suchmaschinen und Knowledge Panels: Publikationen sollen als Schema.org-Typen (ScholarlyArticle, Book, CreativeWork etc.) per JSON-LD eingebettet werden. Contao bietet dafür die Twig-Funktion `add_schema_org()`.
 
 **Konzept und Umsetzungsplan:** Siehe [`docs/schema-org-json-ld-konzept.md`](bundles/raum51/contao-zotero-bundle/docs/schema-org-json-ld-konzept.md) – Zotero itemType → Schema.org-Mapping, empfohlene Properties, Integration über ZoteroReaderController.
+
+---
+
+## Tests (PHPUnit)
+
+**Konzept:** [`docs/phpunit-test-konzept.md`](docs/phpunit-test-konzept.md) – Contao-übliche Strategien (contao/test-case), Priorisierung, konkrete Test-Fälle für ZoteroBibUtil, ZoteroStopwordService, ZoteroSearchService, technische Einrichtung.
