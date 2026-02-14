@@ -9,7 +9,13 @@ declare(strict_types=1);
  * per Event contao.backend_menu_build gesteuert.
  */
 $GLOBALS['BE_MOD']['content']['bibliography'] = [
-    'tables' => ['tl_zotero_library', 'tl_zotero_collection', 'tl_zotero_item', 'tl_zotero_locales'],
+    'tables' => ['tl_zotero_library', 'tl_zotero_collection', 'tl_zotero_item'],
+];
+$GLOBALS['BE_MOD']['content']['tl_zotero_creator_map'] = [
+    'tables' => ['tl_zotero_creator_map'],
+];
+$GLOBALS['BE_MOD']['content']['tl_zotero_locales'] = [
+    'tables' => ['tl_zotero_locales'],
 ];
 
 /*

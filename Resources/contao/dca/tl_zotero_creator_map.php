@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 /*
  * DCA tl_zotero_creator_map – Mapping Zotero-Autor (firstname, lastname) → tl_member.
- * Kein Menüeintrag; Pflege nur im Item-Editor (tl_zotero_item_creator).
+ * Menüeintrag unter Literaturverwaltung (Option A). Label-Callback und Filter (Option B).
  */
 
 $GLOBALS['TL_DCA']['tl_zotero_creator_map'] = [
@@ -26,6 +26,7 @@ $GLOBALS['TL_DCA']['tl_zotero_creator_map'] = [
         'label' => [
             'fields' => ['zotero_firstname', 'zotero_lastname', 'member_id'],
             'format' => '%s %s → %s',
+            'label_callback' => [\Raum51\ContaoZoteroBundle\EventListener\DataContainer\CreatorMapLabelCallback::class, '__invoke'],
         ],
         'operations' => [
             'edit' => [
@@ -56,6 +57,7 @@ $GLOBALS['TL_DCA']['tl_zotero_creator_map'] = [
         'zotero_firstname' => [
             'label' => &$GLOBALS['TL_LANG']['tl_zotero_creator_map']['zotero_firstname'],
             'exclude' => true,
+            'search' => true,
             'inputType' => 'text',
             'eval' => ['mandatory' => true, 'maxlength' => 255],
             'sql' => "varchar(255) NOT NULL default ''",
@@ -63,6 +65,7 @@ $GLOBALS['TL_DCA']['tl_zotero_creator_map'] = [
         'zotero_lastname' => [
             'label' => &$GLOBALS['TL_LANG']['tl_zotero_creator_map']['zotero_lastname'],
             'exclude' => true,
+            'search' => true,
             'inputType' => 'text',
             'eval' => ['mandatory' => true, 'maxlength' => 255],
             'sql' => "varchar(255) NOT NULL default ''",
@@ -70,15 +73,16 @@ $GLOBALS['TL_DCA']['tl_zotero_creator_map'] = [
         'member_id' => [
             'label' => &$GLOBALS['TL_LANG']['tl_zotero_creator_map']['member_id'],
             'exclude' => true,
+            'search' => true,
             'inputType' => 'select',
+            'filter' => true,
             'eval' => [
                 'mandatory' => false,
-                'includeBlankOption' => true,
                 'chosen' => true,
                 'tl_class' => 'w50',
             ],
+            'options_callback' => [\Raum51\ContaoZoteroBundle\EventListener\DataContainer\CreatorMapMemberOptionsCallback::class, '__invoke'],
             'sql' => 'int(10) unsigned NOT NULL default 0',
-            'relation' => ['type' => 'hasOne', 'table' => 'tl_member', 'field' => 'id'],
         ],
     ],
 ];

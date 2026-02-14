@@ -9,16 +9,16 @@ use Contao\CoreBundle\Event\MenuEvent;
 use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
 
 /**
- * Stellt den Backend-Menüeintrag "bibliography" (Literaturverwaltung)
- * als letzten Punkt in der Kategorie "Inhalte" (content) dar.
+ * Gruppiert die Zotero-Backend-Menüeinträge unter "Literaturverwaltung".
  *
- * Das Menü wird per KnpMenu aus BE_MOD gebaut; die Reihenfolge lässt sich
- * über config.php nicht zuverlässig steuern. Daher verschieben wir den
- * Knoten im Event backend_menu_build ans Ende der content-Kinder.
+ * Bibliotheken, Autoren-Zuordnung und Locales werden als Kinder eines
+ * übergeordneten Menüpunkts "Literaturverwaltung" angezeigt.
  */
 #[AsEventListener(ContaoCoreEvents::BACKEND_MENU_BUILD, priority: -255)]
 class BackendMenuBibliographyPositionListener
 {
+    private const ZOTERO_MENU_IDS = ['bibliography', 'tl_zotero_creator_map', 'tl_zotero_locales'];
+
     public function __invoke(MenuEvent $event): void
     {
         $tree = $event->getTree();
@@ -31,12 +31,32 @@ class BackendMenuBibliographyPositionListener
         }
 
         $contentNode = $tree->getChild('content');
-        if (!$contentNode->getChild('bibliography')) {
+
+        $children = [];
+        foreach (self::ZOTERO_MENU_IDS as $menuId) {
+            $child = $contentNode->getChild($menuId);
+            if ($child !== null) {
+                $contentNode->removeChild($menuId);
+                $children[] = $child;
+            }
+        }
+
+        if ($children === []) {
             return;
         }
 
-        $bibliographyItem = $contentNode->getChild('bibliography');
-        $contentNode->removeChild('bibliography');
-        $contentNode->addChild($bibliographyItem);
+        $factory = $event->getFactory();
+        $groupLabel = $GLOBALS['TL_LANG']['MOD']['bibliography_group'][0] ?? 'Literaturverwaltung';
+
+        $groupNode = $factory
+            ->createItem('literaturverwaltung')
+            ->setLabel($groupLabel)
+            ->setUri('#');
+
+        foreach ($children as $child) {
+            $groupNode->addChild($child);
+        }
+
+        $contentNode->addChild($groupNode);
     }
 }
