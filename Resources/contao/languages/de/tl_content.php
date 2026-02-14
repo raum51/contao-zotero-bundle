@@ -30,7 +30,21 @@ $GLOBALS['TL_LANG']['tl_content']['zotero_collections'] = ['Collections', 'Optio
 $GLOBALS['TL_LANG']['tl_content']['zotero_item_types'] = ['Item-Typen', 'Optional: nur diese Typen anzeigen (leer = alle)'];
 $GLOBALS['TL_LANG']['tl_content']['zotero_author'] = ['Autor', 'Optional: nur Publikationen dieses Mitglieds anzeigen'];
 $GLOBALS['TL_LANG']['tl_content']['zotero_reader_element'] = ['Reader-Element', 'Zotero-Einzelelement (aus URL) für Detailansicht auf derselben Seite'];
-$GLOBALS['TL_LANG']['tl_content']['zotero_search_module'] = ['Such-Modul', 'Optional: Beim Suchmodus Libraries und Such-Konfiguration von diesem Modul übernehmen'];
+$GLOBALS['TL_LANG']['tl_content']['zotero_search_element'] = ['Such-Element', 'Zotero-Such-CE für Libraries und Such-Konfiguration beim Suchmodus'];
+$GLOBALS['TL_LANG']['tl_content']['zotero_search_module'] = ['Such-Modul', 'Alternativ: Zotero-Such-Modul (falls kein Such-CE eingesetzt wird)'];
+
+// Zotero-Suche (CE)
+$GLOBALS['TL_LANG']['tl_content']['zotero_search'] = ['Zotero-Suche', 'Suchformular für Publikationen'];
+$GLOBALS['TL_LANG']['tl_content']['search_config_legend'] = 'Such-Konfiguration';
+$GLOBALS['TL_LANG']['tl_content']['zotero_list_page'] = ['Zielseite Listen-Element', 'Seite mit Zotero-Liste für Suchergebnisse'];
+$GLOBALS['TL_LANG']['tl_content']['zotero_search_show_author'] = ['Filter Autor anzeigen', 'Dropdown für Autor-Filter im Suchformular'];
+$GLOBALS['TL_LANG']['tl_content']['zotero_search_show_year'] = ['Filter Jahr anzeigen', 'Felder Jahr von/bis im Suchformular'];
+$GLOBALS['TL_LANG']['tl_content']['zotero_search_show_item_type'] = ['Filter Item-Typ anzeigen', 'Dropdown für Item-Typ im Suchformular'];
+$GLOBALS['TL_LANG']['tl_content']['zotero_search_fields'] = ['Durchsuchbare Felder', 'Reihenfolge = Priorität (z. B. title,tags,abstract)'];
+$GLOBALS['TL_LANG']['tl_content']['zotero_search_token_mode'] = ['Token-Logik', 'AND: alle Begriffe müssen vorkommen; OR: mindestens einer'];
+$GLOBALS['TL_LANG']['tl_content']['zotero_search_token_mode_options'] = ['and' => 'AND (alle Begriffe)', 'or' => 'OR (mindestens ein Begriff)'];
+$GLOBALS['TL_LANG']['tl_content']['zotero_search_max_tokens'] = ['Max. Token-Anzahl', 'Begrenzung bei Mehrwort-Suche (0 = unbegrenzt)'];
+$GLOBALS['TL_LANG']['tl_content']['zotero_search_max_results'] = ['Max. Trefferanzahl', 'Limit der Suchergebnisse (0 = unbegrenzt)'];
 $GLOBALS['TL_LANG']['tl_content']['numberOfItems'] = ['Anzahl Einträge', 'Anzahl der angezeigten Einträge (0 = alle)'];
 $GLOBALS['TL_LANG']['tl_content']['perPage'] = ['Einträge pro Seite', 'Anzahl pro Seite bei Pagination (0 = keine Pagination)'];
 $GLOBALS['TL_LANG']['tl_content']['zotero_list_order'] = ['Sortierung', 'Reihenfolge der Einträge'];
