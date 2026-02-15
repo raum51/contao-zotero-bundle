@@ -19,8 +19,8 @@
         <target>Jahr bis</target>
       </trans-unit>
       <trans-unit id="tl_module.zotero_search_item_type_label">
-        <source>Item type</source>
-        <target>Item-Typ</target>
+        <source>Publication type</source>
+        <target>Publikations-Typ</target>
       </trans-unit>
       <trans-unit id="tl_module.zotero_search_item_type_all">
         <source>– All –</source>

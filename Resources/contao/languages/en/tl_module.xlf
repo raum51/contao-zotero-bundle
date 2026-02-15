@@ -15,7 +15,7 @@
         <source>Year to</source>
       </trans-unit>
       <trans-unit id="tl_module.zotero_search_item_type_label">
-        <source>Item type</source>
+        <source>Publication type</source>
       </trans-unit>
       <trans-unit id="tl_module.zotero_search_item_type_all">
         <source>– All –</source>

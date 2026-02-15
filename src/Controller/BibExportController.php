@@ -49,7 +49,7 @@ final class BibExportController
         }
 
         if ($row === false || ($row['bib_content'] ?? '') === '') {
-            throw new NotFoundHttpException('Item not found or not published.');
+            throw new NotFoundHttpException('Publication not found or not published.');
         }
 
         $content = (string) $row['bib_content'];
@@ -89,7 +89,7 @@ final class BibExportController
         }
 
         if ($parts === []) {
-            throw new NotFoundHttpException('No published items found.');
+            throw new NotFoundHttpException('No publications found.');
         }
 
         $content = implode("\n\n", $parts);
