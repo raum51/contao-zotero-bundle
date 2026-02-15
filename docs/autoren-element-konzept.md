@@ -152,10 +152,12 @@ Analog zum Zotero-Listenelement:
 ### 5.1 Controller: Member ermitteln
 
 ```php
-// Nur Pfad (auto_item)
+// Nur Pfad (auto_item) – sichere Auflösung (ohne oveleon fehlt tl_member.alias)
 $memberIdOrAlias = Input::get('auto_item');
-$member = $memberIdOrAlias ? MemberModel::findByIdOrAlias($memberIdOrAlias) : null;
+$member = $memberIdOrAlias ? $this->findMemberByIdOrAlias($memberIdOrAlias) : null;
 ```
+
+**Implementierung:** Wrapper `findMemberByIdOrAlias()`: numerisch → `findByPk`; nicht-numerisch → `findByIdOrAlias` im try-catch. Bei SQL-Fehler (Spalte `alias` fehlt) → `null`. So crasht das CE nicht, wenn auf derselben Seite ein Zotero-Einzelelement (Item-Reader) den `auto_item` belegt (z. B. Item-Alias) – Creator-Items zeigt leer.
 
 ### 5.2 Modus `fixed`
 

@@ -167,7 +167,25 @@ final class ZoteroCreatorItemsContentController extends AbstractContentElementCo
             return null;
         }
 
-        return MemberModel::findByIdOrAlias($memberIdOrAlias);
+        return $this->findMemberByIdOrAlias($memberIdOrAlias);
+    }
+
+    /**
+     * Member per ID oder Alias auflösen. Ohne oveleon (tl_member.alias) funktioniert nur numerische ID.
+     * Bei fehlender alias-Spalte führt findByIdOrAlias für nicht-numerische Werte zu SQL-Fehler –
+     * hier fangen wir ab und liefern null („kein Member“).
+     */
+    private function findMemberByIdOrAlias(string $value): ?MemberModel
+    {
+        if (is_numeric($value)) {
+            return MemberModel::findByPk((int) $value);
+        }
+
+        try {
+            return MemberModel::findByIdOrAlias($value);
+        } catch (\Throwable) {
+            return null;
+        }
     }
 
     /**
