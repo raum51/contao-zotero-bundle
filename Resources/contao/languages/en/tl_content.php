@@ -23,6 +23,15 @@ $GLOBALS['TL_LANG']['tl_content']['zotero_member'] = ['Contao member', 'Member w
 $GLOBALS['TL_LANG']['tl_content']['zotero_collection'] = ['Zotero collection', 'Collection whose publications are displayed'];
 $GLOBALS['TL_LANG']['tl_content']['zotero_template'] = ['Template', 'e.g. cite_content, json_dl, fields'];
 
+// Zotero Creator Items (CE)
+$GLOBALS['TL_LANG']['tl_content']['zotero_creator_items'] = ['Zotero creator publications', 'Publications of a Contao member (fixed or from URL)'];
+$GLOBALS['TL_LANG']['tl_content']['zotero_member_mode'] = ['Mode', 'Member fixed or from URL (path)'];
+$GLOBALS['TL_LANG']['tl_content']['zotero_member_mode_options'] = [
+    'fixed' => 'Member fixed',
+    'from_url' => 'Member from URL (path) – for member detail pages',
+];
+$GLOBALS['TL_LANG']['tl_content']['zotero_creator_items_no_publications'] = 'No publications';
+
 // Zotero list (CE)
 $GLOBALS['TL_LANG']['tl_content']['config_legend'] = 'List settings';
 $GLOBALS['TL_LANG']['tl_content']['zotero_list'] = ['Zotero list', 'Publication list from Zotero library'];

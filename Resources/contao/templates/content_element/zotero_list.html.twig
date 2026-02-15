@@ -72,6 +72,8 @@
                 <p class="zotero-list__token-limit-info message-info">{{ 'tl_module.zotero_search_token_limit_exceeded'|trans([token_limit|default(10)], 'contao_tl_module') }}</p>
             {% endif %}
             <p class="zotero-list__no-results">{{ 'tl_module.zotero_search_no_results'|trans({}, 'contao_tl_module') }}</p>
+        {% elseif creator_items_empty|default(false) %}
+            <p class="zotero-list__no-publications message-info">{{ 'tl_content.zotero_creator_items_no_publications'|trans({}, 'contao_tl_content') }}</p>
         {% endif %}
     </div>
 {% endblock %}

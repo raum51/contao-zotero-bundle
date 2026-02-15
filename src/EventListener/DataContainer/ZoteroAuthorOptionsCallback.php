@@ -12,9 +12,12 @@ use Doctrine\DBAL\Connection;
  * Liefert tl_member-Einträge, die publizierten Zotero-Items zugeordnet sind.
  * Format: "Nachname, Vorname (Anzahl publizierter Publikationen)".
  *
+ * Verwendet für: zotero_author (Zotero-Liste), zotero_member (Zotero-Creator-Publikationen, zotero_member_publications).
+ *
  * Liegt unter EventListener/DataContainer/, da es ein DCA-Callback für tl_content ist.
  */
 #[AsCallback(table: 'tl_content', target: 'fields.zotero_author.options')]
+#[AsCallback(table: 'tl_content', target: 'fields.zotero_member.options')]
 final class ZoteroAuthorOptionsCallback
 {
     public function __construct(
@@ -46,6 +49,10 @@ final class ZoteroAuthorOptionsCallback
             $count = (int) ($row['item_count'] ?? 0);
             $name = $last !== '' ? ($first !== '' ? $last . ', ' . $first : $last) : ($first !== '' ? $first : 'ID ' . $id);
             $options[$id] = $name . ' (' . $count . ')';
+        }
+
+        if ($options === []) {
+            return [0 => '– keine Mitglieder mit Publikationen –'];
         }
 
         return $options;

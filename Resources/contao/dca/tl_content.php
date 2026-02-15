@@ -25,6 +25,11 @@ $GLOBALS['TL_DCA']['tl_content']['palettes']['zotero_collection_publications'] =
 $GLOBALS['TL_DCA']['tl_content']['palettes']['zotero_list'] =
     '{type_legend},title,type,headline;{zotero_legend},zotero_libraries,zotero_collections,zotero_item_types,zotero_author,zotero_template,zotero_reader_element,zotero_search_element,zotero_search_module;{config_legend},numberOfItems,perPage,zotero_list_order,zotero_list_sort_direction_date,zotero_list_group;{template_legend:hide},customTpl;{protected_legend:hide},protected;{expert_legend:hide},guests,cssID;{invisible_legend:hide},invisible,start,stop';
 
+$GLOBALS['TL_DCA']['tl_content']['palettes']['__selector__'][] = 'zotero_member_mode';
+$GLOBALS['TL_DCA']['tl_content']['palettes']['zotero_creator_items'] =
+    '{type_legend},title,type,headline;{zotero_legend},zotero_member_mode,zotero_template,zotero_libraries,zotero_collections,zotero_item_types,zotero_reader_element;{config_legend},numberOfItems,perPage,zotero_list_order,zotero_list_sort_direction_date,zotero_list_group;{template_legend:hide},customTpl;{protected_legend:hide},protected;{expert_legend:hide},guests,cssID;{invisible_legend:hide},invisible,start,stop';
+$GLOBALS['TL_DCA']['tl_content']['subpalettes']['zotero_member_mode_fixed'] = 'zotero_member';
+
 $GLOBALS['TL_DCA']['tl_content']['palettes']['__selector__'][] = 'zotero_search_enabled';
 $GLOBALS['TL_DCA']['tl_content']['palettes']['zotero_search'] =
     '{type_legend},title,type,headline;{zotero_legend},zotero_libraries,zotero_list_page,zotero_search_enabled,zotero_search_show_author,zotero_search_show_year,zotero_search_show_item_type;{template_legend:hide},customTpl;{protected_legend:hide},protected;{expert_legend:hide},guests,cssID;{invisible_legend:hide},invisible,start,stop';
@@ -36,6 +41,7 @@ $GLOBALS['TL_DCA']['tl_content']['fields']['type']['options'][] = 'zotero_items'
 $GLOBALS['TL_DCA']['tl_content']['fields']['type']['options'][] = 'zotero_member_publications';
 $GLOBALS['TL_DCA']['tl_content']['fields']['type']['options'][] = 'zotero_collection_publications';
 $GLOBALS['TL_DCA']['tl_content']['fields']['type']['options'][] = 'zotero_list';
+$GLOBALS['TL_DCA']['tl_content']['fields']['type']['options'][] = 'zotero_creator_items';
 $GLOBALS['TL_DCA']['tl_content']['fields']['type']['options'][] = 'zotero_search';
 if (!isset($GLOBALS['TL_DCA']['tl_content']['fields']['type']['reference'])) {
     $GLOBALS['TL_DCA']['tl_content']['fields']['type']['reference'] = [];
@@ -45,6 +51,7 @@ $GLOBALS['TL_DCA']['tl_content']['fields']['type']['reference']['zotero_items'] 
 $GLOBALS['TL_DCA']['tl_content']['fields']['type']['reference']['zotero_member_publications'] = &$GLOBALS['TL_LANG']['tl_content']['zotero_member_publications'];
 $GLOBALS['TL_DCA']['tl_content']['fields']['type']['reference']['zotero_collection_publications'] = &$GLOBALS['TL_LANG']['tl_content']['zotero_collection_publications'];
 $GLOBALS['TL_DCA']['tl_content']['fields']['type']['reference']['zotero_list'] = &$GLOBALS['TL_LANG']['tl_content']['zotero_list'];
+$GLOBALS['TL_DCA']['tl_content']['fields']['type']['reference']['zotero_creator_items'] = &$GLOBALS['TL_LANG']['tl_content']['zotero_creator_items'];
 $GLOBALS['TL_DCA']['tl_content']['fields']['type']['reference']['zotero_search'] = &$GLOBALS['TL_LANG']['tl_content']['zotero_search'];
 
 $GLOBALS['TL_DCA']['tl_content']['fields']['zotero_item_mode'] = [
@@ -53,6 +60,15 @@ $GLOBALS['TL_DCA']['tl_content']['fields']['zotero_item_mode'] = [
     'inputType' => 'select',
     'options' => ['fixed', 'from_url'],
     'reference' => &$GLOBALS['TL_LANG']['tl_content']['zotero_item_mode_options'],
+    'eval' => ['mandatory' => true, 'submitOnChange' => true, 'tl_class' => 'w50'],
+    'sql' => "varchar(16) NOT NULL default 'fixed'",
+];
+$GLOBALS['TL_DCA']['tl_content']['fields']['zotero_member_mode'] = [
+    'label' => &$GLOBALS['TL_LANG']['tl_content']['zotero_member_mode'],
+    'exclude' => true,
+    'inputType' => 'select',
+    'options' => ['fixed', 'from_url'],
+    'reference' => &$GLOBALS['TL_LANG']['tl_content']['zotero_member_mode_options'],
     'eval' => ['mandatory' => true, 'submitOnChange' => true, 'tl_class' => 'w50'],
     'sql' => "varchar(16) NOT NULL default 'fixed'",
 ];
@@ -87,7 +103,8 @@ $GLOBALS['TL_DCA']['tl_content']['fields']['zotero_member'] = [
     'label' => &$GLOBALS['TL_LANG']['tl_content']['zotero_member'],
     'exclude' => true,
     'inputType' => 'select',
-    'eval' => ['mandatory' => true, 'chosen' => true, 'tl_class' => 'w50'],
+    'options_callback' => [\Raum51\ContaoZoteroBundle\EventListener\DataContainer\ZoteroAuthorOptionsCallback::class, '__invoke'],
+    'eval' => ['mandatory' => true, 'chosen' => true, 'includeBlankOption' => true, 'tl_class' => 'w50'],
     'sql' => 'int(10) unsigned NOT NULL default 0',
     'relation' => ['type' => 'hasOne', 'table' => 'tl_member', 'field' => 'id'],
 ];

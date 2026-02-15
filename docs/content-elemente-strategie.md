@@ -103,12 +103,15 @@ Ziel: **Von Anfang an nur CE einsetzen**, Frontend-Module einstampfen, um Code-D
 
 **Funktion:** Anzeige der Publikationen eines Contao-Mitglieds (tl_member).
 
-**Backend:**
-- Auswahl **ein** tl_member
-- Sortierung und Gruppierung (wie beim Listenelement)
-- Template-Auswahl, weitere Optionen
+**Dualer Modus:**
+- **fixed:** Ein Mitglied im Backend fest gewählt
+- **from_url:** Mitglied aus URL (Pfad `auto_item`) – für Member-Detailseiten
+
+**Backend:** Modus, bei fixed: tl_member; bei from_url: Parametername (Default: `show`), Libraries. Sortierung, Gruppierung, Template wie Listenelement.
 
 **Logik:** Filter nach `tl_zotero_item_creator` ↔ `tl_zotero_creator_map` ↔ `member_id`. Kann weitgehend die gleichen Services/Filter wie das Listenelement nutzen.
+
+**Details:** Siehe [autoren-element-konzept.md](autoren-element-konzept.md) – empfohlen: oveleon/contao-member-extension-bundle, Adressierung nur per Pfad (`auto_item`).
 
 **Abdeckung:**
 - CE „Publikationen eines Members“ → ersetzt
