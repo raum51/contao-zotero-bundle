@@ -103,9 +103,9 @@ final class ZoteroSearchService
         }
 
         $keywordsLower = mb_strtolower($keywords);
-        $hasSpaces = str_contains($keywords, ' ');
+        $hasTokenSeparators = (bool) preg_match('/[\s,;]/u', $keywords);
 
-        if ($hasSpaces) {
+        if ($hasTokenSeparators) {
             $tokens = $this->tokenize($keywords, $stopwords, $maxTokens);
         }
 
@@ -114,9 +114,9 @@ final class ZoteroSearchService
             return [];
         }
 
-        if ($hasSpaces && \count($tokens) > 1) {
+        if ($hasTokenSeparators && \count($tokens) > 1) {
             $this->applyTokenSearch($qb, $tokens, $searchFields, $fieldWeights, $tokenMode);
-        } elseif ($hasSpaces) {
+        } elseif ($hasTokenSeparators) {
             $this->applyPhraseOrSingleSearch($qb, $keywordsLower, $searchFields, $fieldWeights);
         } else {
             $this->applyPhraseOrSingleSearch($qb, $keywordsLower, $searchFields, $fieldWeights);
@@ -215,7 +215,7 @@ final class ZoteroSearchService
      */
     private function tokenize(string $input, array $stopwords, int $maxTokens): array
     {
-        $parts = preg_split('/\s+/u', mb_strtolower(trim($input)), -1, \PREG_SPLIT_NO_EMPTY);
+        $parts = preg_split('/[\s,;]+/u', mb_strtolower(trim($input)), -1, \PREG_SPLIT_NO_EMPTY);
         if ($parts === false) {
             return [];
         }
