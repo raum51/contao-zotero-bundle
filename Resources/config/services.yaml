@@ -65,5 +65,3 @@ services:
         tags: [{ name: contao.migration, priority: -2 }]
     Raum51\ContaoZoteroBundle\Migration\AddAbstractColumnMigration:
         tags: [{ name: contao.migration, priority: 0 }]
-    Raum51\ContaoZoteroBundle\Migration\AddZoteroMemberModeColumnMigration:
-        tags: [{ name: contao.migration, priority: 0 }]
