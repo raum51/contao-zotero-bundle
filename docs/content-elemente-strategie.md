@@ -181,13 +181,13 @@ Ziel: **Von Anfang an nur CE einsetzen**, Frontend-Module einstampfen, um Code-D
 
 Der CE-only-Ansatz ist sinnvoll und konsistent mit der Contao-Strategie. Das **universelle Einzelelement** (fix vs. from_url) reduziert Duplikate und vereinfacht die Architektur.
 
-**Umsetzungsreihenfolge (Vorschlag):**
+**Umsetzungsreihenfolge (Stand 16.02.2026):**
 
-1. Zotero-Einzelelement (beide Modi)
-2. Zotero-Listenelement (mit Referenz auf Einzelelement)
-3. Zotero-Autorenelement (aufbauend auf Listenelement)
-4. Zotero-Such element
-5. Frontend-Module entfernen
+1. [x] Zotero-Einzelelement (beide Modi)
+2. [x] Zotero-Listenelement (mit Referenz auf Einzelelement)
+3. [x] Zotero-Autorenelement (aufbauend auf Listenelement)
+4. [x] Zotero-Such element
+5. [ ] Frontend-Module entfernen
 
 ---
 

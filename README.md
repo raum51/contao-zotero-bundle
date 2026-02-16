@@ -289,11 +289,19 @@ Beim Sync werden **Textfelder**, die in die Datenbank übernommen werden (z. B
 
 ---
 
-## Schema.org / JSON-LD (geplant)
+## Geplante Funktionen
 
-Strukturierte Daten für Suchmaschinen und Knowledge Panels: Publikationen sollen als Schema.org-Typen (ScholarlyArticle, Book, CreativeWork etc.) per JSON-LD eingebettet werden. Contao bietet dafür die Twig-Funktion `add_schema_org()`.
+Die folgenden Erweiterungen sind geplant bzw. in Konzepten beschrieben:
 
-**Konzept und Umsetzungsplan:** Siehe [`docs/schema-org-json-ld-konzept.md`](bundles/raum51/contao-zotero-bundle/docs/schema-org-json-ld-konzept.md) – Zotero itemType → Schema.org-Mapping, empfohlene Properties, Integration über ZoteroReaderController.
+| Bereich | Beschreibung | Konzept/Status |
+|---------|--------------|----------------|
+| **Schema.org / JSON-LD** | Strukturierte Daten (ScholarlyArticle, Book etc.) per `add_schema_org()` in der Detailansicht | [`docs/schema-org-json-ld-konzept.md`](docs/schema-org-json-ld-konzept.md) |
+| **Contao-Suchindex** | Publikationen (Titel, Tags, Autor) für die Website-Suche indexieren (Sitemap-Event, Crawler) | such-modul-konzept.md §5 |
+| **CE-only (Abschluss)** | Frontend-Module entfernen, Legacy-CE bereinigen | content-elemente-strategie.md |
+| **download_attachments** | Einstellung pro CE/Modul für Attachment-Downloads (3 Ebenen: Library, Modul/CE, Item) | Blueprint |
+| **PHPUnit-Tests** | ZoteroBibUtil, ZoteroStopwordService, ZoteroSearchService etc. | [`docs/phpunit-test-konzept.md`](docs/phpunit-test-konzept.md) |
+| **Cronjob-Dokumentation** | Empfehlung für geplanten Sync | – |
+| **Streaming API** (optional) | WebSocket für push-basierte Benachrichtigungen bei Library-Änderungen | Blueprint 4.1 |
 
 ---
 
