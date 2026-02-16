@@ -17,6 +17,7 @@ use Doctrine\DBAL\Connection;
 use Raum51\ContaoZoteroBundle\Model\ZoteroItemModel;
 use Raum51\ContaoZoteroBundle\Service\ZoteroAttachmentResolver;
 use Raum51\ContaoZoteroBundle\Service\ZoteroLocaleLabelService;
+use Raum51\ContaoZoteroBundle\Service\ZoteroSchemaOrgService;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -40,6 +41,7 @@ final class ZoteroItemController extends AbstractContentElementController
         private readonly Connection $connection,
         private readonly ZoteroAttachmentResolver $attachmentResolver,
         private readonly ZoteroLocaleLabelService $localeLabelService,
+        private readonly ZoteroSchemaOrgService $schemaOrgService,
         private readonly ContentUrlGenerator $contentUrlGenerator,
     ) {
     }
@@ -76,6 +78,13 @@ final class ZoteroItemController extends AbstractContentElementController
 
         $itemTemplate = (string) ($model->zotero_template ?? 'cite_content');
         $itemArray = $this->itemToArray($item);
+
+        $canonicalUrl = (string) $request->getUri();
+        $schemaOrgData = $this->schemaOrgService->generateFromItem($itemArray, $canonicalUrl);
+        if ($schemaOrgData !== null) {
+            $itemArray['schema_org_data'] = $schemaOrgData;
+        }
+
         if ($itemTemplate === 'json_dl') {
             $data = $itemArray['data'] ?? [];
             $keys = \is_array($data) ? array_keys($data) : [];

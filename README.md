@@ -291,13 +291,23 @@ Beim Sync werden **Textfelder**, die in die Datenbank übernommen werden (z. B
 
 ---
 
+## Schema.org / JSON-LD
+
+Beim CE **Zotero-Einzelelement** werden strukturierte Metadaten (JSON-LD) gemäß [Schema.org](https://schema.org/) automatisch über `add_schema_org()` eingebettet. Damit können Suchmaschinen Publikationen besser erfassen (z. B. als ScholarlyArticle, Book, Thesis).
+
+**Mapping:** Zotero itemType → Schema.org @type (journalArticle→ScholarlyArticle, book→Book, thesis→Thesis, report→Report, newspaperArticle→NewsArticle, sonst CreativeWork). Enthaltene Properties: name, abstract, author (Person), datePublished, publisher, isPartOf, keywords, inLanguage, url, mainEntityOfPage.
+
+Details: [`docs/schema-org-json-ld-konzept.md`](docs/schema-org-json-ld-konzept.md)
+
+---
+
 ## Geplante Funktionen
 
 Die folgenden Erweiterungen sind geplant bzw. in Konzepten beschrieben:
 
 | Bereich | Beschreibung | Konzept/Status |
 |---------|--------------|----------------|
-| **Schema.org / JSON-LD** | Strukturierte Daten (ScholarlyArticle, Book etc.) per `add_schema_org()` in der Detailansicht | [`docs/schema-org-json-ld-konzept.md`](docs/schema-org-json-ld-konzept.md) |
+| **Schema.org / JSON-LD** | Strukturierte Daten (ScholarlyArticle, Book etc.) per `add_schema_org()` in der Detailansicht (CE Zotero-Einzelelement). ZoteroSchemaOrgService, zotero_item.html.twig | Implementiert (16.02.2026). Konzept: [`docs/schema-org-json-ld-konzept.md`](docs/schema-org-json-ld-konzept.md) |
 | **Contao-Suchindex** | Publikationen (Titel, Tags, Autor) für die Website-Suche indexieren (Sitemap-Event, Crawler) | such-modul-konzept.md §5 |
 | *~~Legacy-CE bereinigen~~* | *Erledigt (16.02.2026)* | – |
 | **download_attachments** | Einstellung pro CE/Modul für Attachment-Downloads (3 Ebenen: Library, Modul/CE, Item) | Blueprint |

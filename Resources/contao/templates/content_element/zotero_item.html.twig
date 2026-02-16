@@ -2,6 +2,9 @@
 
 {% block content %}
     <div class="zotero-item-element">
+        {% if item.schema_org_data|default %}
+            {% do add_schema_org(item.schema_org_data) %}
+        {% endif %}
         {% if referer|default %}
             <p class="back"><a href="{{ referer }}" title="{{ back|default('')|e }}">{{ back|default('')|e }}</a></p>
         {% endif %}
