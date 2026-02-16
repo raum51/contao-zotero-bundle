@@ -115,23 +115,17 @@ php bin/console contao:zotero:item ABC123 --log-api=var/logs/zotero_item_api.jso
 
 ---
 
-## Frontend-Module (Zotero-Suche)
+## Content-Elemente (CE-only, keine Frontend-Module)
 
-Das Bundle bietet drei Frontend-Modul-Typen unter der Kategorie **Zotero**:
-
-| Modul | Beschreibung |
-|-------|--------------|
-| **Zotero-Liste** | Publikationsliste aus Zotero-Bibliotheken (optional gefiltert nach Collections und Item-Typen). Konfigurierbar: Anzahl, Elemente pro Seite, Paginierung, Sortierung (Autor+Datum, Jahr+Autor, Titel), Sortierrichtung Datum/Jahr (auf-/absteigend), Gruppierung (Library, Collection, Item-Typ, Jahr). Bei Such-Parametern: Suchmodus mit Treffern. |
-| **Zotero-Lese** | Detailansicht eines Zotero-Items (News-Pattern mit auto_item). |
-| **Zotero-Suche** | Suchformular (Keywords, optional Autor, Jahr von/bis, Item-Typ). Leitet per GET auf die Zielseite mit Listen-Modul weiter. |
+Das Bundle nutzt ausschließlich **Content-Elemente** für die Zotero-Ausgabe. Frühere Frontend-Module (Zotero-Liste, Zotero-Lese, Zotero-Suche) wurden entfernt und durch die entsprechenden CE ersetzt.
 
 ### Suchmodus (Zotero-Liste + Zotero-Suche)
 
-1. **Zotero-Such-Modul** anlegen: Bibliotheken, **Zielseite Listen-Modul** (Seite mit Zotero-Listen-Modul), Filter-Optionen (Autor anzeigen, Jahr anzeigen, Item-Typ anzeigen), Such-Konfiguration (7 Gewichtsfelder, Token-Logik AND/OR oder „Frontend wählbar“, max. Token, max. Treffer, Sortierung nach Gewicht vs. Listen-Einstellungen).
-2. **Zotero-Listen-Modul** auf der Zielseite: **Such-Modul** referenzieren (für Library-Schnittmenge, Item-Typ-Schnittmenge und Such-Konfiguration).
-3. Bei GET-Parametern zeigt das Listen-Modul Suchergebnisse statt der normalen Liste.
+1. **Zotero-Such-CE** anlegen: Bibliotheken, **Zielseite Listen-Element** (Seite mit Zotero-Liste-CE), Filter-Optionen (Autor anzeigen, Jahr anzeigen, Item-Typ anzeigen), Such-Konfiguration (7 Gewichtsfelder, Token-Logik AND/OR oder „Frontend wählbar“, max. Token, max. Treffer, Sortierung nach Gewicht vs. Listen-Einstellungen).
+2. **Zotero-Listen-CE** auf der Zielseite: **Such-Element** referenzieren (für Library-Schnittmenge, Item-Typ-Schnittmenge und Such-Konfiguration).
+3. Bei GET-Parametern zeigt das Listen-CE Suchergebnisse statt der normalen Liste.
 
-**Schnittmengen:** Es werden nur Items aus Libraries angezeigt, die **sowohl** im Such- **als auch** im Listen-Modul aktiviert sind. Entsprechend: Wenn das Listen-Modul Item-Typen einschränkt, gilt das auch im Suchmodus – der Form-Filter „Item-Typ“ schränkt weiter ein (Schnittmenge).
+**Schnittmengen:** Es werden nur Items aus Libraries angezeigt, die **sowohl** im Such- **als auch** im Listen-CE aktiviert sind. Entsprechend: Wenn das Listen-CE Item-Typen einschränkt, gilt das auch im Suchmodus – der Form-Filter „Item-Typ“ schränkt weiter ein (Schnittmenge).
 
 **Request-Parameter:**
 
@@ -158,7 +152,7 @@ Das Bundle bietet drei Frontend-Modul-Typen unter der Kategorie **Zotero**:
 | **Zotero-Creator-Publikationen** | Publikationen eines Contao-Mitglieds. **Modus fixed:** Mitglied im Backend fest wählen. **Modus from_url:** Mitglied aus URL-Pfad (`auto_item`) – empfohlen mit oveleon/contao-member-extension-bundle. Einstellungen wie Zotero-Liste: Libraries, Collections, Item-Typen, Sortierung, Gruppierung, Reader-Element. |
 | **Zotero-Suche** | Suchformular (Keywords, optional Autor, Jahr von/bis, Item-Typ). Leitet per GET auf die Zielseite mit Zotero-Liste weiter. Libraries (Pflicht), Zielseite Listen-Element (Pflicht). Optionale Filter-Anzeige und Such-Konfiguration. |
 
-**CE-only-Strategie:** Siehe [`docs/content-elemente-strategie.md`](docs/content-elemente-strategie.md). Frontend-Module werden perspektivisch ersetzt.
+**CE-only:** Siehe [`docs/content-elemente-strategie.md`](docs/content-elemente-strategie.md). Frontend-Module wurden am 16.02.2026 entfernt.
 
 ---
 
@@ -187,7 +181,7 @@ Raum51ContaoZoteroBundle:
 | `GET /zotero/export/list.bib` | Liste als .bib. Query: `ids=1,2,3` oder `collection=123` oder `library=1`. |
 | `GET /zotero/attachment/{id}` | Attachment-Datei streamen (id = tl_zotero_item, item_type muss „attachment“ sein). Prüfung: Library- und Item-`download_attachments` müssen erlaubt sein. |
 
-Zugriff nur auf publizierte Items und publizierte Libraries. Modul-Ebene für `download_attachments` kommt mit den Frontend-Modulen (Phase 4).
+Zugriff nur auf publizierte Items und publizierte Libraries.
 
 ---
 
@@ -297,7 +291,7 @@ Die folgenden Erweiterungen sind geplant bzw. in Konzepten beschrieben:
 |---------|--------------|----------------|
 | **Schema.org / JSON-LD** | Strukturierte Daten (ScholarlyArticle, Book etc.) per `add_schema_org()` in der Detailansicht | [`docs/schema-org-json-ld-konzept.md`](docs/schema-org-json-ld-konzept.md) |
 | **Contao-Suchindex** | Publikationen (Titel, Tags, Autor) für die Website-Suche indexieren (Sitemap-Event, Crawler) | such-modul-konzept.md §5 |
-| **CE-only (Abschluss)** | Frontend-Module entfernen, Legacy-CE bereinigen | content-elemente-strategie.md |
+| **Legacy-CE bereinigen** | zotero_items, zotero_member_publications, zotero_collection_publications (DCA ohne Controller) | content-elemente-strategie.md |
 | **download_attachments** | Einstellung pro CE/Modul für Attachment-Downloads (3 Ebenen: Library, Modul/CE, Item) | Blueprint |
 | **PHPUnit-Tests** | ZoteroBibUtil, ZoteroStopwordService, ZoteroSearchService etc. | [`docs/phpunit-test-konzept.md`](docs/phpunit-test-konzept.md) |
 | **Cronjob-Dokumentation** | Empfehlung für geplanten Sync | – |

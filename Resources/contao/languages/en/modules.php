@@ -10,6 +10,3 @@ $GLOBALS['TL_LANG']['MOD']['bibliography'] = ['Libraries', 'Manage Zotero librar
 $GLOBALS['TL_LANG']['MOD']['bibliography_group'] = ['Literature management', 'Zotero libraries, authors and schema data'];
 $GLOBALS['TL_LANG']['MOD']['tl_zotero_creator_map'] = ['Author assignment', 'Assign Zotero creator to Contao member'];
 $GLOBALS['TL_LANG']['MOD']['tl_zotero_locales'] = ['Locales', 'Localized Zotero schema data (publication types, publication fields), populated via contao:zotero:fetch-locales or during sync'];
-
-// Category label for Zotero frontend modules (module type dropdown)
-$GLOBALS['TL_LANG']['FMD']['zotero'] = 'Zotero';

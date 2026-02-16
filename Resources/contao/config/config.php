@@ -19,11 +19,8 @@ $GLOBALS['BE_MOD']['content']['tl_zotero_locales'] = [
 ];
 
 /*
- * Frontend-Modul-Kategorie „Zotero“ für Zotero-Liste, -Reader und -Suche.
- * Fragment-Controller nutzen category: 'zotero' im AsFrontendModule-Attribut.
+ * CE-only: Frontend-Module (Zotero-Liste, -Reader, -Suche) wurden durch Content-Elemente ersetzt.
+ * FE_MOD zotero entfernt (16.02.2026).
  */
-if (!isset($GLOBALS['FE_MOD']['zotero'])) {
-    $GLOBALS['FE_MOD']['zotero'] = [];
-}
 
 $GLOBALS['TL_MODELS']['tl_zotero_item'] = \Raum51\ContaoZoteroBundle\Model\ZoteroItemModel::class;

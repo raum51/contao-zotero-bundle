@@ -10,7 +10,6 @@ use Contao\CoreBundle\Controller\ContentElement\AbstractContentElementController
 use Contao\CoreBundle\DependencyInjection\Attribute\AsContentElement;
 use Contao\CoreBundle\Twig\FragmentTemplate;
 use Contao\Input;
-use Contao\ModuleModel;
 use Contao\PageModel;
 use Contao\Pagination;
 use Contao\StringUtil;
@@ -59,7 +58,6 @@ final class ZoteroListContentController extends AbstractContentElementController
         }
 
         $searchElementId = (int) ($model->zotero_search_element ?? 0);
-        $searchModuleId = (int) ($model->zotero_search_module ?? 0);
         $keywords = $request->query->getString('keywords');
         $zoteroAuthor = $request->query->get('zotero_author', '');
         $yearFrom = $request->query->get('zotero_year_from', '');
@@ -82,7 +80,7 @@ final class ZoteroListContentController extends AbstractContentElementController
         $sortDirectionDate = (string) ($model->zotero_list_sort_direction_date ?? 'desc');
         $groupBy = (string) ($model->zotero_list_group ?? '');
 
-        $searchSource = $this->resolveSearchSource($searchElementId, $searchModuleId);
+        $searchSource = $this->resolveSearchSource($searchElementId);
         if ($hasSearchParams && $searchSource !== null) {
             $searchLibraryIds = $this->parseLibraryIds($searchSource['zotero_libraries'] ?? '');
             $libraryIds = array_values(array_intersect($libraryIds, $searchLibraryIds));
@@ -722,54 +720,33 @@ final class ZoteroListContentController extends AbstractContentElementController
     }
 
     /**
-     * Liefert Such-Konfiguration aus Such-CE oder Such-Modul.
-     * Priorität: Such-CE, falls gesetzt; sonst Such-Modul.
+     * Liefert Such-Konfiguration aus dem referenzierten Such-CE.
      *
      * @return array<string, mixed>|null
      */
-    private function resolveSearchSource(int $searchElementId, int $searchModuleId): ?array
+    private function resolveSearchSource(int $searchElementId): ?array
     {
-        if ($searchElementId > 0) {
-            $ce = ContentModel::findByPk($searchElementId);
-            if ($ce instanceof ContentModel && $ce->type === 'zotero_search') {
-                return [
-                    'zotero_libraries' => $ce->zotero_libraries ?? '',
-                    'zotero_search_fields' => $ce->zotero_search_fields ?? 'title,tags,abstract',
-                    'zotero_search_token_mode' => $ce->zotero_search_token_mode ?? 'and',
-                    'zotero_search_max_tokens' => $ce->zotero_search_max_tokens ?? 10,
-                    'zotero_search_max_results' => $ce->zotero_search_max_results ?? 0,
-                    'zotero_search_enabled' => $ce->zotero_search_enabled ?? '1',
-                    'zotero_search_sort_by_weight' => $ce->zotero_search_sort_by_weight ?? '1',
-                    'zotero_search_weight_title' => $ce->zotero_search_weight_title ?? null,
-                    'zotero_search_weight_creators' => $ce->zotero_search_weight_creators ?? null,
-                    'zotero_search_weight_tags' => $ce->zotero_search_weight_tags ?? null,
-                    'zotero_search_weight_publication_title' => $ce->zotero_search_weight_publication_title ?? null,
-                    'zotero_search_weight_year' => $ce->zotero_search_weight_year ?? null,
-                    'zotero_search_weight_abstract' => $ce->zotero_search_weight_abstract ?? null,
-                    'zotero_search_weight_zotero_key' => $ce->zotero_search_weight_zotero_key ?? null,
-                ];
-            }
+        if ($searchElementId <= 0) {
+            return null;
         }
-        if ($searchModuleId > 0) {
-            $mod = ModuleModel::findByPk($searchModuleId);
-            if ($mod instanceof ModuleModel && $mod->type === 'zotero_search') {
-                return [
-                    'zotero_libraries' => $mod->zotero_libraries ?? '',
-                    'zotero_search_fields' => $mod->zotero_search_fields ?? 'title,tags,abstract',
-                    'zotero_search_token_mode' => $mod->zotero_search_token_mode ?? 'and',
-                    'zotero_search_max_tokens' => $mod->zotero_search_max_tokens ?? 10,
-                    'zotero_search_max_results' => $mod->zotero_search_max_results ?? 0,
-                    'zotero_search_enabled' => $mod->zotero_search_enabled ?? '1',
-                    'zotero_search_sort_by_weight' => $mod->zotero_search_sort_by_weight ?? '1',
-                    'zotero_search_weight_title' => $mod->zotero_search_weight_title ?? null,
-                    'zotero_search_weight_creators' => $mod->zotero_search_weight_creators ?? null,
-                    'zotero_search_weight_tags' => $mod->zotero_search_weight_tags ?? null,
-                    'zotero_search_weight_publication_title' => $mod->zotero_search_weight_publication_title ?? null,
-                    'zotero_search_weight_year' => $mod->zotero_search_weight_year ?? null,
-                    'zotero_search_weight_abstract' => $mod->zotero_search_weight_abstract ?? null,
-                    'zotero_search_weight_zotero_key' => $mod->zotero_search_weight_zotero_key ?? null,
-                ];
-            }
+        $ce = ContentModel::findByPk($searchElementId);
+        if ($ce instanceof ContentModel && $ce->type === 'zotero_search') {
+            return [
+                'zotero_libraries' => $ce->zotero_libraries ?? '',
+                'zotero_search_fields' => $ce->zotero_search_fields ?? 'title,tags,abstract',
+                'zotero_search_token_mode' => $ce->zotero_search_token_mode ?? 'and',
+                'zotero_search_max_tokens' => $ce->zotero_search_max_tokens ?? 10,
+                'zotero_search_max_results' => $ce->zotero_search_max_results ?? 0,
+                'zotero_search_enabled' => $ce->zotero_search_enabled ?? '1',
+                'zotero_search_sort_by_weight' => $ce->zotero_search_sort_by_weight ?? '1',
+                'zotero_search_weight_title' => $ce->zotero_search_weight_title ?? null,
+                'zotero_search_weight_creators' => $ce->zotero_search_weight_creators ?? null,
+                'zotero_search_weight_tags' => $ce->zotero_search_weight_tags ?? null,
+                'zotero_search_weight_publication_title' => $ce->zotero_search_weight_publication_title ?? null,
+                'zotero_search_weight_year' => $ce->zotero_search_weight_year ?? null,
+                'zotero_search_weight_abstract' => $ce->zotero_search_weight_abstract ?? null,
+                'zotero_search_weight_zotero_key' => $ce->zotero_search_weight_zotero_key ?? null,
+            ];
         }
 
         return null;

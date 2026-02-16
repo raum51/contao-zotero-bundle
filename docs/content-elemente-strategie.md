@@ -187,7 +187,7 @@ Der CE-only-Ansatz ist sinnvoll und konsistent mit der Contao-Strategie. Das **u
 2. [x] Zotero-Listenelement (mit Referenz auf Einzelelement)
 3. [x] Zotero-Autorenelement (aufbauend auf Listenelement)
 4. [x] Zotero-Such element
-5. [ ] Frontend-Module entfernen
+5. [x] Frontend-Module entfernen
 
 ---
 

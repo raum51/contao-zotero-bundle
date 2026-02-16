@@ -1,9 +1,0 @@
-{% extends "@Contao/frontend_module/_base.html.twig" %}
-
-{% block content %}
-    <div class="zotero-reader">
-        {% if item|default %}
-            {% include "@Contao_Raum51ContaoZoteroBundle/zotero_item/" ~ item_template ~ ".html.twig" with {item: item} %}
-        {% endif %}
-    </div>
-{% endblock %}

@@ -10,7 +10,7 @@ use Doctrine\DBAL\ArrayParameterType;
 /**
  * Such-Logik für Zotero-Items (LIKE-basierte Volltextsuche).
  *
- * Liegt im Service-Verzeichnis; wird von ZoteroListController bei Suchmodus genutzt.
+ * Liegt im Service-Verzeichnis; wird von ZoteroListContentController bei Suchmodus genutzt.
  * Implementiert die 3-stufige Suche: exakte Phrase → Einzelbegriff → Token-Suche.
  */
 final class ZoteroSearchService

@@ -79,8 +79,8 @@ Contao bietet die **Twig-Funktion `add_schema_org`** zum Einbetten von JSON-LD:
 
 | Kontext              | Ort                        | Inhalt                         |
 |----------------------|----------------------------|--------------------------------|
-| **Detailansicht**    | ZoteroReaderController     | Einzelnes Item als CreativeWork/ScholarlyArticle/Book |
-| **Listenansicht**    | ZoteroListController       | ItemCollection (optional) oder einzelne Items |
+| **Detailansicht**    | ZoteroItemController (CE)  | Einzelnes Item als CreativeWork/ScholarlyArticle/Book |
+| **Listenansicht**    | ZoteroListContentController| ItemCollection (optional) oder einzelne Items |
 
 **Fokus:** Zuerst die **Detailansicht** (Reader), da dort ein vollständiges Item mit allen Metadaten angezeigt wird.
 
@@ -95,7 +95,7 @@ Ein **ZoteroSchemaOrgService** (oder -Helper) könnte:
 
 ### 3.3 Integration im Reader
 
-- **ZoteroReaderController:** Vor dem Rendern `schemaOrgData` aus dem Service holen
+- **ZoteroItemController (CE):** Vor dem Rendern `schemaOrgData` aus dem Service holen
 - **Template** (z. B. `zotero_reader.html.twig`):  
   `{% do add_schema_org(item.schema_org_data|default) %}`
 - Alternativ: `schema_org_data` im Controller in `$template->schema_org` setzen

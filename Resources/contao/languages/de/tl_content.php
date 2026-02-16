@@ -40,8 +40,6 @@ $GLOBALS['TL_LANG']['tl_content']['zotero_item_types'] = ['Publikations-Typen', 
 $GLOBALS['TL_LANG']['tl_content']['zotero_author'] = ['Autor', 'Optional: nur Publikationen dieses Mitglieds anzeigen'];
 $GLOBALS['TL_LANG']['tl_content']['zotero_reader_element'] = ['Reader-Element', 'Zotero-Einzelelement (aus URL) für Detailansicht auf derselben Seite'];
 $GLOBALS['TL_LANG']['tl_content']['zotero_search_element'] = ['Such-Element', 'Zotero-Such-CE für Libraries und Such-Konfiguration beim Suchmodus'];
-$GLOBALS['TL_LANG']['tl_content']['zotero_search_module'] = ['Such-Modul', 'Alternativ: Zotero-Such-Modul (falls kein Such-CE eingesetzt wird)'];
-
 // Zotero-Suche/Filter (CE)
 $GLOBALS['TL_LANG']['tl_content']['zotero_search'] = ['Zotero-Suche/Filter', 'Suchformular und Filter für Publikationen'];
 $GLOBALS['TL_LANG']['tl_content']['search_config_legend'] = 'Such-Konfiguration';

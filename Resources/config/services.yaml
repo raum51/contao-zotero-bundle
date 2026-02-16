@@ -43,11 +43,7 @@ services:
 
     Raum51\ContaoZoteroBundle\EventListener\DataContainer\ZoteroItemOptionsCallback:
         public: true
-    Raum51\ContaoZoteroBundle\EventListener\DataContainer\ZoteroReaderModuleOptionsCallback:
-        public: true
     Raum51\ContaoZoteroBundle\EventListener\DataContainer\ZoteroLibraryOptionsCallback:
-        public: true
-    Raum51\ContaoZoteroBundle\EventListener\DataContainer\ZoteroSearchModuleOptionsCallback:
         public: true
     Raum51\ContaoZoteroBundle\EventListener\DataContainer\CreatorMapLabelCallback:
         public: true

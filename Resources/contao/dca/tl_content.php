@@ -23,7 +23,7 @@ $GLOBALS['TL_DCA']['tl_content']['palettes']['zotero_collection_publications'] =
     '{type_legend},title,type,headline;{zotero_legend},zotero_collection,zotero_template;{template_legend:hide},customTpl;{expert_legend:hide},cssID';
 
 $GLOBALS['TL_DCA']['tl_content']['palettes']['zotero_list'] =
-    '{type_legend},title,type,headline;{zotero_legend},zotero_libraries,zotero_collections,zotero_item_types,zotero_author,zotero_template,zotero_reader_element,zotero_search_element,zotero_search_module;{config_legend},numberOfItems,perPage,zotero_list_order,zotero_list_sort_direction_date,zotero_list_group;{template_legend:hide},customTpl;{protected_legend:hide},protected;{expert_legend:hide},guests,cssID;{invisible_legend:hide},invisible,start,stop';
+    '{type_legend},title,type,headline;{zotero_legend},zotero_libraries,zotero_collections,zotero_item_types,zotero_author,zotero_template,zotero_reader_element,zotero_search_element;{config_legend},numberOfItems,perPage,zotero_list_order,zotero_list_sort_direction_date,zotero_list_group;{template_legend:hide},customTpl;{protected_legend:hide},protected;{expert_legend:hide},guests,cssID;{invisible_legend:hide},invisible,start,stop';
 
 $GLOBALS['TL_DCA']['tl_content']['palettes']['__selector__'][] = 'zotero_member_mode';
 $GLOBALS['TL_DCA']['tl_content']['palettes']['zotero_creator_items'] =
@@ -167,15 +167,6 @@ $GLOBALS['TL_DCA']['tl_content']['fields']['zotero_search_element'] = [
     'eval' => ['chosen' => true, 'includeBlankOption' => true, 'tl_class' => 'w50'],
     'sql' => 'int(10) unsigned NOT NULL default 0',
 ];
-$GLOBALS['TL_DCA']['tl_content']['fields']['zotero_search_module'] = [
-    'label' => &$GLOBALS['TL_LANG']['tl_content']['zotero_search_module'],
-    'exclude' => true,
-    'inputType' => 'select',
-    'options_callback' => [\Raum51\ContaoZoteroBundle\EventListener\DataContainer\ZoteroSearchModuleOptionsCallback::class, '__invoke'],
-    'eval' => ['chosen' => true, 'includeBlankOption' => true, 'tl_class' => 'w50'],
-    'sql' => 'int(10) unsigned NOT NULL default 0',
-];
-
 // Felder für zotero_search (CE)
 $GLOBALS['TL_DCA']['tl_content']['fields']['zotero_search_enabled'] = [
     'label' => &$GLOBALS['TL_LANG']['tl_content']['zotero_search_enabled'],
