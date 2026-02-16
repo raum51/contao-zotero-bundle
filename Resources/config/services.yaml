@@ -55,13 +55,3 @@ services:
         public: true
     Raum51\ContaoZoteroBundle\EventListener\DataContainer\ZoteroItemTypesOptionsCallback:
         public: true
-    Raum51\ContaoZoteroBundle\Migration\ConvertZoteroLibraryToLibrariesMigration:
-        tags: [{ name: contao.migration, priority: 0 }]
-    Raum51\ContaoZoteroBundle\Migration\AddItemCreatorSortingMigration:
-        tags: [{ name: contao.migration, priority: 0 }]
-    Raum51\ContaoZoteroBundle\Migration\DropItemTypesTableMigration:
-        tags: [{ name: contao.migration, priority: -1 }]
-    Raum51\ContaoZoteroBundle\Migration\ConvertLocalesToContaoFormatMigration:
-        tags: [{ name: contao.migration, priority: -2 }]
-    Raum51\ContaoZoteroBundle\Migration\AddAbstractColumnMigration:
-        tags: [{ name: contao.migration, priority: 0 }]
