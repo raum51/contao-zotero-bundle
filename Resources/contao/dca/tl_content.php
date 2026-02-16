@@ -312,6 +312,6 @@ $GLOBALS['TL_DCA']['tl_content']['fields']['zotero_list_group'] = [
     'inputType' => 'select',
     'options' => ['', 'library', 'collection', 'item_type', 'year'],
     'reference' => &$GLOBALS['TL_LANG']['tl_content']['zotero_list_group_options'],
-    'eval' => ['tl_class' => 'w50', 'includeBlankOption' => true],
+    'eval' => ['tl_class' => 'w50'],
     'sql' => "varchar(32) NOT NULL default ''",
 ];

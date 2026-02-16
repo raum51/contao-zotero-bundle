@@ -72,8 +72,9 @@ $GLOBALS['TL_LANG']['tl_content']['zotero_list_sort_direction_date_options'] = [
     'asc' => 'Aufsteigend (älteste zuerst)',
     'desc' => 'Absteigend (neueste zuerst)',
 ];
-$GLOBALS['TL_LANG']['tl_content']['zotero_list_group'] = ['Gruppierung', 'Liste gruppiert anzeigen (leer = keine Gruppierung)'];
+$GLOBALS['TL_LANG']['tl_content']['zotero_list_group'] = ['Gruppierung', 'Liste gruppiert anzeigen oder ohne Gruppierung'];
 $GLOBALS['TL_LANG']['tl_content']['zotero_list_group_options'] = [
+    '' => 'Keine Gruppierung',
     'library' => 'Library',
     'collection' => 'Collection',
     'item_type' => 'Publikations-Typ',
