@@ -5,6 +5,9 @@
       <trans-unit id="CTE.zotero">
         <source>Zotero elements</source>
       </trans-unit>
+      <trans-unit id="MSC.zoteroOverview">
+        <source>Back to the publications overview</source>
+      </trans-unit>
     </body>
   </file>
 </xliff>

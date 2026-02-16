@@ -8,6 +8,7 @@ use Contao\ContentModel;
 use Contao\CoreBundle\Controller\ContentElement\AbstractContentElementController;
 use Contao\CoreBundle\DependencyInjection\Attribute\AsContentElement;
 use Contao\CoreBundle\Exception\PageNotFoundException;
+use Contao\CoreBundle\Routing\ContentUrlGenerator;
 use Contao\CoreBundle\Twig\FragmentTemplate;
 use Contao\Input;
 use Contao\PageModel;
@@ -35,6 +36,7 @@ final class ZoteroItemController extends AbstractContentElementController
 {
     public function __construct(
         private readonly ZoteroLocaleLabelService $localeLabelService,
+        private readonly ContentUrlGenerator $contentUrlGenerator,
     ) {
     }
 
@@ -79,6 +81,10 @@ final class ZoteroItemController extends AbstractContentElementController
         $template->item = $itemArray;
         $template->item_template = $itemTemplate;
 
+        if ($mode === 'from_url') {
+            $this->addOverviewPageToTemplate($template, $model);
+        }
+
         $headlineData = StringUtil::deserialize($model->headline ?? '', true);
         $template->headline = [
             'text' => $headlineData['value'] ?? $item->title,
@@ -86,6 +92,25 @@ final class ZoteroItemController extends AbstractContentElementController
         ];
 
         return $template->getResponse();
+    }
+
+    private function addOverviewPageToTemplate(FragmentTemplate $template, ContentModel $model): void
+    {
+        $overviewPageId = (int) ($model->zotero_overview_page ?? 0);
+        if ($overviewPageId <= 0) {
+            return;
+        }
+
+        $overviewPage = PageModel::findPublishedById($overviewPageId);
+        if ($overviewPage === null) {
+            return;
+        }
+
+        $template->referer = $this->contentUrlGenerator->generate($overviewPage);
+        $customLabel = (string) ($model->zotero_overview_label ?? '');
+        $template->back = $customLabel !== ''
+            ? $customLabel
+            : (string) ($GLOBALS['TL_LANG']['MSC']['zoteroOverview'] ?? 'Zurück zur Publikationsübersicht');
     }
 
     private function resolveItemFromUrl(ContentModel $model): ZoteroItemModel|null

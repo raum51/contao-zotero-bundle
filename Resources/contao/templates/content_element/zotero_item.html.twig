@@ -2,6 +2,9 @@
 
 {% block content %}
     <div class="zotero-item-element">
+        {% if referer|default %}
+            <p class="back"><a href="{{ referer }}" title="{{ back|default('')|e }}">{{ back|default('')|e }}</a></p>
+        {% endif %}
         {% if item|default %}
             {% include "@Contao_Raum51ContaoZoteroBundle/zotero_item/" ~ item_template|default('cite_content') ~ ".html.twig" with {item: item} %}
         {% endif %}

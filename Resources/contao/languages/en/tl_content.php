@@ -11,6 +11,8 @@ $GLOBALS['TL_LANG']['tl_content']['zotero_item_mode_options'] = [
 ];
 $GLOBALS['TL_LANG']['tl_content']['zotero_item_id'] = ['Publication', 'The publication to display'];
 $GLOBALS['TL_LANG']['tl_content']['zotero_libraries'] = ['Zotero libraries', 'Libraries to search for the publication (mode "Publication from URL")'];
+$GLOBALS['TL_LANG']['tl_content']['zotero_overview_page'] = ['Overview page', 'Page for the "Back to overview" link in the detail view'];
+$GLOBALS['TL_LANG']['tl_content']['zotero_overview_label'] = ['Custom link label', 'Optional: Custom text for the back link (e.g. "Back to list")'];
 $GLOBALS['TL_LANG']['tl_content']['zotero_template_options'] = [
     'cite_content' => 'Citation (cite_content)',
     'json_dl' => 'Metadata as list (json_dl)',

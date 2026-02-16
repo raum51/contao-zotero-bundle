@@ -11,7 +11,7 @@ $GLOBALS['TL_DCA']['tl_content']['palettes']['__selector__'][] = 'zotero_item_mo
 $GLOBALS['TL_DCA']['tl_content']['palettes']['zotero_item'] =
     '{type_legend},title,type,headline;{zotero_legend},zotero_item_mode,zotero_template;{template_legend:hide},customTpl;{protected_legend:hide},protected;{expert_legend:hide},guests,cssID;{invisible_legend:hide},invisible,start,stop';
 $GLOBALS['TL_DCA']['tl_content']['subpalettes']['zotero_item_mode_fixed'] = 'zotero_item_id';
-$GLOBALS['TL_DCA']['tl_content']['subpalettes']['zotero_item_mode_from_url'] = 'zotero_libraries';
+$GLOBALS['TL_DCA']['tl_content']['subpalettes']['zotero_item_mode_from_url'] = 'zotero_libraries,zotero_overview_page,zotero_overview_label';
 
 $GLOBALS['TL_DCA']['tl_content']['palettes']['zotero_list'] =
     '{type_legend},title,type,headline;{zotero_legend},zotero_libraries,zotero_collections,zotero_item_types,zotero_author,zotero_template,zotero_reader_element,zotero_search_element;{config_legend},numberOfItems,perPage,zotero_list_order,zotero_list_sort_direction_date,zotero_list_group;{template_legend:hide},customTpl;{protected_legend:hide},protected;{expert_legend:hide},guests,cssID;{invisible_legend:hide},invisible,start,stop';
@@ -74,6 +74,21 @@ $GLOBALS['TL_DCA']['tl_content']['fields']['zotero_libraries'] = [
     'eval' => ['mandatory' => true, 'multiple' => true, 'submitOnChange' => true, 'tl_class' => 'clr'],
     'sql' => 'blob NULL',
     'relation' => ['type' => 'hasMany', 'table' => 'tl_zotero_library', 'field' => 'id', 'load' => 'lazy'],
+];
+$GLOBALS['TL_DCA']['tl_content']['fields']['zotero_overview_page'] = [
+    'label' => &$GLOBALS['TL_LANG']['tl_content']['zotero_overview_page'],
+    'exclude' => true,
+    'inputType' => 'pageTree',
+    'eval' => ['fieldType' => 'radio', 'tl_class' => 'clr'],
+    'sql' => 'int(10) unsigned NOT NULL default 0',
+    'relation' => ['type' => 'hasOne', 'table' => 'tl_page', 'field' => 'id'],
+];
+$GLOBALS['TL_DCA']['tl_content']['fields']['zotero_overview_label'] = [
+    'label' => &$GLOBALS['TL_LANG']['tl_content']['zotero_overview_label'],
+    'exclude' => true,
+    'inputType' => 'text',
+    'eval' => ['maxlength' => 255, 'tl_class' => 'w50'],
+    'sql' => "varchar(255) NOT NULL default ''",
 ];
 
 $GLOBALS['TL_DCA']['tl_content']['fields']['zotero_member'] = [
