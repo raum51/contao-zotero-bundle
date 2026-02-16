@@ -161,6 +161,12 @@ Ziel: **Von Anfang an nur CE einsetzen**, Frontend-Module einstampfen, um Code-D
 
 **Entscheidung:** Keine Migration erforderlich. Das Bundle befindet sich derzeit nur in lokaler Entwicklung.
 
+### 5.4 Feldnamen (overviewPage vs. zotero_overview_page)
+
+**Entscheidung:** Wir bleiben bei den Bundle-spezifischen Feldnamen `zotero_overview_page` und `zotero_overview_label` statt der Contao-Modul-Konvention (`overviewPage`, `customLabel`).
+
+**Begründung:** Contao hat für tl_content noch kein offizielles CE-Reader-Pattern; News/FAQ/Calendar nutzen weiterhin tl_module. Wenn Contao eine offizielle CE-only-Strategie umsetzt, ist unklar, welche Feldnamen gewählt werden. Bundle-spezifische Namen vermeiden zukünftige Konflikte mit Core-Feldern.
+
 ---
 
 ## 6. Einschätzung zum Vorschlag
@@ -191,10 +197,52 @@ Der CE-only-Ansatz ist sinnvoll und konsistent mit der Contao-Strategie. Das **u
 
 ---
 
-## 7. Referenzen
+## 7. Recherche: CE-Bundles im Contao-Umfeld (Februar 2026)
+
+Überblick über Bundles, die auf CEs statt Frontend-Module setzen bzw. Reader-/Listen-Funktion als CE anbieten.
+
+### 7.1 Offizielle Contao-Bundles
+
+| Bundle | CE oder Modul | Stand |
+|--------|----------------|-------|
+| contao/news-bundle | Nur **Module** | newslist, newsreader, newsarchive, newsmenu |
+| contao/faq-bundle | Nur **Module** | faqlist, faqreader, faqpage |
+| contao/calendar-bundle | Nur **Module** | eventlist, eventreader, eventmenu |
+| contao/listing-bundle | Gemischt | Allgemeines Listing; kein News/FAQ/Reader-Ersatz |
+
+**Fazit:** Offizielle News-, FAQ- und Kalender-Bundles nutzen weiterhin Frontend-Module. Es gibt aktuell keine offizielle CE-only-Strategie als Ersatz.
+
+### 7.2 Drittanbieter: Einzelnews als CE
+
+| Bundle | Beschreibung |
+|--------|--------------|
+| [bright-cloud-studio/contao-ce-news](https://github.com/bright-cloud-studio/contao-ce-news) | CE zur Anzeige einzelner News-Artikel |
+| [heimrichhannot/contao-newselement](https://github.com/heimrichhannot/contao-newselement) | Einzelnews als CE; Filter nach Archiv, Template-Auswahl |
+
+### 7.3 Drittanbieter: Generische List-/Reader-Bundles (HeimrichHannot)
+
+| Bundle | Beschreibung | CE oder Modul |
+|--------|--------------|---------------|
+| [heimrichhannot/contao-list-bundle](https://github.com/heimrichhannot/contao-list-bundle) | Generisches Listen-Modul für beliebige DCA-Entities | **Modul** |
+| [heimrichhannot/contao-reader-bundle](https://github.com/heimrichhannot/contao-reader-bundle) | Generisches Reader-Modul für beliebige DCA-Entities | **Modul** |
+| [heimrichhannot/contao-news-list-reader-bundle](https://github.com/heimrichhannot/contao-news-list-reader-bundle) | News-Adapter für list- und reader-bundle | Nutzt list/reader (Module) |
+
+### 7.4 Einordnung des Zotero-Bundles
+
+| Aspekt | Einschätzung |
+|--------|--------------|
+| CE-only (Liste + Reader) | Zotero-Bundle ist hier Vorreiter – vergleichbare Lösungen selten |
+| Liste + Reader + Suche als CEs | Kein bekanntes offizielles oder Drittanbieter-Bundle mit vergleichbarem Umfang |
+| Einzelitems als CE | Vergleichbar mit contao-ce-news / contao-newselement |
+| Konventionen (overviewPage etc.) | Kein etabliertes CE-Pattern – tl_content hat diese Felder nicht; offizielle Reader existieren nur als Module |
+
+---
+
+## 8. Referenzen
 
 - [Recap Contao Core Developers Meeting 2025](https://contao.org/en/news/recap-of-the-first-contao-core-developers-meeting-2025)
 - [Contao Docs: Content Elements & Modules](https://docs.contao.org/dev/getting-started/content-elements-modules)
 - [Contao Docs: slot-Tag (Contao 5.6)](https://docs.contao.org/dev/reference/twig/tags/slot)
 - [Include elements (CE „Module“, CE „Content element“)](https://docs.contao.org/manual/en/article-management/content-elements/include-elements)
 - Projekt: `reader-modul-vorschlag.md`, `such-modul-konzept.md`, `CURSOR_BLUEPRINT.md`
+- CE-Bundle-Recherche: Abschnitt 7
