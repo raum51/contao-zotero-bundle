@@ -16,6 +16,7 @@ use Contao\Pagination;
 use Contao\StringUtil;
 use Doctrine\DBAL\ArrayParameterType;
 use Doctrine\DBAL\Connection;
+use Raum51\ContaoZoteroBundle\Service\ZoteroAttachmentResolver;
 use Raum51\ContaoZoteroBundle\Service\ZoteroLocaleLabelService;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -41,6 +42,7 @@ final class ZoteroCreatorItemsContentController extends AbstractContentElementCo
     public function __construct(
         private readonly Connection $connection,
         private readonly ZoteroLocaleLabelService $localeLabelService,
+        private readonly ZoteroAttachmentResolver $attachmentResolver,
     ) {
     }
 
@@ -140,6 +142,31 @@ final class ZoteroCreatorItemsContentController extends AbstractContentElementCo
                     $keys = \is_array($data) ? array_keys($data) : [];
                     $items[$i]['field_labels'] = $this->localeLabelService->getItemFieldLabelsForKeys($keys, $locale);
                 }
+            }
+        }
+
+        // Attachment-Info immer in Item-Daten (Library/Item-Prüfung im Resolver)
+        $itemIds = [];
+        foreach ($items as $entry) {
+            $it = $entry['item'] ?? $entry;
+            $itemIds[] = (int) ($it['id'] ?? 0);
+        }
+        $itemIds = array_values(array_filter(array_unique($itemIds)));
+        $attachmentsByItem = $this->attachmentResolver->getDownloadableAttachmentsForItems($this->connection, $itemIds);
+        $totalCountsByItem = $this->attachmentResolver->getTotalAttachmentCountsForItems($this->connection, $itemIds);
+        foreach ($items as $i => $entry) {
+            $id = (int) ((isset($entry['item']) ? $entry['item']['id'] : $entry['id']) ?? 0);
+            $attachments = $attachmentsByItem[$id] ?? [];
+            $attachmentTotal = $totalCountsByItem[$id] ?? 0;
+            $attachmentDownloadable = \count($attachments);
+            if (isset($entry['item'])) {
+                $items[$i]['item']['attachments'] = $attachments;
+                $items[$i]['item']['attachment_total'] = $attachmentTotal;
+                $items[$i]['item']['attachment_downloadable'] = $attachmentDownloadable;
+            } else {
+                $items[$i]['attachments'] = $attachments;
+                $items[$i]['attachment_total'] = $attachmentTotal;
+                $items[$i]['attachment_downloadable'] = $attachmentDownloadable;
             }
         }
 

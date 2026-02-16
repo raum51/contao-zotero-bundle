@@ -35,6 +35,9 @@
                                             {% else %}
                                                 {% include "@Contao_Raum51ContaoZoteroBundle/zotero_item/" ~ item_template ~ ".html.twig" with {item: item} %}
                                             {% endif %}
+                                            {% if item.attachment_total|default(0) > 0 %}
+                                                <span class="zotero-list__attachments-info"> – Downloads {{ item.attachment_downloadable|default(0) }}/{{ item.attachment_total|default(0) }} erlaubt</span>
+                                            {% endif %}
                                             {% if search_mode|default(false) and search_keywords|default and item.score is defined and item.score is not null %}
                                                 <span class="zotero-list__score" title="Relevanz-Score (Test)">Gewicht: {{ item.score }}</span>
                                             {% endif %}
@@ -54,6 +57,9 @@
                                 </a>
                             {% else %}
                                 {% include "@Contao_Raum51ContaoZoteroBundle/zotero_item/" ~ item_template ~ ".html.twig" with {item: item} %}
+                            {% endif %}
+                            {% if item.attachment_total|default(0) > 0 %}
+                                <span class="zotero-list__attachments-info"> – Downloads {{ item.attachment_downloadable|default(0) }}/{{ item.attachment_total|default(0) }} erlaubt</span>
                             {% endif %}
                             {% if search_mode|default(false) and search_keywords|default and item.score is defined and item.score is not null %}
                                 <span class="zotero-list__score" title="Relevanz-Score (Test)">Gewicht: {{ item.score }}</span>

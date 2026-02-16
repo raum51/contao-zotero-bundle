@@ -8,9 +8,11 @@ declare(strict_types=1);
  */
 
 $GLOBALS['TL_DCA']['tl_content']['palettes']['__selector__'][] = 'zotero_item_mode';
+$GLOBALS['TL_DCA']['tl_content']['palettes']['__selector__'][] = 'zotero_download_attachments';
 $GLOBALS['TL_DCA']['tl_content']['palettes']['zotero_item'] =
-    '{type_legend},title,type,headline;{zotero_legend},zotero_item_mode,zotero_template;{template_legend:hide},customTpl;{protected_legend:hide},protected;{expert_legend:hide},guests,cssID;{invisible_legend:hide},invisible,start,stop';
+    '{type_legend},title,type,headline;{zotero_legend},zotero_item_mode,zotero_template,zotero_download_attachments;{template_legend:hide},customTpl;{protected_legend:hide},protected;{expert_legend:hide},guests,cssID;{invisible_legend:hide},invisible,start,stop';
 $GLOBALS['TL_DCA']['tl_content']['subpalettes']['zotero_item_mode_fixed'] = 'zotero_item_id';
+$GLOBALS['TL_DCA']['tl_content']['subpalettes']['zotero_download_attachments'] = 'zotero_download_content_types,zotero_download_filename_mode';
 $GLOBALS['TL_DCA']['tl_content']['subpalettes']['zotero_item_mode_from_url'] = 'zotero_libraries,zotero_overview_page,zotero_overview_label';
 
 $GLOBALS['TL_DCA']['tl_content']['palettes']['zotero_list'] =
@@ -108,6 +110,30 @@ $GLOBALS['TL_DCA']['tl_content']['fields']['zotero_template'] = [
     'reference' => &$GLOBALS['TL_LANG']['tl_content']['zotero_template_options'],
     'eval' => ['tl_class' => 'w50'],
     'sql' => "varchar(64) NOT NULL default 'cite_content'",
+];
+$GLOBALS['TL_DCA']['tl_content']['fields']['zotero_download_attachments'] = [
+    'label' => &$GLOBALS['TL_LANG']['tl_content']['zotero_download_attachments'],
+    'exclude' => true,
+    'inputType' => 'checkbox',
+    'eval' => ['submitOnChange' => true, 'tl_class' => 'w50 m12'],
+    'sql' => "char(1) NOT NULL default '1'",
+];
+$GLOBALS['TL_DCA']['tl_content']['fields']['zotero_download_content_types'] = [
+    'label' => &$GLOBALS['TL_LANG']['tl_content']['zotero_download_content_types'],
+    'exclude' => true,
+    'inputType' => 'checkbox',
+    'options_callback' => [\Raum51\ContaoZoteroBundle\EventListener\DataContainer\ZoteroDownloadContentTypesOptionsCallback::class, '__invoke'],
+    'eval' => ['multiple' => true, 'tl_class' => 'clr'],
+    'sql' => 'blob NULL',
+];
+$GLOBALS['TL_DCA']['tl_content']['fields']['zotero_download_filename_mode'] = [
+    'label' => &$GLOBALS['TL_LANG']['tl_content']['zotero_download_filename_mode'],
+    'exclude' => true,
+    'inputType' => 'select',
+    'options' => ['original', 'cleaned', 'zotero_key', 'attachment_id'],
+    'reference' => &$GLOBALS['TL_LANG']['tl_content']['zotero_download_filename_mode_options'],
+    'eval' => ['tl_class' => 'w50'],
+    'sql' => "varchar(32) NOT NULL default 'cleaned'",
 ];
 
 // Felder für zotero_list (CE)

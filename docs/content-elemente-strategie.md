@@ -75,7 +75,7 @@ Ziel: **Von Anfang an nur CE einsetzen**, Frontend-Module einstampfen, um Code-D
 **Backend-Felder (Vorschlag):**
 - Modus: `fixed` | `from_url`
 - Bei `fixed`: Item-Auswahl (tl_zotero_item)
-- Bei `from_url`: (optional) Referenz auf Zotero-Listenelement als Quellliste (für jumpTo, Breadcrumbs, URL-Kontext – flexiblere Verwendung)
+- Bei `from_url`: zotero_overview_page, zotero_overview_label (Zurück-Link)
 - Template-Auswahl, download_attachments, weitere Optionen
 
 ---
@@ -154,8 +154,6 @@ Ziel: **Von Anfang an nur CE einsetzen**, Frontend-Module einstampfen, um Code-D
 ### 5.2 Referenzrichtungen
 
 **Listenelement → Einzelelement:** Das Listenelement darf nur Einzelelemente referenzieren, die im Modus `from_url` sind. So ist klar, dass es sich um Reader-CEs für die Detailansicht handelt.
-
-**Einzelelement → Listenelement (optional):** Eine optionale Referenz des Einzelelements auf eine „Quellliste“ (Zotero-Listenelement) ist sinnvoll – z. B. für jumpTo, Breadcrumbs, URL-Kontext. Das Einzelelement kann dadurch flexibler eingesetzt werden, auch wenn die Quelle wechselt.
 
 ### 5.3 Migration
 

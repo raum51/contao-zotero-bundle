@@ -20,6 +20,15 @@ $GLOBALS['TL_LANG']['tl_content']['zotero_template_options'] = [
 ];
 $GLOBALS['TL_LANG']['tl_content']['zotero_member'] = ['Contao member', 'Member whose publications are displayed'];
 $GLOBALS['TL_LANG']['tl_content']['zotero_template'] = ['Template', 'e.g. cite_content, json_dl, fields'];
+$GLOBALS['TL_LANG']['tl_content']['zotero_download_attachments'] = ['Attachments downloadable', 'Show download links for attachments (PDF etc.). Library and item must also allow downloads.'];
+$GLOBALS['TL_LANG']['tl_content']['zotero_download_content_types'] = ['Filter by file type', 'Only offer selected content types for download. No selection = all types.'];
+$GLOBALS['TL_LANG']['tl_content']['zotero_download_filename_mode'] = ['Download filename', 'How should downloaded files be named?'];
+$GLOBALS['TL_LANG']['tl_content']['zotero_download_filename_mode_options'] = [
+    'original' => 'Original filename (unchanged)',
+    'cleaned' => 'Cleaned filename (special chars removed, lowercase, max. 100 chars)',
+    'zotero_key' => 'Zotero key',
+    'attachment_id' => 'Attachment ID',
+];
 
 // Zotero Creator Items (CE)
 $GLOBALS['TL_LANG']['tl_content']['zotero_creator_items'] = ['Zotero creator publications', 'Publications of a Contao member (fixed or from URL)'];

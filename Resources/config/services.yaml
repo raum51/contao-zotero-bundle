@@ -23,6 +23,9 @@ services:
         resource: '../../src/'
         exclude: '../../src/{ContaoManager,DependencyInjection,Raum51ContaoZoteroBundle.php}'
 
+    Raum51\ContaoZoteroBundle\Twig\ZoteroDumpExtension:
+        tags: [twig.extension]
+
     Raum51\ContaoZoteroBundle\Controller\BibExportController:
         public: true
         tags: [{ name: controller.service_arguments }]
@@ -30,6 +33,7 @@ services:
         public: true
         arguments:
             $logger: '@monolog.logger.raum51_zotero'
+            $slug: '@contao.slug'
         tags: [{ name: controller.service_arguments }]
 
     Raum51\ContaoZoteroBundle\Command\TestZoteroClientCommand:

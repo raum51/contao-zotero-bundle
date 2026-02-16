@@ -7,6 +7,15 @@
         {% endif %}
         {% if item|default %}
             {% include "@Contao_Raum51ContaoZoteroBundle/zotero_item/" ~ item_template|default('cite_content') ~ ".html.twig" with {item: item} %}
+            {% if download_attachments|default and item.attachments|default|length > 0 %}
+                <ul class="zotero-item__attachments" aria-label="{{ 'MSC.download'|trans({}, 'contao_default') }}">
+                    {% for att in item.attachments %}
+                        <li class="download-element ext-{{ att.extension|default('xl') }}">
+                            <a href="{{ att.url }}" title="{{ (att.title|default(att.filename))|e }}" download>{{ (att.title|default(att.filename))|e }}</a>
+                        </li>
+                    {% endfor %}
+                </ul>
+            {% endif %}
         {% endif %}
     </div>
 {% endblock %}

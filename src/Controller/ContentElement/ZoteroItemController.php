@@ -13,7 +13,9 @@ use Contao\CoreBundle\Twig\FragmentTemplate;
 use Contao\Input;
 use Contao\PageModel;
 use Contao\StringUtil;
+use Doctrine\DBAL\Connection;
 use Raum51\ContaoZoteroBundle\Model\ZoteroItemModel;
+use Raum51\ContaoZoteroBundle\Service\ZoteroAttachmentResolver;
 use Raum51\ContaoZoteroBundle\Service\ZoteroLocaleLabelService;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -35,6 +37,8 @@ use Symfony\Component\HttpFoundation\Response;
 final class ZoteroItemController extends AbstractContentElementController
 {
     public function __construct(
+        private readonly Connection $connection,
+        private readonly ZoteroAttachmentResolver $attachmentResolver,
         private readonly ZoteroLocaleLabelService $localeLabelService,
         private readonly ContentUrlGenerator $contentUrlGenerator,
     ) {
@@ -78,8 +82,15 @@ final class ZoteroItemController extends AbstractContentElementController
             $itemArray['field_labels'] = $this->localeLabelService->getItemFieldLabelsForKeys($keys, $this->resolveLocale($request));
         }
 
+        $downloadAttachments = ($model->zotero_download_attachments ?? '1') === '1';
+        $contentTypesFilter = $this->parseContentTypes($model->zotero_download_content_types ?? '');
+        $filenameMode = $downloadAttachments ? ($model->zotero_download_filename_mode ?? 'cleaned') : null;
+        $byItem = $this->attachmentResolver->getDownloadableAttachmentsForItems($this->connection, [(int) $item->id], $contentTypesFilter, $filenameMode);
+        $itemArray['attachments'] = $byItem[(int) $item->id] ?? [];
+
         $template->item = $itemArray;
         $template->item_template = $itemTemplate;
+        $template->download_attachments = $downloadAttachments;
 
         if ($mode === 'from_url') {
             $this->addOverviewPageToTemplate($template, $model);
@@ -126,6 +137,28 @@ final class ZoteroItemController extends AbstractContentElementController
         }
 
         return ZoteroItemModel::findPublishedByParentAndIdOrAliasInLibraries($autoItem, $libraryIds);
+    }
+
+    /**
+     * Parst zotero_download_content_types (serialisiert). Leer = alle Typen.
+     *
+     * @return list<string>|null null = alle, [] = keine, [...]= gefilterte Content-Types
+     */
+    private function parseContentTypes(string $value): ?array
+    {
+        if ($value === '') {
+            return null;
+        }
+        $arr = unserialize($value, ['allowed_classes' => false]);
+        if (!\is_array($arr)) {
+            return null;
+        }
+        $types = array_values(array_filter(array_map('strval', $arr), static fn (string $v): bool => $v !== ''));
+        if ($types === []) {
+            return null;
+        }
+
+        return $types;
     }
 
     /**

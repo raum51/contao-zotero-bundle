@@ -147,7 +147,7 @@ Das Bundle nutzt ausschließlich **Content-Elemente** für die Zotero-Ausgabe. F
 
 | Element | Beschreibung |
 |---------|---------------|
-| **Zotero-Einzelelement** | Ein einzelnes Zotero-Item. **Modus „Fest gewähltes Item“:** Item im Backend per Select mit Suchfunktion (chosen) auswählen; Anzeigeformat „Autoren (Jahr): Titel (ID)“. **Modus „Item aus URL (Reader)“:** Libraries auswählen, Item aus `auto_item` in der URL aufgelöst – für Detailseiten im News-Pattern. **Übersichtsseite** (analog News/FAQ-Reader): Optional konfigurierbare Seite für den Link „Zurück zur Publikationsübersicht“. Template-Auswahl: cite_content, json_dl, fields. |
+| **Zotero-Einzelelement** | Ein einzelnes Zotero-Item. **Modus „Fest gewähltes Item“:** Item im Backend per Select mit Suchfunktion (chosen) auswählen; Anzeigeformat „Autoren (Jahr): Titel (ID)“. **Modus „Item aus URL (Reader)“:** Libraries auswählen, Item aus `auto_item` in der URL aufgelöst – für Detailseiten im News-Pattern. **Übersichtsseite** (analog News/FAQ-Reader): Optional konfigurierbare Seite für den Link „Zurück zur Publikationsübersicht“. **Attachments herunterladbar:** Option, ob Download-Links für Anhänge angezeigt werden (Library und Item müssen ebenfalls erlauben). Template-Auswahl: cite_content, json_dl, fields. |
 | **Zotero-Liste** | Publikationsliste aus Zotero-Bibliotheken (analog zum Listen-Modul). Filter: Libraries, Collections, Item-Typen, **Autor** (nur tl_member mit publizierten Zotero-Items; Anzeige „Nachname, Vorname (Anzahl)“). Optional: Reader-Element (CE vom Typ zotero_item, Modus from_url) für News-Pattern auf derselben Seite; **Such-Element** oder Such-Modul für Suchmodus. Konfigurierbar: numberOfItems, perPage, Sortierung, Gruppierung. |
 | **Zotero-Creator-Publikationen** | Publikationen eines Contao-Mitglieds. **Modus fixed:** Mitglied im Backend fest wählen. **Modus from_url:** Mitglied aus URL-Pfad (`auto_item`) – empfohlen mit oveleon/contao-member-extension-bundle. Einstellungen wie Zotero-Liste: Libraries, Collections, Item-Typen, Sortierung, Gruppierung, Reader-Element. |
 | **Zotero-Suche** | Suchformular (Keywords, optional Autor, Jahr von/bis, Item-Typ). Leitet per GET auf die Zielseite mit Zotero-Liste weiter. Libraries (Pflicht), Zielseite Listen-Element (Pflicht). Optionale Filter-Anzeige und Such-Konfiguration. |
@@ -203,6 +203,14 @@ monolog:
 ```
 
 Ohne diese Konfiguration landen die Zotero-Logs im Standard-App-Log (z. B. `var/logs/prod-*.log`). Mit dem Handler erscheinen sie zusätzlich in `var/logs/raum51_zotero.log`.
+
+---
+
+## Twig-Debugging (ZoteroDumpExtension)
+
+Das Bundle enthält eine optionale **ZoteroDumpExtension**, die den Twig-Tag `{% dump %}` in allen Umgebungen verfügbar macht. Sie ist **nicht standardmäßig aktiv** (Service auskommentiert) und nicht üblich für Contao-Bundles.
+
+**Dokumentation:** [`docs/zotero-dump-extension.md`](docs/zotero-dump-extension.md) – Hinweis, Aktivieren/Deaktivieren, Verwendung.
 
 ---
 

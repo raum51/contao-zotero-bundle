@@ -3,7 +3,8 @@
  * raum51/contao-zotero-bundle
  */
 
-ul.zotero-list__items {
+ul.zotero-list__items,
+ul.zotero-item__attachments {
   list-style: none;
   padding: 0;
   margin: 0;
