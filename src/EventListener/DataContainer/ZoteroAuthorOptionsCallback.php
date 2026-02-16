@@ -12,7 +12,7 @@ use Doctrine\DBAL\Connection;
  * Liefert tl_member-Einträge, die publizierten Zotero-Items zugeordnet sind.
  * Format: "Nachname, Vorname (Anzahl publizierter Publikationen)".
  *
- * Verwendet für: zotero_author (Zotero-Liste), zotero_member (Zotero-Creator-Publikationen, zotero_member_publications).
+ * Verwendet für: zotero_author (Zotero-Liste), zotero_member (Zotero-Creator-Publikationen).
  *
  * Liegt unter EventListener/DataContainer/, da es ein DCA-Callback für tl_content ist.
  */

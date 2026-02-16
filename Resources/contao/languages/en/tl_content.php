@@ -16,11 +16,7 @@ $GLOBALS['TL_LANG']['tl_content']['zotero_template_options'] = [
     'json_dl' => 'Metadata as list (json_dl)',
     'fields' => 'Selected fields (fields)',
 ];
-$GLOBALS['TL_LANG']['tl_content']['zotero_items'] = ['Zotero publications (single/selected)', 'Display one or more publications'];
-$GLOBALS['TL_LANG']['tl_content']['zotero_member_publications'] = ['Member publications', 'All publications linked to this Contao member'];
-$GLOBALS['TL_LANG']['tl_content']['zotero_collection_publications'] = ['Collection publications', 'All publications of the selected Zotero collection'];
 $GLOBALS['TL_LANG']['tl_content']['zotero_member'] = ['Contao member', 'Member whose publications are displayed'];
-$GLOBALS['TL_LANG']['tl_content']['zotero_collection'] = ['Zotero collection', 'Collection whose publications are displayed'];
 $GLOBALS['TL_LANG']['tl_content']['zotero_template'] = ['Template', 'e.g. cite_content, json_dl, fields'];
 
 // Zotero Creator Items (CE)

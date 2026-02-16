@@ -291,7 +291,7 @@ Die folgenden Erweiterungen sind geplant bzw. in Konzepten beschrieben:
 |---------|--------------|----------------|
 | **Schema.org / JSON-LD** | Strukturierte Daten (ScholarlyArticle, Book etc.) per `add_schema_org()` in der Detailansicht | [`docs/schema-org-json-ld-konzept.md`](docs/schema-org-json-ld-konzept.md) |
 | **Contao-Suchindex** | Publikationen (Titel, Tags, Autor) für die Website-Suche indexieren (Sitemap-Event, Crawler) | such-modul-konzept.md §5 |
-| **Legacy-CE bereinigen** | zotero_items, zotero_member_publications, zotero_collection_publications (DCA ohne Controller) | content-elemente-strategie.md |
+| *~~Legacy-CE bereinigen~~* | *Erledigt (16.02.2026)* | – |
 | **download_attachments** | Einstellung pro CE/Modul für Attachment-Downloads (3 Ebenen: Library, Modul/CE, Item) | Blueprint |
 | **PHPUnit-Tests** | ZoteroBibUtil, ZoteroStopwordService, ZoteroSearchService etc. | [`docs/phpunit-test-konzept.md`](docs/phpunit-test-konzept.md) |
 | **Cronjob-Dokumentation** | Empfehlung für geplanten Sync | – |
