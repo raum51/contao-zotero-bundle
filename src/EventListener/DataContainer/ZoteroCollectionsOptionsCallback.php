@@ -66,14 +66,16 @@ final class ZoteroCollectionsOptionsCallback
 
         // Nach Submit (z.B. submitOnChange) enthält getCurrentRecord die neuen Werte
         $record = $dc->getCurrentRecord();
-        if (isset($record['zotero_libraries'])) {
+        if (\is_array($record) && isset($record['zotero_libraries'])) {
             return $this->parseLibraryIds($record['zotero_libraries']);
         }
 
         // Fallback: POST-Daten bei noch nicht gespeichertem Datensatz
-        $post = Input::post('zotero_libraries');
+        // Im Mehrfachbearbeitungs-Modus (editAll) sind die Feldnamen feldname_<id> (PaletteBuilder.php)
+        $postKey = (Input::get('act') === 'editAll' && $dc->id) ? 'zotero_libraries_' . $dc->id : 'zotero_libraries';
+        $post = Input::post($postKey);
         if (\is_array($post)) {
-            return array_map('intval', array_filter($post, 'is_numeric'));
+            return array_values(array_map('intval', array_filter($post, 'is_numeric')));
         }
 
         return [];
