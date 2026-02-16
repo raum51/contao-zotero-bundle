@@ -137,7 +137,7 @@ Das Bundle nutzt ausschließlich **Content-Elemente** für die Zotero-Ausgabe. F
 | `zotero_year_to` | Erscheinungsjahr bis (4-stellig) |
 | `zotero_item_type` | Zotero-Item-Typ (z. B. journalArticle, book) – nur wenn „Filter Item-Typ anzeigen“ aktiv |
 | `query_type` | Token-Logik: `and` oder `or` – nur wenn Such-Konfiguration „Frontend wählbar“ verwendet |
-| `page` | Seite für Pagination (bei vielen Treffern) |
+| `page_z{id}` | Seite für Pagination (bei vielen Treffern); `{id}` = Content-Element-ID der Zotero-Liste (analog Contao News/Events). Mehrere Listen auf einer Seite haben jeweils eigenen Parameter. |
 
 **Stop-Wörter:** Das Bundle enthält Stop-Wörter für Deutsch und Englisch (MIT, stopwords-iso). Projektüberschreibung: `config/zotero_stopwords_de.php`, `config/zotero_stopwords_en.php` (PHP-Array `return [...];`).
 

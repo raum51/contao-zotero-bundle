@@ -85,6 +85,7 @@ final class ZoteroCreatorItemsContentController extends AbstractContentElementCo
         $sortDirectionDate = (string) ($model->zotero_list_sort_direction_date ?? 'desc');
         $groupBy = (string) ($model->zotero_list_group ?? '');
 
+        $contentId = (int) $model->id;
         [$items, $total, $groups] = $this->fetchItemsWithMeta(
             $libraryIds,
             $collections,
@@ -96,7 +97,8 @@ final class ZoteroCreatorItemsContentController extends AbstractContentElementCo
             $perPage,
             $request,
             $requireCiteContent,
-            $authorMemberId
+            $authorMemberId,
+            $contentId
         );
 
         $template->search_mode = false;
@@ -104,11 +106,11 @@ final class ZoteroCreatorItemsContentController extends AbstractContentElementCo
         $template->items = $items;
         $template->total = $total;
         $template->groups = $groups;
-        $template->pagination = $this->buildPaginationHtml($total, $perPage, max(1, (int) $request->query->get('page', 1)), (int) $model->id, $request);
+        $template->pagination = $this->buildPaginationHtml($total, $perPage, max(1, (int) Input::get($this->getPaginationParam($contentId), 1)), $contentId, $request);
 
         $pageMap = $this->getLibraryReaderPageMap($libraryIds, $readerElementId > 0);
         $locale = $this->resolveLocale($request);
-        $searchParamsQuery = $this->buildSearchParamsQueryString($request);
+        $searchParamsQuery = $this->buildSearchParamsQueryString($request, $contentId);
 
         foreach ($items as $i => $entry) {
             if (isset($entry['item'])) {
@@ -304,16 +306,17 @@ final class ZoteroCreatorItemsContentController extends AbstractContentElementCo
         int $perPage,
         Request $request,
         bool $requireCiteContent,
-        int $authorMemberId
+        int $authorMemberId,
+        int $contentId
     ): array {
         $baseItems = $this->fetchItems($libraryIds, $collectionIds, $itemTypes, $sortOrder, $sortDirectionDate, $numberOfItems > 0 ? $numberOfItems : null, $requireCiteContent, $authorMemberId);
 
         if ($groupBy !== '') {
-            return $this->applyGroupingAndPagination($baseItems, $groupBy, $sortOrder, $sortDirectionDate, $perPage, $numberOfItems, $request);
+            return $this->applyGroupingAndPagination($baseItems, $groupBy, $sortOrder, $sortDirectionDate, $perPage, $numberOfItems, $request, $contentId);
         }
 
         $total = \count($baseItems);
-        $page = max(1, (int) $request->query->get('page', 1));
+        $page = max(1, (int) Input::get($this->getPaginationParam($contentId), 1));
         $items = $perPage <= 0 ? $baseItems : array_slice($baseItems, ($page - 1) * $perPage, $perPage);
 
         return [$items, $total, null];
@@ -413,7 +416,7 @@ final class ZoteroCreatorItemsContentController extends AbstractContentElementCo
      *
      * @return array{0: list<array<string, mixed>>, 1: int, 2: list<array{key: string, label: string}>}
      */
-    private function applyGroupingAndPagination(array $baseItems, string $groupBy, string $sortOrder, string $sortDirectionDate, int $perPage, int $numberOfItems, Request $request): array
+    private function applyGroupingAndPagination(array $baseItems, string $groupBy, string $sortOrder, string $sortDirectionDate, int $perPage, int $numberOfItems, Request $request, int $contentId): array
     {
         $rows = [];
         $libraryTitles = [];
@@ -443,7 +446,7 @@ final class ZoteroCreatorItemsContentController extends AbstractContentElementCo
 
         $this->sortGroupedRows($rows, $sortOrder, $sortDirectionDate, $groupBy);
         $total = \count($rows);
-        $pageRows = $perPage <= 0 ? $rows : array_slice($rows, (max(1, (int) $request->query->get('page', 1)) - 1) * $perPage, $perPage);
+        $pageRows = $perPage <= 0 ? $rows : array_slice($rows, (max(1, (int) Input::get($this->getPaginationParam($contentId), 1)) - 1) * $perPage, $perPage);
 
         $groupOptions = [];
         $seen = [];
@@ -534,15 +537,24 @@ final class ZoteroCreatorItemsContentController extends AbstractContentElementCo
             return null;
         }
         $config = $this->getContaoAdapter(Config::class);
-        $param = 'page';
+        $param = $this->getPaginationParam($contentId);
         $pagination = new Pagination($total, $perPage, $config->get('maxPaginationLinks'), $param);
         return $pagination->generate("\n  ");
     }
 
-    private function buildSearchParamsQueryString(Request $request): string
+    /**
+     * Paginierungs-Parameter gemäß Contao-Konvention: page_z + Content-ID.
+     */
+    private function getPaginationParam(int $contentId): string
     {
+        return 'page_z' . $contentId;
+    }
+
+    private function buildSearchParamsQueryString(Request $request, int $contentId): string
+    {
+        $paramKeys = ['keywords', 'zotero_author', 'zotero_year_from', 'zotero_year_to', 'zotero_item_type', 'query_type', $this->getPaginationParam($contentId)];
         $params = [];
-        foreach (['keywords', 'zotero_author', 'zotero_year_from', 'zotero_year_to', 'zotero_item_type', 'query_type', 'page'] as $key) {
+        foreach ($paramKeys as $key) {
             $value = $request->query->get($key);
             if ($value !== null && $value !== '') {
                 $params[$key] = $value;
