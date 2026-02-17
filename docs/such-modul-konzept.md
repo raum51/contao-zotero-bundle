@@ -4,6 +4,8 @@
 **Bundle:** raum51/contao-zotero-bundle  
 **Ziel:** Vergleich verschiedener Ansätze zur Umsetzung eines Such-Moduls sowie Empfehlung einer Contao-konformen Lösung. Abschnitt 7: Erweiterungskonzept Version 2 (Februar 2025). Abschnitt 5.4: Library-basierter Sitemap-Ansatz (Februar 2026). Abschnitt 5.5: SEO Meta-Description für Detailseiten (Februar 2026).
 
+**Umsetzung (CE-only):** „Modul“ in diesem Dokument entspricht den Content-Elementen **Zotero-Suche** (Suchformular) und **Zotero-Liste** (Ergebnisausgabe). Frontend-Module wurden am 16.02.2026 entfernt.
+
 ---
 
 ## 1. Ausgangslage und Anforderungen
@@ -18,7 +20,7 @@
 
 ### 1.2 Technische Basis
 
-- **Daten:** `tl_zotero_item` mit `title`, `year`, `tags` (JSON), `json_data` (enthält Abstract, Creators etc.)
+- **Daten:** `tl_zotero_item` mit `title`, `year`, `tags` (kommasepariert mit ", "; Legacy: JSON wird beim Auslesen unterstützt), `json_data` (enthält Abstract, Creators etc.)
 - **Autor-Filter:** Über `tl_zotero_item_creator` → `tl_zotero_creator_map` → `tl_member` (nur Einträge mit `member_id` gesetzt)
 - **Listen-Modul:** `ZoteroListController` mit `fetchItems()` – aktuell ohne Such-Parameter
 
@@ -290,7 +292,7 @@ Die Suche nach `keywords` erfolgt in **drei Stufen** (Priorität absteigend), je
 
 #### Beispiel-SQL für Token-Suche (Stufe 3, AND-Modus)
 
-Annahme: Suchbegriff `"Agrarökologie Klimawandel"`, Tokens nach Stopword-Filter: `agrarökologie`, `klimawandel`. Gewichtung: title=3, tags=2, abstract=1. `tags` ist JSON (z. B. `[{"tag":"Agrarökologie"}]`), daher genügt `LIKE` auf den Roh-JSON; Abstract steckt in `json_data.abstractNote`.
+Annahme: Suchbegriff `"Agrarökologie Klimawandel"`, Tokens nach Stopword-Filter: `agrarökologie`, `klimawandel`. Gewichtung: title=3, tags=2, abstract=1. `tags` ist kommasepariert (z. B. `Agrarökologie, Klimawandel`), daher genügt `LIKE`; Abstract steckt in `json_data.abstractNote` bzw. Spalte `abstract`.
 
 **AND-Modus:**
 
@@ -554,7 +556,7 @@ Das Layout definiert einen `titleTag` (Standard: `{{page::pageTitle}} - {{page::
 | **Title** | Nur `title` des Items. Contao ergänzt via Layout titleTag automatisch „ - rootPageTitle“. |
 | **Meta Description (Primär)** | `cite_content` – **unbedingt HTML-frei** (HtmlDecoder::htmlToPlainText). Max. 160 Zeichen, bei Kürzung mit „…“ abschneiden. |
 | **Meta Description (Fallback)** | Wenn cite_content leer oder nur Whitespace: „Autor(en) (Jahr): Titel“. Autoren aus json_data.creators (Format „Nachname, Vorname; …“). |
-| **Meta Keywords** | Zotero-Tags aus item.tags (JSON), geparst und kommasepariert, via addMetaTag. Contao-Suchindex erfasst sie. |
+| **Meta Keywords** | Zotero-Tags aus item.tags (kommasepariert mit ", "; Legacy-JSON wird geparst), via addMetaTag. Contao-Suchindex erfasst sie. |
 | **Canonical** | setCanonicalUri mit aktueller Request-URL. |
 | **Geltungsbereich** | Nur im Reader-Modus (`from_url`) – Detailseiten, nicht bei fixed-Einzelelement in Sidebar/Artikel. |
 
@@ -585,7 +587,7 @@ Das Layout definiert einen `titleTag` (Standard: `{{page::pageTitle}} - {{page::
 | **Weiterleitung** | Such-Modul → Weiterleitungsseite mit Listen-Modul (GET) |
 | **Layout gleiche Seite** | Möglich: Suchformular oben, Ergebnisliste darunter; Weiterleitungsseite = dieselbe Seite |
 | **Modul-Referenz** | Optional: `zotero_search_module` im Listen-Modul für Library-Übernahme im Suchmodus |
-| **Suchfelder** | Titel, publication_title, tags (JSON), Abstract (json_data) |
+| **Suchfelder** | Titel, publication_title, tags (kommasepariert), Abstract (Spalte abstract bzw. json_data) |
 
 ---
 
