@@ -58,6 +58,8 @@ php bin/console contao:zotero:sync -l 1 --debug
 
 Bei großen Bibliotheken kann der Sync im Backend zu Timeouts führen; dann den Sync per CLI ausführen (kein Request-Timeout, kein Browser-Abbruch).
 
+**Migration (Tags-Format):** Falls Sie ein Update von einer älteren Version durchführen, in der Tags noch als JSON gespeichert waren, werden diese beim üblichen Contao-Update automatisch migriert. Alternativ: `php bin/console contao:migrate` ausführen. Die Migration „Zotero-Bundle: Tags von JSON auf kommasepariertes Format migrieren“ erscheint im Install-Tool bzw. in der Konsolenausgabe, sobald betroffene Datensätze vorhanden sind.
+
 **Items-Abruf (2-Pass):** Der Sync ruft zuerst alle Nicht-Attachments (`itemType=-attachment`) und anschließend alle Attachments (`itemType=attachment`) ab. So stehen Parent-Items immer vor deren Attachments zur Verfügung und Reihenfolge-Probleme entfallen.
 
 **Übersprungene Items:** Nicht importierbare Items (z. B. Attachment ohne Parent, API-Fehler) werden protokolliert: im Log (Kanal `raum51_zotero`), im Result-Array und – bei CLI-Ausführung mit `--show-details` – als Tabelle mit Key, Typ, Grund und Library. Mit `--log-skipped=PATH` werden sie zusätzlich in eine JSON-Datei geschrieben (Format: `synced_at`, `count`, `skipped_items`).

@@ -931,7 +931,7 @@ final class ZoteroSyncService
         $publicationTitle = $this->stripHtmlFromText((string) ($data['publicationTitle'] ?? ''));
         $abstract = $this->stripHtmlFromText((string) ($data['abstractNote'] ?? ''));
         $tags = $data['tags'] ?? [];
-        $tagsJson = $tags !== [] ? json_encode($tags, \JSON_UNESCAPED_UNICODE) : null;
+        $tagsStored = $this->processTagsForStorage($tags);
         $jsonData = json_encode($data, \JSON_UNESCAPED_UNICODE | \JSON_THROW_ON_ERROR);
 
         $existing = $this->connection->fetchOne('SELECT id FROM tl_zotero_item WHERE pid = ? AND zotero_key = ?', [$pid, $key]);
@@ -964,7 +964,7 @@ final class ZoteroSyncService
             'bib_content' => $bibContent,
             'abstract' => $abstract !== '' ? $abstract : null,
             'json_data' => $jsonData,
-            'tags' => $tagsJson,
+            'tags' => $tagsStored,
             'download_attachments' => '',
             'published' => $inTrash ? '0' : '1',
             'alias' => $alias,
@@ -981,6 +981,43 @@ final class ZoteroSyncService
         $result['items_created']++;
         $result['items_created_details'][] = ['key' => $key, 'title' => (string) $title, 'item_type' => (string) $itemType];
         return (int) $this->connection->lastInsertId();
+    }
+
+    /**
+     * Verarbeitet Zotero-Tags für die Speicherung: kommasepariert (", ").
+     * - Komma in Tag-Namen wird zu Semikolon (Delimiter bleibt eindeutig).
+     * - Whitespace: trim am Anfang/Ende, mehrfache Leerzeichen dazwischen zu einem.
+     *
+     * @param array<int, mixed> $tags Zotero-Format [{"tag":"x","type":1},...]
+     */
+    private function processTagsForStorage(array $tags): ?string
+    {
+        return self::convertZoteroTagsToStorageFormat($tags);
+    }
+
+    /**
+     * Konvertiert Zotero-Tags-Array ins Speicherformat (kommasepariert mit ", ").
+     * Nutzbar z. B. in Sync und Migration.
+     *
+     * @param array<int, mixed> $tags Zotero-Format [{"tag":"x","type":1},...]
+     */
+    public static function convertZoteroTagsToStorageFormat(array $tags): ?string
+    {
+        $names = [];
+        foreach ($tags as $t) {
+            if (!\is_array($t) || !isset($t['tag'])) {
+                continue;
+            }
+            $name = (string) $t['tag'];
+            $name = str_replace(',', ';', $name);
+            $name = trim(preg_replace('/\s+/', ' ', $name) ?? $name);
+            if ($name !== '') {
+                $names[] = $name;
+            }
+        }
+        $names = array_unique($names);
+
+        return $names !== [] ? implode(', ', $names) : null;
     }
 
     /**

@@ -154,31 +154,38 @@ final class ZoteroItemController extends AbstractContentElementController
     }
 
     /**
-     * Parst Zotero-Tags aus JSON und liefert kommaseparierte Liste für Meta Keywords.
-     * Format: [{"tag":"ketosis","type":1},{"tag":"machine learning","type":1}]
+     * Liefert Tags als kommaseparierte Liste für Meta Keywords.
+     * Unterstützt: neues Format ", " (DB) und Legacy-JSON [{"tag":"x"},...].
      */
-    private function getTagsAsCommaSeparated(string $tagsJson): string
+    private function getTagsAsCommaSeparated(string $tagsStored): string
     {
-        if ($tagsJson === '') {
+        if ($tagsStored === '') {
             return '';
         }
-        $tags = json_decode($tagsJson, true);
-        if (!\is_array($tags)) {
-            return '';
-        }
-        $names = [];
-        foreach ($tags as $t) {
-            if (!\is_array($t)) {
-                continue;
+        // Legacy-JSON (vor Migration)
+        if (str_starts_with(trim($tagsStored), '[')) {
+            $tags = json_decode($tagsStored, true);
+            if (!\is_array($tags)) {
+                return '';
             }
-            $name = trim((string) ($t['tag'] ?? ''));
-            if ($name !== '') {
-                $names[] = $name;
+            $names = [];
+            foreach ($tags as $t) {
+                if (!\is_array($t)) {
+                    continue;
+                }
+                $name = trim((string) ($t['tag'] ?? ''));
+                if ($name !== '') {
+                    $names[] = $name;
+                }
             }
-        }
-        $names = array_unique($names);
 
-        return implode(', ', $names);
+            return implode(', ', array_unique($names));
+        }
+
+        // Neues Format: ", " getrennt
+        $parts = array_filter(array_map('trim', explode(', ', $tagsStored)));
+
+        return implode(', ', array_unique($parts));
     }
 
     /**
