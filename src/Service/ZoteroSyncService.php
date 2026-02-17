@@ -992,17 +992,6 @@ final class ZoteroSyncService
      */
     private function processTagsForStorage(array $tags): ?string
     {
-        return self::convertZoteroTagsToStorageFormat($tags);
-    }
-
-    /**
-     * Konvertiert Zotero-Tags-Array ins Speicherformat (kommasepariert mit ", ").
-     * Nutzbar z. B. in Sync und Migration.
-     *
-     * @param array<int, mixed> $tags Zotero-Format [{"tag":"x","type":1},...]
-     */
-    public static function convertZoteroTagsToStorageFormat(array $tags): ?string
-    {
         $names = [];
         foreach ($tags as $t) {
             if (!\is_array($t) || !isset($t['tag'])) {

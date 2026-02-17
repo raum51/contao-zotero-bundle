@@ -55,7 +55,3 @@ services:
         public: true
     Raum51\ContaoZoteroBundle\EventListener\DataContainer\ZoteroItemTypesOptionsCallback:
         public: true
-
-    Raum51\ContaoZoteroBundle\Migration\TagsFormatMigration:
-        tags:
-            - { name: contao.migration, priority: 0 }
