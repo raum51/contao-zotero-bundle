@@ -1,8 +1,8 @@
 # Konzept: Zotero-Such-Modul für das Frontend
 
-**Stand:** 14. Februar 2025  
+**Stand:** 17. Februar 2026  
 **Bundle:** raum51/contao-zotero-bundle  
-**Ziel:** Vergleich verschiedener Ansätze zur Umsetzung eines Such-Moduls sowie Empfehlung einer Contao-konformen Lösung. Abschnitt 7: Erweiterungskonzept Version 2 (Februar 2025).
+**Ziel:** Vergleich verschiedener Ansätze zur Umsetzung eines Such-Moduls sowie Empfehlung einer Contao-konformen Lösung. Abschnitt 7: Erweiterungskonzept Version 2 (Februar 2025). Abschnitt 5.4: Library-basierter Sitemap-Ansatz (Februar 2026). Abschnitt 5.5: SEO Meta-Description für Detailseiten (Februar 2026).
 
 ---
 
@@ -464,6 +464,109 @@ Contao verwendet **einen zentralen Suchindex** (`tl_search`, `tl_search_index`, 
 
 **Technik Reader-Seiten-IDs:** Seiten mit Zotero-Lese-Modul ermitteln – z. B. über `tl_module` (type=zotero_reader) und die Zuordnung zu Seiten über Layout/Theme bzw. Artikel. Die Index-Einträge von Zotero-Detail-URLs erhalten beim Crawl die `pid` der jeweiligen Reader-Seite.
 
+### 5.4 Library-basierter Sitemap-Ansatz (Empfohlen, Februar 2026)
+
+**Hintergrund:** Die vorherigen Ansätze (5.2, 5.3) sowie die implementierte „Variante A“ (nur Items aus List-CEs) haben Komplexitätsprobleme:
+
+- **Variante A** hängt von List-CEs ab – dabei müssen u. a. robots (noindex), protected, published/start/stop von Seiten, Artikeln und CEs berücksichtigt werden.
+- **Reader auf gleicher Seite** vs. **Library-jumpTo:** Bei gleicher Seite ist die Listenseite relevant; bei unterschiedlichen jumpTo-Seiten pro Library wird es undurchsichtig.
+- Es gibt viele Stellen, die ein Item oder eine Liste depublizieren oder die Indexierung verhindern können.
+
+**Vorschlag:** Die Entscheidung wird **pro Library** im Backend getroffen – explizit und unabhängig von CEs.
+
+#### Konzept
+
+| Aspekt | Beschreibung |
+|--------|--------------|
+| **Ort** | `tl_zotero_library` – neue Option „In Sitemap aufnehmen und für Contao-Suche indizieren“ |
+| **Voraussetzung** | Library muss `published = 1`, `jumpTo > 0` haben; jumpTo-Seite muss im aktuellen Root liegen, veröffentlicht und **nicht protected** sein |
+| **URL** | Immer `{library.jumpTo}/{item.alias}` bzw. `/{item.id}` – ContentUrlGenerator/ZoteroItemContentUrlResolver |
+| **Filter** | Subpalette (nur bei aktivierter Option): Collections, Item-Typen, Autoren (tl_member mit Items) – analog zu Listen-CEs |
+
+#### DCA-Erweiterung (tl_zotero_library)
+
+| Feld | Typ | Beschreibung |
+|------|-----|--------------|
+| `include_in_sitemap` | checkbox | „In Sitemap aufnehmen und für Contao-Suche indizieren“ |
+| `sitemap_collections` | checkboxWizard | Nur Items aus diesen Collections (leer = alle) |
+| `sitemap_item_types` | checkboxWizard | Nur diese Item-Typen (leer = alle) |
+| `sitemap_authors` | checkboxWizard | Nur Items dieser Autoren (leer = alle). **Options-Callback:** Nur tl_member mit mindestens einem Item in **dieser** Library (über tl_zotero_creator_map, tl_zotero_item_creator, tl_zotero_item.pid). |
+
+**Widget-Konsistenz:** Alle drei Filter nutzen **checkboxWizard** wie Collections und Item-Typen im Listen-CE (nicht Dropdown wie zotero_author im Listen-CE).
+
+**Subpalette:** Die Filterfelder erscheinen nur, wenn `include_in_sitemap` aktiv ist.
+
+#### SitemapListener-Logik
+
+1. Root-Page-IDs aus dem Event ermitteln.
+2. Libraries laden mit: `published = 1`, `include_in_sitemap = 1`, `jumpTo > 0`.
+3. Für jede Library prüfen: jumpTo-Seite liegt im Root, ist veröffentlicht und **nicht protected** (`PageModel::findPublishedById` + `!$page->protected`).
+4. Items pro Library ermitteln – gefiltert nach `sitemap_collections`, `sitemap_item_types`, `sitemap_authors` (leer = kein Filter).
+5. Für jedes Item URL via `ContentUrlGenerator->generate($zoteroItemModel, [], ABSOLUTE_URL)` erzeugen und zur Sitemap hinzufügen.
+
+#### Vorteile
+
+- **Explizit:** Der Redakteur entscheidet pro Library, was indexiert wird.
+- **Unabhängig von CEs:** Keine Abhängigkeit von Listenseiten, robots, protected, start/stop.
+- **Eindeutige URL:** Immer die jumpTo-Seite der Library – keine Verwirrung bei Reader auf gleicher Seite vs. Library-Weiterleitung.
+- **Bekannte Filter:** Gleiche Logik wie List-CEs (Collections, Item-Typen, Autoren).
+- **Einfache Implementierung:** ZoteroListItemsService wird obsolet; Logik konzentriert sich in der Library-Konfiguration.
+
+#### Listen von Suchindex ausschließen
+
+Listen-Inhalte (Item-Liste, Pagination) werden mit `<!-- indexer::stop -->` und `<!-- indexer::continue -->` umschlossen (zotero_list.html.twig). Der Contao-Standardindexer (Search.php) entfernt den Bereich zwischen diesen HTML-Kommentaren aus dem zu indexierenden Text. Analog zu News-/Artikel-Listen; Detailseiten sind per Sitemap bereits indexiert – Duplikate werden vermieden. **Implementiert:** 17.02.2026.
+
+#### Entscheidungen (geklärt)
+
+- **Autoren-Filter:** Nur tl_member, die mindestens ein Item in **dieser** Library haben (über tl_zotero_creator_map, tl_zotero_item_creator, tl_zotero_item.pid).
+- **jumpTo-Seite:** Published **und** nicht protected prüfen. robots noindex wird nicht geprüft.
+
+#### Migration von Variante A (umgesetzt 17.02.2026)
+
+- `ZoteroListItemsService` wurde entfernt.
+- `ZoteroSitemapListener` wurde auf Library-Konfiguration umgestellt.
+- Bestehende List-CEs bleiben unverändert; sie beeinflussen die Sitemap nicht mehr.
+
+### 5.5 SEO Meta-Description für Detailseiten (Februar 2026)
+
+**Frage:** Sollen die Metadaten der Detailseite (Titel, Meta Description) aus dem angezeigten Zotero-Item befüllt werden – analog zu News-, FAQ- und Calendar-Detailseiten?
+
+**Recherche: Core-Bundles**
+
+Alle Reader (ModuleNewsReader, ModuleFaqReader, ModuleEventReader) überschreiben die Seitengrunddaten mit item-spezifischen Werten:
+
+| Aspekt | News | FAQ | Calendar |
+|--------|------|-----|----------|
+| **Mechanismus** | `ResponseContext` → `HtmlHeadBag` | Gleich | Gleich |
+| **Title** | `pageTitle` oder `headline` | `pageTitle` oder `question` | `pageTitle` oder `title` |
+| **Meta Description** | `description` oder `teaser` | `description` oder `question` | `description` oder `teaser` |
+| **Robots** | `robots` (tl_news) | `robots` | `robots` |
+| **Canonical** | ContentUrlGenerator | – | ContentUrlGenerator |
+
+**Contao-Seitentitel (technisch):**
+
+Das Layout definiert einen `titleTag` (Standard: `{{page::pageTitle}} - {{page::rootPageTitle}}`). Der InsertTag-Parser ersetzt `{{page::pageTitle}}` mit dem Wert aus `HtmlHeadBag::getTitle()`. **Man setzt also nur den Seitenanteil** – Contao ergänzt automatisch „ - Website-Name“. PageRegular.php nutzt `strip_tags(insert_tag_parser->replaceInline(objLayout->titleTag))` für das finale `<title>`.
+
+**Entscheidungen (Zotero, umgesetzt 17.02.2026):**
+
+| Aspekt | Entscheidung |
+|--------|--------------|
+| **Title** | Nur `title` des Items. Contao ergänzt via Layout titleTag automatisch „ - rootPageTitle“. |
+| **Meta Description (Primär)** | `cite_content` – **unbedingt HTML-frei** (HtmlDecoder::htmlToPlainText). Max. 160 Zeichen, bei Kürzung mit „…“ abschneiden. |
+| **Meta Description (Fallback)** | Wenn cite_content leer oder nur Whitespace: „Autor(en) (Jahr): Titel“. Autoren aus json_data.creators (Format „Nachname, Vorname; …“). |
+| **Meta Keywords** | Zotero-Tags aus item.tags (JSON), geparst und kommasepariert, via addMetaTag. Contao-Suchindex erfasst sie. |
+| **Canonical** | setCanonicalUri mit aktueller Request-URL. |
+| **Geltungsbereich** | Nur im Reader-Modus (`from_url`) – Detailseiten, nicht bei fixed-Einzelelement in Sidebar/Artikel. |
+
+**Implementierung (ZoteroItemController):**
+
+- `ResponseContextAccessor` und `HtmlDecoder` injizieren.
+- `setPageMetaFromItem()` nur aufrufen, wenn `mode === 'from_url'`.
+- `buildMetaDescription()`: cite_content → htmlToPlainText → Whitespace normalisieren → ggf. kürzen; sonst Fallback „Autoren (Jahr): Titel“.
+- `getAuthorsFromJsonData()`: Creator-Array aus json_data parsen, Format wie ZoteroItemOptionsCallback.
+
+**Status:** Implementiert.
+
 ---
 
 ## 6. Zusammenfassung der Empfehlung
@@ -478,7 +581,7 @@ Contao verwendet **einen zentralen Suchindex** (`tl_search`, `tl_search_index`, 
 | **Suche ohne keywords** | Besucher kann nur mit Filtern suchen (z. B. alle Publikationen von X im Jahr 2020) |
 | **Library-Konflikt** | Schnittmenge: Nur Libraries, die sowohl im Such- als auch im Listen-Modul ausgewählt sind |
 | **Fuzzy/Wildcard** | Loupe (falls genutzt) bietet Typo Tolerance. Zotero-DB-Suche: `LIKE` mit Teilmatch |
-| **Contao-Suchindex** | Sitemap-Event: Detail-URLs zur Sitemap → Crawler indexiert. Ein Index, zwei Sichten: Zotero-Modul filtert auf Reader-Seiten; Website-Suche nutzt ganzen Index |
+| **Contao-Suchindex** | Sitemap-Event: Detail-URLs zur Sitemap → Crawler indexiert. **Empfohlen (5.4):** Library-basiert – pro Library Option „In Sitemap aufnehmen“ mit Filter; Listen mit indexer::stop/continue von Indexierung ausgenommen. **SEO (5.5):** Meta Title (Item-Titel) + Meta Description (cite_content HTML-frei oder Fallback „Autor (Jahr): Titel“) für Detailseiten – implementiert in ZoteroItemController |
 | **Weiterleitung** | Such-Modul → Weiterleitungsseite mit Listen-Modul (GET) |
 | **Layout gleiche Seite** | Möglich: Suchformular oben, Ergebnisliste darunter; Weiterleitungsseite = dieselbe Seite |
 | **Modul-Referenz** | Optional: `zotero_search_module` im Listen-Modul für Library-Übernahme im Suchmodus |

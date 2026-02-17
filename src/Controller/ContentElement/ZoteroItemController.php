@@ -9,7 +9,11 @@ use Contao\CoreBundle\Controller\ContentElement\AbstractContentElementController
 use Contao\CoreBundle\DependencyInjection\Attribute\AsContentElement;
 use Contao\CoreBundle\Exception\PageNotFoundException;
 use Contao\CoreBundle\Routing\ContentUrlGenerator;
+use Contao\CoreBundle\Routing\ResponseContext\ResponseContextAccessor;
+use Contao\CoreBundle\String\HtmlDecoder;
 use Contao\CoreBundle\Twig\FragmentTemplate;
+use Contao\CoreBundle\Routing\ResponseContext\HtmlHeadBag\HtmlHeadBag;
+use Contao\CoreBundle\String\HtmlAttributes;
 use Contao\Input;
 use Contao\PageModel;
 use Contao\StringUtil;
@@ -37,12 +41,16 @@ use Symfony\Component\HttpFoundation\Response;
 )]
 final class ZoteroItemController extends AbstractContentElementController
 {
+    private const META_DESCRIPTION_MAX_LENGTH = 160;
+
     public function __construct(
         private readonly Connection $connection,
         private readonly ZoteroAttachmentResolver $attachmentResolver,
         private readonly ZoteroLocaleLabelService $localeLabelService,
         private readonly ZoteroSchemaOrgService $schemaOrgService,
         private readonly ContentUrlGenerator $contentUrlGenerator,
+        private readonly ResponseContextAccessor $responseContextAccessor,
+        private readonly HtmlDecoder $htmlDecoder,
     ) {
     }
 
@@ -103,6 +111,7 @@ final class ZoteroItemController extends AbstractContentElementController
 
         if ($mode === 'from_url') {
             $this->addOverviewPageToTemplate($template, $model);
+            $this->setPageMetaFromItem($item, $itemArray, $canonicalUrl);
         }
 
         $headlineData = StringUtil::deserialize($model->headline ?? '', true);
@@ -112,6 +121,130 @@ final class ZoteroItemController extends AbstractContentElementController
         ];
 
         return $template->getResponse();
+    }
+
+    private function setPageMetaFromItem(ZoteroItemModel $item, array $itemArray, string $canonicalUrl): void
+    {
+        $responseContext = $this->responseContextAccessor->getResponseContext();
+        if ($responseContext === null || !$responseContext->has(HtmlHeadBag::class)) {
+            return;
+        }
+
+        $htmlHeadBag = $responseContext->get(HtmlHeadBag::class);
+
+        // Title: Nur der Seitenanteil; Contao ergänzt per titleTag automatisch " - Website-Name"
+        $title = $this->htmlDecoder->inputEncodedToPlainText($itemArray['title'] ?? '');
+        if ($title !== '') {
+            $htmlHeadBag->setTitle($title);
+        }
+
+        // Meta Description: cite_content (HTML-frei) oder Fallback "Autor(en) (Jahr): Titel"
+        $metaDescription = $this->buildMetaDescription($item, $itemArray);
+        if ($metaDescription !== '') {
+            $htmlHeadBag->setMetaDescription($metaDescription);
+        }
+
+        $htmlHeadBag->setCanonicalUri($canonicalUrl);
+
+        // Meta Keywords: Zotero-Tags als kommaseparierte Liste (Contao-Suchindex profitiert)
+        $keywords = $this->getTagsAsCommaSeparated($item->tags ?? '');
+        if ($keywords !== '') {
+            $htmlHeadBag->addMetaTag((new HtmlAttributes())->set('name', 'keywords')->set('content', $keywords));
+        }
+    }
+
+    /**
+     * Parst Zotero-Tags aus JSON und liefert kommaseparierte Liste für Meta Keywords.
+     * Format: [{"tag":"ketosis","type":1},{"tag":"machine learning","type":1}]
+     */
+    private function getTagsAsCommaSeparated(string $tagsJson): string
+    {
+        if ($tagsJson === '') {
+            return '';
+        }
+        $tags = json_decode($tagsJson, true);
+        if (!\is_array($tags)) {
+            return '';
+        }
+        $names = [];
+        foreach ($tags as $t) {
+            if (!\is_array($t)) {
+                continue;
+            }
+            $name = trim((string) ($t['tag'] ?? ''));
+            if ($name !== '') {
+                $names[] = $name;
+            }
+        }
+        $names = array_unique($names);
+
+        return implode(', ', $names);
+    }
+
+    /**
+     * Baut die Meta Description: cite_content (HTML-frei, max. 160 Zeichen) oder
+     * Fallback "Autor(en) (Jahr): Titel".
+     */
+    private function buildMetaDescription(ZoteroItemModel $item, array $itemArray): string
+    {
+        $citeContent = trim((string) ($item->cite_content ?? ''));
+        if ($citeContent !== '') {
+            $plain = $this->htmlDecoder->htmlToPlainText($citeContent);
+            $plain = preg_replace('/\s+/', ' ', $plain) ?? $plain;
+            $plain = trim($plain);
+            if ($plain !== '') {
+                return \strlen($plain) > self::META_DESCRIPTION_MAX_LENGTH
+                    ? mb_substr($plain, 0, self::META_DESCRIPTION_MAX_LENGTH - 1) . '…'
+                    : $plain;
+            }
+        }
+
+        $authors = $this->getAuthorsFromJsonData($item->json_data ?? '{}');
+        $year = trim((string) ($item->year ?? ''));
+        $title = trim((string) ($itemArray['title'] ?? ''));
+
+        $prefix = $authors !== ''
+            ? $authors . ($year !== '' ? ' (' . $year . ')' : '') . ': '
+            : ($year !== '' ? '(' . $year . '): ' : '');
+
+        $result = $prefix . ($title !== '' ? $title : 'Publikation');
+        return \strlen($result) > self::META_DESCRIPTION_MAX_LENGTH
+            ? mb_substr($result, 0, self::META_DESCRIPTION_MAX_LENGTH - 1) . '…'
+            : $result;
+    }
+
+    /**
+     * Liefert Autoren-String aus json_data.creators (Format: "Nachname, Vorname; …").
+     */
+    private function getAuthorsFromJsonData(string $jsonData): string
+    {
+        $data = json_decode($jsonData, true);
+        if (!\is_array($data)) {
+            return '';
+        }
+        $creators = $data['creators'] ?? [];
+        if (!\is_array($creators)) {
+            return '';
+        }
+        $parts = [];
+        foreach ($creators as $c) {
+            if (!\is_array($c)) {
+                continue;
+            }
+            $name = trim((string) ($c['name'] ?? ''));
+            if ($name !== '') {
+                $parts[] = $name;
+                continue;
+            }
+            $last = trim((string) ($c['lastName'] ?? ''));
+            $first = trim((string) ($c['firstName'] ?? ''));
+            $part = $last !== '' ? ($first !== '' ? $last . ', ' . $first : $last) : ($first !== '' ? $first : '');
+            if ($part !== '') {
+                $parts[] = $part;
+            }
+        }
+
+        return implode('; ', $parts);
     }
 
     private function addOverviewPageToTemplate(FragmentTemplate $template, ContentModel $model): void

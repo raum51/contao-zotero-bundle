@@ -301,6 +301,18 @@ Details: [`docs/schema-org-json-ld-konzept.md`](docs/schema-org-json-ld-konzept.
 
 ---
 
+## Contao-Suchindex (Sitemap)
+
+Das Bundle registriert einen **ZoteroSitemapListener** für das Event `contao.sitemap`. Dadurch werden Zotero-Item-Detail-URLs zur Sitemap hinzugefügt. Der Contao-Crawler (`contao:crawl` oder Backend „Suchindex aktualisieren“) ruft diese URLs auf; der Standard-SearchIndexListener indexiert den HTML-Inhalt. Publikationen erscheinen so in der **Website-weiten Suche** (Standard-Suchmodul).
+
+**Library-basiert:** Pro Library kann im Backend die Option „In Sitemap aufnehmen“ aktiviert werden. Es werden nur Items aus Libraries mit dieser Option indexiert. Filter (Collections, Item-Typen, Autoren) können optional eingeschränkt werden – analog zu den List-CEs. Die jumpTo-Seite muss veröffentlicht und nicht protected sein.
+
+**URL-Erzeugung:** Der Listener nutzt den **ContentUrlGenerator** (über **ZoteroItemContentUrlResolver**). Voraussetzung: Library muss **jumpTo > 0** haben. Die kanonische URL pro Item ist `{jumpTo-Seite}/{alias}` bzw. `/{id}`.
+
+Details: [`docs/such-modul-konzept.md`](docs/such-modul-konzept.md) Abschnitt 5 (Contao-Suchindex).
+
+---
+
 ## Geplante Funktionen
 
 Die folgenden Erweiterungen sind geplant bzw. in Konzepten beschrieben:
@@ -308,7 +320,7 @@ Die folgenden Erweiterungen sind geplant bzw. in Konzepten beschrieben:
 | Bereich | Beschreibung | Konzept/Status |
 |---------|--------------|----------------|
 | **Schema.org / JSON-LD** | Strukturierte Daten (ScholarlyArticle, Book etc.) per `add_schema_org()` in der Detailansicht (CE Zotero-Einzelelement). ZoteroSchemaOrgService, zotero_item.html.twig | Implementiert (16.02.2026). Konzept: [`docs/schema-org-json-ld-konzept.md`](docs/schema-org-json-ld-konzept.md) |
-| **Contao-Suchindex** | Publikationen (Titel, Tags, Autor) für die Website-Suche indexieren (Sitemap-Event, Crawler) | such-modul-konzept.md §5 |
+| **Contao-Suchindex** | Publikationen (Titel, Tags, Autor) für die Website-Suche indexieren (Sitemap-Event, Crawler) | Implementiert (17.02.2026). ZoteroSitemapListener. such-modul-konzept.md §5 |
 | *~~Legacy-CE bereinigen~~* | *Erledigt (16.02.2026)* | – |
 | **download_attachments** | Einstellung pro CE/Modul für Attachment-Downloads (3 Ebenen: Library, Modul/CE, Item) | Blueprint |
 | **PHPUnit-Tests** | ZoteroBibUtil, ZoteroStopwordService, ZoteroSearchService etc. | [`docs/phpunit-test-konzept.md`](docs/phpunit-test-konzept.md) |

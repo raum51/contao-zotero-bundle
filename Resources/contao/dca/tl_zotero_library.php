@@ -92,7 +92,11 @@ $GLOBALS['TL_DCA']['tl_zotero_library'] = [
         ],
     ],
     'palettes' => [
-        'default' => '{title_legend},title;{frontend_legend},jumpTo;{zotero_legend},library_id,library_type,api_key;{citation_legend},citation_style,citation_locale,cite_content_markup;{sync_legend},sync_interval,last_sync_at,last_sync_status,last_sync_version;{options_legend},download_attachments,published;{expert_legend},sorting',
+        '__selector__' => ['include_in_sitemap'],
+        'default' => '{title_legend},title;{frontend_legend},jumpTo;{zotero_legend},library_id,library_type,api_key;{citation_legend},citation_style,citation_locale,cite_content_markup;{sync_legend},sync_interval,last_sync_at,last_sync_status,last_sync_version;{options_legend},download_attachments,published,include_in_sitemap;{expert_legend},sorting',
+    ],
+    'subpalettes' => [
+        'include_in_sitemap' => 'sitemap_collections,sitemap_item_types,sitemap_authors',
     ],
     'fields' => [
         'id' => [
@@ -214,6 +218,37 @@ $GLOBALS['TL_DCA']['tl_zotero_library'] = [
             'eval' => ['fieldType' => 'radio', 'tl_class' => 'clr'],
             'sql' => 'int(10) unsigned NOT NULL default 0',
             'relation' => ['type' => 'hasOne', 'table' => 'tl_page', 'field' => 'id'],
+        ],
+        'include_in_sitemap' => [
+            'label' => &$GLOBALS['TL_LANG']['tl_zotero_library']['include_in_sitemap'],
+            'exclude' => true,
+            'inputType' => 'checkbox',
+            'eval' => ['submitOnChange' => true, 'tl_class' => 'w50'],
+            'sql' => "char(1) NOT NULL default ''",
+        ],
+        'sitemap_collections' => [
+            'label' => &$GLOBALS['TL_LANG']['tl_zotero_library']['sitemap_collections'],
+            'exclude' => true,
+            'inputType' => 'checkboxWizard',
+            'options_callback' => [\Raum51\ContaoZoteroBundle\EventListener\DataContainer\ZoteroLibrarySitemapCollectionsOptionsCallback::class, '__invoke'],
+            'eval' => ['multiple' => true, 'tl_class' => 'clr'],
+            'sql' => 'blob NULL',
+        ],
+        'sitemap_item_types' => [
+            'label' => &$GLOBALS['TL_LANG']['tl_zotero_library']['sitemap_item_types'],
+            'exclude' => true,
+            'inputType' => 'checkboxWizard',
+            'options_callback' => [\Raum51\ContaoZoteroBundle\EventListener\DataContainer\ZoteroItemTypesOptionsCallback::class, '__invoke'],
+            'eval' => ['multiple' => true, 'tl_class' => 'clr'],
+            'sql' => 'blob NULL',
+        ],
+        'sitemap_authors' => [
+            'label' => &$GLOBALS['TL_LANG']['tl_zotero_library']['sitemap_authors'],
+            'exclude' => true,
+            'inputType' => 'checkboxWizard',
+            'options_callback' => [\Raum51\ContaoZoteroBundle\EventListener\DataContainer\ZoteroSitemapAuthorsOptionsCallback::class, '__invoke'],
+            'eval' => ['multiple' => true, 'tl_class' => 'clr'],
+            'sql' => 'blob NULL',
         ],
     ],
 ];

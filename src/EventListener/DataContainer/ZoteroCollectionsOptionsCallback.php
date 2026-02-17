@@ -12,10 +12,10 @@ use Doctrine\DBAL\Connection;
 /**
  * Liefert Zotero-Collections der gewählten Bibliotheken als Options für Checkbox-Wizard.
  *
- * Liegt unter EventListener/DataContainer/, da es ein DCA-Callback
- * (fields.zotero_collections.options) für tl_module ist. Collections werden
- * nach den ausgewählten Libraries (zotero_libraries) gefiltert – bei Änderung
- * muss die Seite neu geladen werden (submitOnChange auf zotero_libraries).
+ * Liegt unter EventListener/DataContainer/, da es ein DCA-Callback für tl_module
+ * und tl_content (zotero_collections) ist. Collections nach zotero_libraries
+ * gefiltert – submitOnChange auf zotero_libraries. Für tl_zotero_library siehe
+ * ZoteroLibrarySitemapCollectionsOptionsCallback.
  */
 #[AsCallback(table: 'tl_module', target: 'fields.zotero_collections.options')]
 #[AsCallback(table: 'tl_content', target: 'fields.zotero_collections.options')]
@@ -32,6 +32,20 @@ final class ZoteroCollectionsOptionsCallback
     public function __invoke(DataContainer|null $dc = null): array
     {
         $libraryIds = $this->getLibraryIds($dc);
+        if ($libraryIds === []) {
+            return [];
+        }
+
+        return $this->fetchCollectionsForLibraries($libraryIds);
+    }
+
+    /**
+     * @param list<int> $libraryIds
+     *
+     * @return array<int, string>
+     */
+    private function fetchCollectionsForLibraries(array $libraryIds): array
+    {
         if ($libraryIds === []) {
             return [];
         }

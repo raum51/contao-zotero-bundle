@@ -17,6 +17,7 @@ use Symfony\Contracts\Translation\TranslatorInterface;
  */
 #[AsCallback(table: 'tl_module', target: 'fields.zotero_item_types.options')]
 #[AsCallback(table: 'tl_content', target: 'fields.zotero_item_types.options')]
+#[AsCallback(table: 'tl_zotero_library', target: 'fields.sitemap_item_types.options')]
 final class ZoteroItemTypesOptionsCallback
 {
     public function __construct(

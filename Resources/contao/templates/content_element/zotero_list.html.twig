@@ -17,6 +17,7 @@
             {% if total|default(0) > 0 %}
                 <p class="zotero-list__total">{{ 'MSC.entries'|trans([total], 'contao_default') }}</p>
             {% endif %}
+            <!-- indexer::stop -->
             <ul class="zotero-list__items" role="list">
                 {% if groups|default and groups|length > 0 %}
                     {% for group in groups %}
@@ -73,6 +74,7 @@
                     <ul class="pagination__list">{{ pagination|raw }}</ul>
                 </nav>
             {% endif %}
+            <!-- indexer::continue -->
         {% elseif search_mode|default(false) %}
             {% if token_limit_exceeded|default(false) %}
                 <p class="zotero-list__token-limit-info message-info">{{ 'tl_module.zotero_search_token_limit_exceeded'|trans([token_limit|default(10)], 'contao_tl_module') }}</p>
