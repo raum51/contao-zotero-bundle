@@ -61,6 +61,8 @@ final class ZoteroSyncService
     private function doSync(?int $libraryId, bool $onlyPublished): array
     {
         $libraries = $this->fetchLibraries($libraryId, $onlyPublished);
+        $this->logger->info('Zotero Sync: {count} Library/Libraries zu synchronisieren', ['count' => \count($libraries)]);
+
         $total = [
             'collections_created' => 0,
             'collections_updated' => 0,
@@ -170,6 +172,7 @@ final class ZoteroSyncService
                     'title' => $library['title'],
                     'error' => $e->getMessage(),
                 ]);
+                $this->setLibrarySyncError((int) $library['id'], $e->getMessage());
                 $total['errors'][] = $library['title'] . ': ' . $e->getMessage();
             }
         }
@@ -209,6 +212,8 @@ final class ZoteroSyncService
     private function syncLibrary(array $library): array
     {
         $pid = (int) $library['id'];
+        $this->recordSyncAttempt($pid);
+
         $apiKey = (string) $library['api_key'];
         $prefix = $this->libraryPrefix($library);
         $citationStyle = (string) ($library['citation_style'] ?? '');
@@ -1403,6 +1408,45 @@ final class ZoteroSyncService
         $this->connection->executeStatement(
             'UPDATE tl_zotero_library SET tstamp = ?, last_sync_version = 0, last_sync_at = 0, last_sync_status = ?',
             [$tstamp, '']
+        );
+    }
+
+    /**
+     * Setzt am Start jedes Sync-Versuchs last_sync_at und last_sync_status=RUNNING.
+     * Bei Erfolg/Fehler wird der Status später auf OK bzw. ERROR aktualisiert.
+     * Bleibt RUNNING stehen, deutet dies auf einen abgestürzten Sync hin.
+     */
+    private function recordSyncAttempt(int $libraryId): void
+    {
+        $this->connection->update(
+            'tl_zotero_library',
+            [
+                'tstamp' => time(),
+                'last_sync_at' => time(),
+                'last_sync_status' => 'RUNNING',
+            ],
+            ['id' => $libraryId]
+        );
+    }
+
+    /**
+     * Setzt last_sync_status auf ERROR mit gekürzter Fehlermeldung (max. 255 Zeichen).
+     * Aktualisiert auch last_sync_at auf den Fehlerzeitpunkt.
+     */
+    public function setLibrarySyncError(int $libraryId, string $message): void
+    {
+        $status = 'ERROR: ' . substr($message, 0, 230);
+        if (\strlen($message) > 230) {
+            $status .= '…';
+        }
+        $this->connection->update(
+            'tl_zotero_library',
+            [
+                'tstamp' => time(),
+                'last_sync_at' => time(),
+                'last_sync_status' => $status,
+            ],
+            ['id' => $libraryId]
         );
     }
 

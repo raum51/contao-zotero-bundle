@@ -28,7 +28,7 @@ $GLOBALS['TL_LANG']['tl_zotero_library'] = [
         'remove_divs' => 'Remove divs',
         'remove_all' => 'Remove all markup',
     ],
-    'sync_interval' => ['Sync interval (seconds)', '0 = manual only'],
+    'sync_interval' => ['Sync interval (hours)', 'in hours (1 = 1 h, 24 = 1 day) – 0 = manual only. Automatic sync requires a configured system cronjob. For large libraries, run the initial sync via CLI: php bin/console contao:zotero:sync -l <Library-ID>.'],
     'last_sync_at' => ['Last sync', 'Time of last successful sync'],
     'last_sync_status' => ['Last sync status', 'Success or error message'],
     'last_sync_version' => ['Last sync version', 'Zotero library version for incremental sync'],
@@ -57,4 +57,5 @@ $GLOBALS['TL_LANG']['tl_zotero_library'] = [
     'sync_error_failed' => 'Zotero sync failed',
     'sync_error_title' => 'Zotero sync – Error',
     'sync_error_timeout_hint' => 'For large libraries: run sync per library or via CLI (php bin/console contao:zotero:sync). You can also schedule sync via cron – the cron job cannot show a message in the backend but can e.g. write to a log file.',
+    'sync_started_background' => 'Sync started in background. The process may take several minutes. Check status in "Last sync" or in the logs.',
 ];

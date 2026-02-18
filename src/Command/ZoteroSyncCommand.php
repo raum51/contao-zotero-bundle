@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Raum51\ContaoZoteroBundle\Command;
 
+use Psr\Log\LoggerInterface;
 use Raum51\ContaoZoteroBundle\Service\ZoteroLocaleService;
 use Raum51\ContaoZoteroBundle\Service\ZoteroSyncService;
 use Symfony\Component\Console\Attribute\AsCommand;
@@ -26,6 +27,7 @@ final class ZoteroSyncCommand extends Command
     public function __construct(
         private readonly ZoteroSyncService $syncService,
         private readonly ZoteroLocaleService $localeService,
+        private readonly LoggerInterface $logger,
     ) {
         parent::__construct();
     }
@@ -111,6 +113,14 @@ final class ZoteroSyncCommand extends Command
                 $this->syncService->resetAllSyncStates();
                 $io->note('Sync-Metadaten für alle Libraries zurückgesetzt (Vollabzug).');
             }
+        }
+
+        if ($id > 0 && $this->syncService->getDebugSyncData($id) === null) {
+            $msg = 'Library mit ID ' . $id . ' nicht gefunden.';
+            $this->logger->error('Zotero-Sync: ' . $msg, ['library_id' => $id]);
+            $io->error($msg);
+
+            return self::FAILURE;
         }
 
         $io->info($id > 0 ? 'Sync starten (Library-ID: ' . $id . ')' : 'Sync starten (alle Libraries).');

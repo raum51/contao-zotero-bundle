@@ -16,8 +16,9 @@ use Raum51\ContaoZoteroBundle\Service\ZoteroSyncService;
 /**
  * Backend-Sync-Trigger für tl_zotero_library.
  *
- * Wird über die DCA-Operation "sync" (href=key=zotero_sync) aufgerufen
- * und startet den ZoteroSyncService für die ausgewählte Bibliothek.
+ * Wird über die DCA-Operation "sync" (href=key=zotero_sync) aufgerufen.
+ * Führt den Sync synchron im Request aus. Bei großen Bibliotheken kann es
+ * zu Timeouts kommen – dann Sync über CLI: php bin/console contao:zotero:sync
  *
  * Liegt unter EventListener/DataContainer/, weil es ein DCA-Callback
  * (config.onload) für tl_zotero_library ist.
@@ -39,13 +40,11 @@ final class ZoteroLibrarySyncCallback
 
         // Globale Sync-Operationen (alle publizierten Libraries)
         if ($key === 'zotero_sync_all') {
-            Message::addInfo($GLOBALS['TL_LANG']['tl_zotero_library']['sync_all_timeout_hint'] ?? 'Sync kann bei vielen Bibliotheken lange dauern. Bei Timeout: Sync einzeln pro Library oder per Kommandozeile (php bin/console contao:zotero:sync).');
-            $this->runSyncAllAndRedirect(false);
+            $this->runSyncAndRedirect(null, false);
             return;
         }
         if ($key === 'zotero_reset_sync_all') {
-            Message::addInfo($GLOBALS['TL_LANG']['tl_zotero_library']['sync_all_timeout_hint'] ?? 'Sync kann bei vielen Bibliotheken lange dauern. Bei Timeout: Sync einzeln pro Library oder per Kommandozeile (php bin/console contao:zotero:sync).');
-            $this->runSyncAllAndRedirect(true);
+            $this->runSyncAndRedirect(null, true);
             return;
         }
 
@@ -53,6 +52,7 @@ final class ZoteroLibrarySyncCallback
         if ($id <= 0 && \in_array($key, ['zotero_sync', 'zotero_reset_sync'], true)) {
             Message::addError($GLOBALS['TL_LANG']['tl_zotero_library']['sync_error_invalid_id'] ?? 'Zotero-Sync: Ungültige oder fehlende Library-ID.');
             Backend::redirect(Backend::addToUrl('', true, ['key']));
+            return;
         }
 
         if ($key === 'zotero_reset_sync') {
@@ -67,115 +67,81 @@ final class ZoteroLibrarySyncCallback
         $this->runSyncAndRedirect($id, false);
     }
 
-    private function runSyncAndRedirect(int $id, bool $resetFirst): void
+    /**
+     * Führt den Sync synchron im Request aus und leitet danach weiter.
+     */
+    private function runSyncAndRedirect(?int $libraryId, bool $resetFirst): void
     {
-        set_time_limit(0);
-        if (function_exists('ini_set')) {
-            @ini_set('memory_limit', '512M');
+        $lang = $GLOBALS['TL_LANG']['tl_zotero_library'] ?? [];
+
+        try {
+            $this->localeService->fetchAndStore();
+        } catch (\Throwable $e) {
+            Message::addError(($lang['sync_error_failed'] ?? 'Zotero-Sync fehlgeschlagen') . ': ' . $e->getMessage());
+            $this->redirectAfterSync($libraryId, $resetFirst);
+            return;
         }
 
         if ($resetFirst) {
-            $this->syncService->resetSyncState($id);
-        }
-
-        $this->localeService->fetchAndStore();
-
-        $lang = $GLOBALS['TL_LANG']['tl_zotero_library'] ?? [];
-        try {
-            $result = $this->syncService->sync($id);
-            $libraryTitle = $this->getLibraryTitle($id);
-            $done = sprintf($lang['sync_status_done_with_title'] ?? 'Sync Zotero-Library %s abgeschlossen', $libraryTitle);
-            $rest = [
-                sprintf($lang['sync_status_items'] ?? 'Publikationen: %d neu, %d aktualisiert, %d gelöscht, %d übersprungen', $result['items_created'], $result['items_updated'], $result['items_deleted'], $result['items_skipped']),
-                sprintf($lang['sync_status_item_creators'] ?? 'Publikation-Creator-Verknüpfungen: %d neu, %d aktualisiert, %d gelöscht, %d übersprungen', $result['item_creators_created'] ?? 0, $result['item_creators_updated'] ?? 0, $result['item_creators_deleted'] ?? 0, $result['item_creators_skipped'] ?? 0),
-                sprintf($lang['sync_status_attachments'] ?? 'Attachments: %d neu, %d aktualisiert, %d gelöscht, %d übersprungen', $result['attachments_created'] ?? 0, $result['attachments_updated'] ?? 0, $result['attachments_deleted'] ?? 0, $result['attachments_skipped'] ?? 0),
-                sprintf($lang['sync_status_collections'] ?? 'Collections: %d neu, %d aktualisiert, %d gelöscht, %d übersprungen', $result['collections_created'], $result['collections_updated'], $result['collections_deleted'] ?? 0, $result['collections_skipped'] ?? 0),
-                sprintf($lang['sync_status_collection_items'] ?? 'Collection-Publikation-Verknüpfungen: %d neu, %d aktualisiert, %d gelöscht, %d übersprungen', $result['collection_items_created'] ?? 0, $result['collection_items_updated'] ?? 0, $result['collection_items_deleted'] ?? 0, $result['collection_items_skipped'] ?? 0),
-            ];
-            Message::addConfirmation($done . ' - ' . implode(' | ', $rest));
-            if (!empty($result['errors'])) {
-                Message::addError(($lang['sync_error_title'] ?? 'Zotero-Sync – Fehler') . ': ' . implode(' | ', $result['errors']));
+            if ($libraryId !== null && $libraryId > 0) {
+                $this->syncService->resetSyncState($libraryId);
+            } else {
+                $this->syncService->resetAllSyncStates();
             }
-        } catch (\Throwable $e) {
-            $this->addSyncErrorMessage($e, $lang, false);
         }
 
-        $redirectUrl = $resetFirst
-            ? Backend::addToUrl('act=edit&id=' . $id, true, ['key'])
+        try {
+            $result = $this->syncService->sync($libraryId, true, null, []);
+        } catch (\Throwable $e) {
+            $hint = $lang['sync_error_timeout_hint'] ?? '';
+            $msg = ($lang['sync_error_failed'] ?? 'Zotero-Sync fehlgeschlagen') . ': ' . $e->getMessage();
+            if ($hint !== '') {
+                $msg .= ' ' . $hint;
+            }
+            Message::addError($msg);
+            $this->redirectAfterSync($libraryId, $resetFirst);
+            return;
+        }
+
+        $errors = $result['errors'] ?? [];
+        if ($errors !== []) {
+            $msg = implode(' ', $errors);
+            $hint = $lang['sync_error_timeout_hint'] ?? '';
+            if ($hint !== '') {
+                $msg .= ' ' . $hint;
+            }
+            Message::addError($msg);
+            $this->redirectAfterSync($libraryId, $resetFirst);
+            return;
+        }
+
+        if ($libraryId !== null && $libraryId > 0) {
+            $title = $this->getLibraryTitle($libraryId);
+            Message::addConfirmation($title !== null
+                ? sprintf($lang['sync_status_done_with_title'] ?? 'Sync Zotero-Library %s abgeschlossen', $title)
+                : ($lang['sync_status_done'] ?? 'Zotero-Sync abgeschlossen'));
+        } else {
+            Message::addConfirmation($lang['sync_status_done'] ?? 'Zotero-Sync abgeschlossen');
+        }
+
+        $this->redirectAfterSync($libraryId, $resetFirst);
+    }
+
+    private function redirectAfterSync(?int $libraryId, bool $resetFirst): void
+    {
+        $redirectUrl = $libraryId !== null && $libraryId > 0 && $resetFirst
+            ? Backend::addToUrl('act=edit&id=' . $libraryId, true, ['key'])
             : Backend::addToUrl('', true, ['key']);
         Backend::redirect($redirectUrl);
     }
 
-    private function runSyncAllAndRedirect(bool $resetFirst): void
+    private function getLibraryTitle(int $libraryId): ?string
     {
-        set_time_limit(0);
-        if (function_exists('ini_set')) {
-            @ini_set('memory_limit', '512M');
-        }
-
-        $lang = $GLOBALS['TL_LANG']['tl_zotero_library'] ?? [];
-        $libraries = $this->connection->fetchAllAssociative(
-            'SELECT id, title FROM tl_zotero_library WHERE published = ?',
-            ['1']
+        $row = $this->connection->fetchAssociative(
+            'SELECT title FROM tl_zotero_library WHERE id = ?',
+            [$libraryId]
         );
 
-        if ($resetFirst) {
-            foreach ($libraries as $library) {
-                $this->syncService->resetSyncState((int) $library['id']);
-            }
-        }
-
-        $this->localeService->fetchAndStore();
-
-        foreach ($libraries as $library) {
-            $id = (int) $library['id'];
-            $title = (string) $library['title'];
-            try {
-                $result = $this->syncService->sync($id);
-                $done = sprintf($lang['sync_status_done_with_title'] ?? 'Sync Zotero-Library %s abgeschlossen', $title);
-                $rest = [
-                    sprintf($lang['sync_status_items'] ?? 'Publikationen: %d neu, %d aktualisiert, %d gelöscht, %d übersprungen', $result['items_created'], $result['items_updated'], $result['items_deleted'], $result['items_skipped']),
-                    sprintf($lang['sync_status_item_creators'] ?? 'Publikation-Creator-Verknüpfungen: %d neu, %d aktualisiert, %d gelöscht, %d übersprungen', $result['item_creators_created'] ?? 0, $result['item_creators_updated'] ?? 0, $result['item_creators_deleted'] ?? 0, $result['item_creators_skipped'] ?? 0),
-                    sprintf($lang['sync_status_attachments'] ?? 'Attachments: %d neu, %d aktualisiert, %d gelöscht, %d übersprungen', $result['attachments_created'] ?? 0, $result['attachments_updated'] ?? 0, $result['attachments_deleted'] ?? 0, $result['attachments_skipped'] ?? 0),
-                    sprintf($lang['sync_status_collections'] ?? 'Collections: %d neu, %d aktualisiert, %d gelöscht, %d übersprungen', $result['collections_created'], $result['collections_updated'], $result['collections_deleted'] ?? 0, $result['collections_skipped'] ?? 0),
-                    sprintf($lang['sync_status_collection_items'] ?? 'Collection-Publikation-Verknüpfungen: %d neu, %d aktualisiert, %d gelöscht, %d übersprungen', $result['collection_items_created'] ?? 0, $result['collection_items_updated'] ?? 0, $result['collection_items_deleted'] ?? 0, $result['collection_items_skipped'] ?? 0),
-                ];
-                Message::addConfirmation($done . ' - ' . implode(' | ', $rest));
-                if (!empty($result['errors'])) {
-                    Message::addError(($lang['sync_error_title'] ?? 'Zotero-Sync – Fehler') . ' (' . $title . '): ' . implode(' | ', $result['errors']));
-                }
-            } catch (\Throwable $e) {
-                $this->addSyncErrorMessage($e, $lang, true, $title);
-            }
-        }
-
-        Backend::redirect(Backend::addToUrl('', true, ['key']));
-    }
-
-    private function getLibraryTitle(int $id): string
-    {
-        $title = $this->connection->fetchOne('SELECT title FROM tl_zotero_library WHERE id = ?', [$id]);
-        return $title !== false ? (string) $title : 'ID ' . $id;
-    }
-
-    /**
-     * Zeigt eine verständliche Fehlermeldung inkl. Hinweis auf CLI/Cron bei Timeout oder Serverfehler.
-     */
-    private function addSyncErrorMessage(\Throwable $e, array $lang, bool $withLibraryTitle = false, string $libraryTitle = ''): void
-    {
-        $msg = $e->getMessage();
-        $isTimeoutOrServer = str_contains($msg, 'timeout') || str_contains($msg, 'timed out')
-            || str_contains($msg, '500') || str_contains($msg, '503')
-            || str_contains($msg, 'Maximum execution time') || str_contains($msg, 'Internal Server Error');
-
-        $prefix = $withLibraryTitle && $libraryTitle !== ''
-            ? sprintf($lang['sync_error_failed'] ?? 'Zotero-Sync fehlgeschlagen (%s)', $libraryTitle)
-            : ($lang['sync_error_failed'] ?? 'Zotero-Sync fehlgeschlagen');
-        Message::addError($prefix . ': ' . $msg);
-
-        if ($isTimeoutOrServer) {
-            $hint = $lang['sync_error_timeout_hint'] ?? 'Bei großen Bibliotheken: Sync einzeln pro Library ausführen oder über die Kommandozeile (php bin/console contao:zotero:sync). Optional kann der Sync per Cronjob geplant werden – der Cronjob kann keine Meldung im Backend anzeigen, aber z. B. in eine Log-Datei schreiben.';
-            Message::addInfo($hint);
-        }
+        return $row !== false ? (string) $row['title'] : null;
     }
 }

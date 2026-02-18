@@ -58,9 +58,21 @@ php bin/console contao:zotero:sync -l 1 --debug
 
 Bei großen Bibliotheken kann der Sync im Backend zu Timeouts führen; dann den Sync per CLI ausführen (kein Request-Timeout, kein Browser-Abbruch).
 
+### Automatischer Sync (System-Cronjob)
+
+Der Zotero-Sync kann automatisch in konfigurierbaren Intervallen laufen (Einstellung „Sync-Intervall (Stunden)“ pro Library). Dafür muss ein **System-Cronjob** eingerichtet sein, der das Contao Cronjob-Framework minütlich aufruft. Der ZoteroSyncCron läuft dann stündlich und synchronisiert fällige Libraries. Ohne System-Cronjob wird der automatische Sync **nicht** ausgeführt – der ZoteroSyncCron überspringt die Ausführung im Web-Scope (bei Seitenaufrufen), da ein Sync mehrere Minuten dauern kann und Timeout-Risiken sowie Last vermieden werden sollen.
+
+**Einrichtung:** Erstellen Sie einen minütlichen Cronjob, z. B.:
+
+```bash
+* * * * * php /pfad/zum/contao/projekt/bin/console contao:cron
+```
+
+Ersetzen Sie `/pfad/zum/contao/projekt` durch den tatsächlichen Projektpfad. Unter [Cronjob Framework – Contao Handbuch](https://docs.contao.org/5.x/manual/de/performance/cronjobs/) finden Sie die offizielle Anleitung inklusive DDEV-Setup.
+
 **Items-Abruf (2-Pass):** Der Sync ruft zuerst alle Nicht-Attachments (`itemType=-attachment`) und anschließend alle Attachments (`itemType=attachment`) ab. So stehen Parent-Items immer vor deren Attachments zur Verfügung und Reihenfolge-Probleme entfallen.
 
-**Übersprungene Items:** Nicht importierbare Items (z. B. Attachment ohne Parent, API-Fehler) werden protokolliert: im Log (Kanal `raum51_zotero`), im Result-Array und – bei CLI-Ausführung mit `--show-details` – als Tabelle mit Key, Typ, Grund und Library. Mit `--log-skipped=PATH` werden sie zusätzlich in eine JSON-Datei geschrieben (Format: `synced_at`, `count`, `skipped_items`).
+**Übersprungene Items:** Nicht importierbare Items (z. B. Attachment ohne Parent, API-Fehler) werden protokolliert: im Contao-Systemlog (Kanal `contao.general`), im Result-Array und – bei CLI-Ausführung mit `--show-details` – als Tabelle mit Key, Typ, Grund und Library. Mit `--log-skipped=PATH` werden sie zusätzlich in eine JSON-Datei geschrieben (Format: `synced_at`, `count`, `skipped_items`).
 
 ### contao:zotero:fetch-locales
 
@@ -81,7 +93,7 @@ php bin/console contao:zotero:fetch-locales --show-details
 php bin/console contao:zotero:fetch-locales --log-changes=var/logs/zotero_locales_changes.json
 ```
 
-**Verarbeitungslogik:** Pro Locale werden Item-Typen und Item-Felder von der Zotero-API abgerufen und in die Tabelle geschrieben. Logging über Kanal `raum51_zotero`.
+**Verarbeitungslogik:** Pro Locale werden Item-Typen und Item-Felder von der Zotero-API abgerufen und in die Tabelle geschrieben. Logging über Kanal `contao.general`.
 
 ### contao:zotero:item
 
@@ -185,24 +197,17 @@ Zugriff nur auf publizierte Items und publizierte Libraries.
 
 ---
 
-## Logging (Kanal raum51_zotero)
+## Logging
 
-Das Bundle schreibt alle Sync- und API-Logs in den Monolog-Kanal **raum51_zotero**. So können Zotero-Logs getrennt von den allgemeinen App-Logs geführt werden.
+Das Bundle nutzt die **Contao-Standard-Kanäle** für Logging ([Contao Dev – Logging](https://docs.contao.org/dev/framework/logging/)):
 
-**Eigene Log-Datei für Zotero (optional):** In der Contao-Installation unter `config/packages/monolog.yaml` (oder in der Managed-Edition unter den Package-Configs) einen Handler für den Kanal anlegen:
+| Service | Kanal | Zweck |
+|---------|-------|-------|
+| ZoteroSyncCron | `contao.cron` | Cron-Logs – erscheinen im Contao-Systemlog mit Aktion „CRON“ |
+| ZoteroSyncService, ZoteroClient, ZoteroLocaleService, AttachmentProxyController | `contao.general` | Sync- und API-Logs – Systemlog mit Aktion „GENERAL“ |
+| ZoteroSyncCommand | `contao.error` | Fehler (z. B. ungültige Library-ID) – Systemlog mit Aktion „ERROR“ |
 
-```yaml
-monolog:
-  channels: [raum51_zotero]
-  handlers:
-    zotero:
-      type: stream
-      path: "%kernel.logs_dir%/raum51_zotero.log"
-      level: info
-      channels: [raum51_zotero]
-```
-
-Ohne diese Konfiguration landen die Zotero-Logs im Standard-App-Log (z. B. `var/logs/prod-*.log`). Mit dem Handler erscheinen sie zusätzlich in `var/logs/raum51_zotero.log`.
+Die `contao.*`-Kanäle nutzen `ContaoContext` und landen in der Tabelle `tl_log` (Backend > System > Protokoll), nicht in Dateien wie `var/logs/prod.log`. In Prod werden Fehler (ERROR) zusätzlich in `var/logs/prod-*.log` geschrieben (Symfony-Standard: `fingers_crossed` mit `action_level: error`). Bei Sync-Fehlern erscheinen Meldungen außerdem im Feld **Letzter Sync-Status** der betroffenen Library sowie – falls vorhanden – auf der Backend-Startseite.
 
 ---
 
@@ -324,7 +329,7 @@ Die folgenden Erweiterungen sind geplant bzw. in Konzepten beschrieben:
 | *~~Legacy-CE bereinigen~~* | *Erledigt (16.02.2026)* | – |
 | **download_attachments** | Einstellung pro CE/Modul für Attachment-Downloads (3 Ebenen: Library, Modul/CE, Item) | Blueprint |
 | **PHPUnit-Tests** | ZoteroBibUtil, ZoteroStopwordService, ZoteroSearchService etc. | [`docs/phpunit-test-konzept.md`](docs/phpunit-test-konzept.md) |
-| **Cronjob-Dokumentation** | Empfehlung für geplanten Sync | – |
+| **Cronjob** | ZoteroSyncCron (hourly, CLI-only); Async Backend-Sync per Prozess-Spawn | Implementiert. Konzept: [`docs/cronjob-konzept.md`](docs/cronjob-konzept.md) |
 | **Streaming API** (optional) | WebSocket für push-basierte Benachrichtigungen bei Library-Änderungen | Blueprint 4.1 |
 
 ---

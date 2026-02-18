@@ -9,14 +9,14 @@ services:
     Raum51\ContaoZoteroBundle\Service\ZoteroSearchService: ~
     Raum51\ContaoZoteroBundle\Service\ZoteroSyncService:
         arguments:
-            $logger: '@monolog.logger.raum51_zotero'
+            $logger: '@monolog.logger.contao.general'
             $slug: '@contao.slug'
     Raum51\ContaoZoteroBundle\Service\ZoteroLocaleService:
         arguments:
-            $logger: '@monolog.logger.raum51_zotero'
+            $logger: '@monolog.logger.contao.general'
     Raum51\ContaoZoteroBundle\Service\ZoteroClient:
         arguments:
-            $logger: '@monolog.logger.raum51_zotero'
+            $logger: '@monolog.logger.contao.general'
             $apiLogCollector: '@Raum51\ContaoZoteroBundle\Service\ApiLogCollector'
 
     Raum51\ContaoZoteroBundle\:
@@ -32,13 +32,15 @@ services:
     Raum51\ContaoZoteroBundle\Controller\AttachmentProxyController:
         public: true
         arguments:
-            $logger: '@monolog.logger.raum51_zotero'
+            $logger: '@monolog.logger.contao.general'
             $slug: '@contao.slug'
         tags: [{ name: controller.service_arguments }]
 
     Raum51\ContaoZoteroBundle\Command\TestZoteroClientCommand:
         tags: [{ name: console.command }]
     Raum51\ContaoZoteroBundle\Command\ZoteroSyncCommand:
+        arguments:
+            $logger: '@monolog.logger.contao.error'
         tags: [{ name: console.command }]
     Raum51\ContaoZoteroBundle\Command\ZoteroItemCommand:
         tags: [{ name: console.command }]
@@ -55,3 +57,9 @@ services:
         public: true
     Raum51\ContaoZoteroBundle\EventListener\DataContainer\ZoteroItemTypesOptionsCallback:
         public: true
+
+    Raum51\ContaoZoteroBundle\Cron\ZoteroSyncCron:
+        arguments:
+            $logger: '@monolog.logger.contao.cron'
+        tags:
+            - { name: contao.cronjob, interval: hourly }

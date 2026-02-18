@@ -7,22 +7,15 @@ namespace Raum51\ContaoZoteroBundle\DependencyInjection;
 use Symfony\Component\Config\FileLocator;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\Extension\Extension;
-use Symfony\Component\DependencyInjection\Extension\PrependExtensionInterface;
 use Symfony\Component\DependencyInjection\Loader\YamlFileLoader;
 
 /**
  * Lädt die Service-Definitionen des Bundles (Resources/config/services.yaml).
- * Registriert den Monolog-Kanal raum51_zotero, damit Zotero-Logs getrennt geführt werden können.
+ * Zotero-Logs (Sync, Cron, API) nutzen den Contao/Symfony-Standard-Logger und
+ * landen in var/log/dev.log bzw. var/log/prod.log (je nach kernel.logs_dir).
  */
-final class Raum51ContaoZoteroExtension extends Extension implements PrependExtensionInterface
+final class Raum51ContaoZoteroExtension extends Extension
 {
-    public function prepend(ContainerBuilder $container): void
-    {
-        $container->prependExtensionConfig('monolog', [
-            'channels' => ['raum51_zotero'],
-        ]);
-    }
-
     public function load(array $configs, ContainerBuilder $container): void
     {
         $loader = new YamlFileLoader(
