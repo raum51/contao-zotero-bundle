@@ -48,6 +48,7 @@ $GLOBALS['TL_LANG']['tl_zotero_library'] = [
     'items' => ['Publikationen', 'Publikationen dieser Bibliothek bearbeiten'],
     'sync_status_done' => 'Zotero-Sync abgeschlossen',
     'sync_status_done_with_title' => 'Sync Zotero-Library %s abgeschlossen',
+    'sync_status_started' => 'Zotero-Sync wurde gestartet. Fortschritt im Backend sichtbar.',
     'sync_status_items' => 'Publikationen: %d neu, %d aktualisiert, %d gelöscht, %d übersprungen',
     'sync_status_item_creators' => 'Publikation-Creator-Verknüpfungen: %d neu, %d aktualisiert, %d gelöscht, %d übersprungen',
     'sync_status_attachments' => 'Attachments: %d neu, %d aktualisiert, %d gelöscht, %d übersprungen',

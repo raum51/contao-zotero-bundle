@@ -48,6 +48,7 @@ $GLOBALS['TL_LANG']['tl_zotero_library'] = [
     'items' => ['Publications', 'Edit publications of this library'],
     'sync_status_done' => 'Zotero sync completed',
     'sync_status_done_with_title' => 'Sync Zotero-Library %s completed',
+    'sync_status_started' => 'Zotero sync started. Progress visible in the backend.',
     'sync_status_items' => 'Publications: %d new, %d updated, %d deleted, %d skipped',
     'sync_status_item_creators' => 'Publication-creator links: %d new, %d updated, %d deleted, %d skipped',
     'sync_status_attachments' => 'Attachments: %d new, %d updated, %d deleted, %d skipped',

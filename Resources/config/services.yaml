@@ -47,6 +47,15 @@ services:
     Raum51\ContaoZoteroBundle\Command\FetchLocalesCommand:
         tags: [{ name: console.command }]
 
+    Raum51\ContaoZoteroBundle\EventListener\DataContainer\ZoteroLibrarySyncCallback:
+        arguments:
+            $jobs: '@?contao.job.jobs'
+
+    Raum51\ContaoZoteroBundle\MessageHandler\ZoteroSyncMessageHandler:
+        arguments:
+            $jobs: '@?contao.job.jobs'
+            $logger: '@monolog.logger.contao.general'
+
     Raum51\ContaoZoteroBundle\EventListener\DataContainer\ZoteroItemOptionsCallback:
         public: true
     Raum51\ContaoZoteroBundle\EventListener\DataContainer\ZoteroLibraryOptionsCallback:

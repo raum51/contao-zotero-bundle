@@ -11,7 +11,7 @@ Siehe Projekt-Blueprint im Contao-Projekt-Root: `CURSOR_BLUEPRINT.md`
 
 ## Console-Commands (contao:zotero:*)
 
-Alle Befehle im Projekt-Root ausführen (dort, wo `bin/console` liegt). Backend-Buttons „Jetzt synchronisieren“ und „Synchronisation zurücksetzen“ nutzen dieselbe Logik über den `ZoteroSyncService` (nicht den CLI-Command), sodass Verhalten und Ergebnis identisch sind.
+Alle Befehle im Projekt-Root ausführen (dort, wo `bin/console` liegt). Backend-Buttons „Jetzt synchronisieren“ und „Synchronisation zurücksetzen“ nutzen dieselbe Logik über den `ZoteroSyncService` (nicht den CLI-Command), sodass Verhalten und Ergebnis identisch sind. **Ab Contao 5.6:** Backend-Sync läuft asynchron via Messenger + Job-Framework – kein Timeout im HTTP-Request, Fortschritt und Status unter Backend > Jobs sichtbar. Dispatch nutzt `TransportNamesStamp` für zuverlässiges Routing auf `contao_prio_low`. Der Jobs-Service wird per `@?contao.job.jobs` injiziert (explizite Service-ID). Bei Contao 5.3–5.5: synchroner Sync (Fallback).
 
 ### contao:zotero:sync
 
@@ -56,7 +56,7 @@ php bin/console contao:zotero:sync --show-details
 php bin/console contao:zotero:sync -l 1 --debug
 ```
 
-Bei großen Bibliotheken kann der Sync im Backend zu Timeouts führen; dann den Sync per CLI ausführen (kein Request-Timeout, kein Browser-Abbruch).
+Bei großen Bibliotheken (und Contao 5.3–5.5): Sync im Backend kann zu Timeouts führen; dann per CLI ausführen. **Contao 5.6+:** Backend-Sync läuft asynchron, kein Request-Timeout.
 
 ### Automatischer Sync (System-Cronjob)
 
@@ -329,7 +329,7 @@ Die folgenden Erweiterungen sind geplant bzw. in Konzepten beschrieben:
 | *~~Legacy-CE bereinigen~~* | *Erledigt (16.02.2026)* | – |
 | **download_attachments** | Einstellung pro CE/Modul für Attachment-Downloads (3 Ebenen: Library, Modul/CE, Item) | Blueprint |
 | **PHPUnit-Tests** | ZoteroBibUtil, ZoteroStopwordService, ZoteroSearchService etc. | [`docs/phpunit-test-konzept.md`](docs/phpunit-test-konzept.md) |
-| **Cronjob** | ZoteroSyncCron (hourly, CLI-only); Async Backend-Sync per Prozess-Spawn | Implementiert. Konzept: [`docs/cronjob-konzept.md`](docs/cronjob-konzept.md) |
+| **Cronjob** | ZoteroSyncCron (hourly, CLI-only); Backend-Sync via Messenger + Jobs (5.6+) bzw. synchron (Fallback) | Implementiert. Konzept: [`docs/cronjob-konzept.md`](docs/cronjob-konzept.md) |
 | **Streaming API** (optional) | WebSocket für push-basierte Benachrichtigungen bei Library-Änderungen | Blueprint 4.1 |
 
 ---

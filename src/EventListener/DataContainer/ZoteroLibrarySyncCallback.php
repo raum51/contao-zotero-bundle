@@ -6,19 +6,26 @@ namespace Raum51\ContaoZoteroBundle\EventListener\DataContainer;
 
 use Contao\Backend;
 use Contao\CoreBundle\DependencyInjection\Attribute\AsCallback;
+use Contao\CoreBundle\Job\Jobs;
 use Contao\DataContainer;
 use Contao\Input;
 use Contao\Message;
 use Doctrine\DBAL\Connection;
+use Raum51\ContaoZoteroBundle\Message\ZoteroSyncMessage;
 use Raum51\ContaoZoteroBundle\Service\ZoteroLocaleService;
 use Raum51\ContaoZoteroBundle\Service\ZoteroSyncService;
+use Symfony\Component\Messenger\MessageBusInterface;
+use Symfony\Component\Messenger\Stamp\TransportNamesStamp;
 
 /**
  * Backend-Sync-Trigger für tl_zotero_library.
  *
  * Wird über die DCA-Operation "sync" (href=key=zotero_sync) aufgerufen.
- * Führt den Sync synchron im Request aus. Bei großen Bibliotheken kann es
- * zu Timeouts kommen – dann Sync über CLI: php bin/console contao:zotero:sync
+ *
+ * Ab Contao 5.6: Dispatch via Messenger + Job-Framework – Sync läuft asynchron,
+ * Fortschritt im Backend sichtbar. Kein Timeout im HTTP-Request.
+ *
+ * Contao 5.3–5.5: Fallback – synchroner Sync wie bisher.
  *
  * Liegt unter EventListener/DataContainer/, weil es ein DCA-Callback
  * (config.onload) für tl_zotero_library ist.
@@ -26,10 +33,14 @@ use Raum51\ContaoZoteroBundle\Service\ZoteroSyncService;
 #[AsCallback(table: 'tl_zotero_library', target: 'config.onload')]
 final class ZoteroLibrarySyncCallback
 {
+    private const JOB_TYPE = 'zotero_sync';
+
     public function __construct(
         private readonly ZoteroSyncService $syncService,
         private readonly ZoteroLocaleService $localeService,
         private readonly Connection $connection,
+        private readonly MessageBusInterface $messageBus,
+        private readonly ?Jobs $jobs = null,
     ) {
     }
 
@@ -40,11 +51,11 @@ final class ZoteroLibrarySyncCallback
 
         // Globale Sync-Operationen (alle publizierten Libraries)
         if ($key === 'zotero_sync_all') {
-            $this->runSyncAndRedirect(null, false);
+            $this->runSync(null, false);
             return;
         }
         if ($key === 'zotero_reset_sync_all') {
-            $this->runSyncAndRedirect(null, true);
+            $this->runSync(null, true);
             return;
         }
 
@@ -56,7 +67,7 @@ final class ZoteroLibrarySyncCallback
         }
 
         if ($key === 'zotero_reset_sync') {
-            $this->runSyncAndRedirect($id, true);
+            $this->runSync($id, true);
             return;
         }
 
@@ -64,11 +75,57 @@ final class ZoteroLibrarySyncCallback
             return;
         }
 
-        $this->runSyncAndRedirect($id, false);
+        $this->runSync($id, false);
     }
 
     /**
-     * Führt den Sync synchron im Request aus und leitet danach weiter.
+     * Führt Sync aus: immer per Messenger (asynchron), Job-Overlay optional (5.6+).
+     * Nur bei fehlendem Messenger: synchroner Fallback.
+     */
+    private function runSync(?int $libraryId, bool $resetFirst): void
+    {
+        $this->dispatchSyncMessage($libraryId, $resetFirst);
+    }
+
+    /**
+     * Dispatcht Message (asynchron), leitet sofort weiter.
+     * Bei verfügbarem Jobs-Service (5.6+): Job erstellen für Backend-Overlay.
+     */
+    private function dispatchSyncMessage(?int $libraryId, bool $resetFirst): void
+    {
+        $lang = $GLOBALS['TL_LANG']['tl_zotero_library'] ?? [];
+
+        $jobUuid = null;
+        if ($this->jobs !== null) {
+            $title = $this->buildJobTitle($libraryId);
+            $job = $this->jobs->createJob(self::JOB_TYPE)
+                ->withMetadata(['title' => $title]);
+            $this->jobs->persist($job);
+            $jobUuid = $job->getUuid();
+        }
+
+        $message = new ZoteroSyncMessage($libraryId, $resetFirst, $jobUuid);
+        $this->messageBus->dispatch($message, [new TransportNamesStamp(['contao_prio_low'])]);
+
+        Message::addInfo($lang['sync_status_started'] ?? 'Zotero-Sync wurde gestartet. Fortschritt im Backend sichtbar.');
+        $this->redirectAfterSync($libraryId, $resetFirst);
+    }
+
+    private function buildJobTitle(?int $libraryId): string
+    {
+        if ($libraryId !== null && $libraryId > 0) {
+            $title = $this->getLibraryTitle($libraryId);
+
+            return $title !== null
+                ? sprintf('Zotero-Sync: %s', $title)
+                : sprintf('Zotero-Sync: Library %d', $libraryId);
+        }
+
+        return 'Zotero-Sync: alle Libraries';
+    }
+
+    /**
+     * Führt den Sync synchron im Request aus und leitet danach weiter (Fallback für < 5.6).
      */
     private function runSyncAndRedirect(?int $libraryId, bool $resetFirst): void
     {

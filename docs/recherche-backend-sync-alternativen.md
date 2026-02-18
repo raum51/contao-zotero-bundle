@@ -203,6 +203,6 @@ class MyMessageHandler
 
 ## 7. TODO-Status
 
-- [ ] Auf Job-Framework von Contao 5.7 umstellen (bereits in `todo.md`)
+- [x] Auf Job-Framework umstellen (Contao 5.6+ mit Fallback für < 5.6) – erledigt 18.02.2026
 - [ ] Chunking-Strategie für Zotero-Sync definieren (Library-Granularität vs. Item-Batches)
 - [ ] Prozess-Spawn aus Backend einstellen bzw. durch Message-Dispatch ersetzen
