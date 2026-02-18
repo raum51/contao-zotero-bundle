@@ -4,11 +4,9 @@ declare(strict_types=1);
 
 namespace Raum51\ContaoZoteroBundle\DependencyInjection;
 
-use Raum51\ContaoZoteroBundle\Message\ZoteroSyncMessage;
 use Symfony\Component\Config\FileLocator;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\Extension\Extension;
-use Symfony\Component\DependencyInjection\Extension\PrependExtensionInterface;
 use Symfony\Component\DependencyInjection\Loader\YamlFileLoader;
 
 /**
@@ -16,21 +14,11 @@ use Symfony\Component\DependencyInjection\Loader\YamlFileLoader;
  * Zotero-Logs (Sync, Cron, API) nutzen den Contao/Symfony-Standard-Logger und
  * landen in var/log/dev.log bzw. var/log/prod.log (je nach kernel.logs_dir).
  *
- * PrependExtensionInterface: Messenger-Routing für ZoteroSyncMessage auf contao_prio_low.
+ * Messenger-Routing: ZoteroSyncMessage implementiert LowPriorityMessageInterface –
+ * Contao routet automatisch auf contao_prio_low. Keine Projekt-Config nötig.
  */
-final class Raum51ContaoZoteroExtension extends Extension implements PrependExtensionInterface
+final class Raum51ContaoZoteroExtension extends Extension
 {
-    public function prepend(ContainerBuilder $container): void
-    {
-        $container->prependExtensionConfig('framework', [
-            'messenger' => [
-                'routing' => [
-                    ZoteroSyncMessage::class => 'contao_prio_low',
-                ],
-            ],
-        ]);
-    }
-
     public function load(array $configs, ContainerBuilder $container): void
     {
         $loader = new YamlFileLoader(

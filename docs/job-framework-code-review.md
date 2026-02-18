@@ -11,7 +11,7 @@ Stand: 2026-02-18
 
 | Aspekt | Contao-Doku | Unsere Umsetzung | Status |
 |--------|-------------|------------------|--------|
-| Message-Routing | LowPriorityMessageInterface → contao_prio_low | ✅ Implementiert + TransportNamesStamp als Fallback | ✅ |
+| Message-Routing | LowPriorityMessageInterface → contao_prio_low (Contao-Standard) | Interface + TransportNamesStamp; keine Projekt-Config nötig | ✅ |
 | Handler | #[AsMessageHandler], __invoke(Message) | ✅ | ✅ |
 | Dispatch | MessageBusInterface::dispatch() | ✅ | ✅ |
 | Transports | contao_prio_low (Doctrine) | TransportNamesStamp(['contao_prio_low']) | ✅ |
