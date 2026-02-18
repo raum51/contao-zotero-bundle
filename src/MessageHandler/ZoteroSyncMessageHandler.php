@@ -24,8 +24,6 @@ use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 #[AsMessageHandler]
 final class ZoteroSyncMessageHandler
 {
-    private const JOB_TYPE = 'zotero_sync';
-
     public function __construct(
         private readonly ZoteroSyncService $syncService,
         private readonly ZoteroLocaleService $localeService,
@@ -46,6 +44,9 @@ final class ZoteroSyncMessageHandler
                 $job = $this->jobs->getByUuid($jobUuid);
             } catch (\Throwable $e) {
                 $this->logger->error('Zotero Sync Job: Job mit UUID {uuid} nicht gefunden', ['uuid' => $jobUuid, 'error' => $e->getMessage()]);
+            }
+            if ($job !== null && $job->isCompleted()) {
+                return;
             }
             if ($job !== null) {
                 $job = $job->markPending();
@@ -102,7 +103,7 @@ final class ZoteroSyncMessageHandler
         $this->logger->error('Zotero Sync (Messenger): {message}', ['message' => $message]);
 
         if ($job !== null && $this->jobs !== null) {
-            $job = $job->markFailed($message);
+            $job = $job->markFailed([$message]);
             $this->jobs->persist($job);
         }
     }
