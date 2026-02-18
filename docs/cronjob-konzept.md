@@ -270,51 +270,42 @@ In der Bundle-**README.md** bzw. in einer separaten Anleitung:
 
 ### 4.8 Asynchroner Sync per Backend-Button (Timeout-Vermeidung)
 
-**Problem:** Wird der Sync über die Backend-Buttons ausgelöst, läuft er synchron im HTTP-Request. Bei großen Bibliotheken führt das häufig zu Timeouts, die schwer abgefangen werden können.
+**Problem:** Wird der Sync über die Backend-Buttons ausgelöst, würde er synchron im HTTP-Request laufen. Bei großen Bibliotheken führt das zu Timeouts.
 
-**Lösung:** Statt den Sync direkt im Request auszuführen, wird der **Command** `contao:zotero:sync` als **separater Hintergrundprozess** gestartet. Der User erhält sofort eine Bestätigung; der Sync läuft unabhängig weiter – ohne Timeout-Risiko für den Request.
+**Lösung (ab Contao 5.6):** Der Sync läuft **asynchron** über **Symfony Messenger + Contao Job-Framework**. Die Buttons dispatchen eine `ZoteroSyncMessage`; der `ZoteroSyncMessageHandler` verarbeitet sie im Hintergrund (WebWorker oder messenger:consume). Der User erhält sofort „Sync gestartet“, Fortschritt ist unter Backend > Jobs sichtbar.
+
+**Fallback (Contao 5.3–5.5):** Kein Job-Framework → synchroner Sync im Request (wie früher).
 
 #### 4.8.1 Backend-Trigger-Stellen
 
 Der Sync kann an **vier Stellen** im Backend ausgelöst werden:
 
-| Trigger (DCA-Key) | Kontext | Command-Äquivalent |
-|-------------------|---------|---------------------|
-| `zotero_sync` | Eine Library (ID aus Request) | `contao:zotero:sync -l ID` |
-| `zotero_reset_sync` | Eine Library, Reset vor Sync | `contao:zotero:sync -l ID --reset` |
-| `zotero_sync_all` | Alle publizierten Libraries | `contao:zotero:sync` |
-| `zotero_reset_sync_all` | Alle publizierten, Reset vor Sync | `contao:zotero:sync --reset` |
+| Trigger (DCA-Key) | Kontext | Message-Parameter |
+|-------------------|---------|-------------------|
+| `zotero_sync` | Eine Library (ID aus Request) | libraryId, resetFirst=false |
+| `zotero_reset_sync` | Eine Library, Reset vor Sync | libraryId, resetFirst=true |
+| `zotero_sync_all` | Alle publizierten Libraries | libraryId=null, resetFirst=false |
+| `zotero_reset_sync_all` | Alle publizierten, Reset vor Sync | libraryId=null, resetFirst=true |
 
 **Implementierungsort:** `ZoteroLibrarySyncCallback` (config.onload für tl_zotero_library).
 
 #### 4.8.2 Technische Umsetzung
 
-1. **Prozess starten** – z. B. mit `Symfony\Component\Process\Process` oder Contao `ProcessUtil`:
-   - Command: `php bin/console contao:zotero:sync` mit Optionen `-l ID` und/oder `--reset`
-   - Prozess **nicht blockierend** starten (`$process->start()`), **kein** `wait()` – damit der Request sofort zurückkehrt
-   - Prozess vom Parent entkoppeln, damit er beim Request-Ende nicht beendet wird (abhängig von Server/Umgebung)
+1. **Message dispatch** – `ZoteroSyncMessage` mit `TransportNamesStamp(['contao_prio_low'])` für zuverlässiges Routing auf den Doctrine-Transport.
+2. **Job (5.6+)** – Bei verfügbarem Jobs-Service: Job erstellen, UUID an Message übergeben; Handler setzt markPending/markCompleted/markFailed. Backend-Overlay zeigt Fortschritt.
+3. **Sofortige Response** – Message „Sync gestartet. Fortschritt im Backend sichtbar.“, Redirect zur passenden Seite.
 
-2. **Sofortige Response** – statt Sync-Ergebnis:
-   - Message: „Sync wurde im Hintergrund gestartet. Der Vorgang kann mehrere Minuten dauern. Status in ‚Letzter Sync‘ bzw. in den Logs.“
-
-3. **Redirect** – wie bisher zur passenden Seite (Library-Edit oder Library-Liste)
-
-#### 4.8.3 Vorteile gegenüber synchronem Sync
+#### 4.8.3 Vorteile
 
 - Kein Timeout im HTTP-Request
-- User wartet nicht; kann weiterarbeiten
-- Nutzung des vorhandenen Commands – keine doppelte Logik
-- Sync-Status weiterhin in `last_sync_at` / `last_sync_status` sichtbar
+- Fortschritt unter Backend > Jobs sichtbar (5.6+)
+- Contao 5.7: Fortschrittsbalken und Attachments (Sync-Report, Fehler-Datei)
+- Kein Prozess-Spawn – nutzt Contao-Standard (Messenger, WebWorker)
 
 #### 4.8.4 Einschränkungen
 
-- Keine detaillierte Erfolgsmeldung im Backend (Items erstellt/aktualisiert etc.) – nur „wurde gestartet“
-- Fehler erscheinen in Logs, nicht als Backend-Message
-- Abhängig von Server-Setup: Prozess muss nach Request-Ende weiterlaufen (nohup-ähnliches Verhalten ggf. nötig)
-
-#### 4.8.5 Optionale Konfiguration
-
-Optional: Bundle-Config-Parameter (z. B. `zotero.async_backend_sync: true`) um zwischen synchronem (altem) und asynchronem Verhalten zu wechseln – z. B. für Debugging oder Hostings mit Einschränkungen beim Prozess-Spawn.
+- Erfolgsdetails (Items erstellt/aktualisiert) nur in 5.7 als Job-Attachment oder in Logs
+- Fehlgeschlagene Messages: `messenger:failed:remove`; Jobs-Tabelle: kein Backend-Purge (manuell per SQL)
 
 ---
 
@@ -336,7 +327,7 @@ Optional: Bundle-Config-Parameter (z. B. `zotero.async_backend_sync: true`) um z
 | **Empfohlene Einrichtung** | Minütlicher System-Cron: `php bin/console contao:cron` |
 | **Zotero-Bundle** | Neuer `ZoteroSyncCron` mit `#[AsCronJob('hourly')]`, Scope nur CLI |
 | **Steuerung** | Pro-Library über `sync_interval` (in Stunden: 1 = 1 h, 24 = 1 Tag; 0 = nur manuell) in `tl_zotero_library` |
-| **Backend-Buttons** | Async: Alle vier Sync-Trigger starten `contao:zotero:sync` als Hintergrundprozess statt synchron – vermeidet Timeout |
+| **Backend-Buttons** | Async (5.6+): Alle vier Sync-Trigger dispatchen ZoteroSyncMessage via Messenger; Handler im Hintergrund, Job-Overlay zeigt Fortschritt. Fallback 5.3–5.5: synchron. |
 | **DCA-Anpassung** | Label: „Sekunden“ → „Stunden“ in DE/EN |
 | **Abhängigkeiten** | ZoteroSyncService, ZoteroLocaleService, Connection/Repository, Logger |
 | **Dokumentation** | README-Erweiterung mit Cronjob-Anleitung |

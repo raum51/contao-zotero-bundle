@@ -11,7 +11,7 @@ Siehe Projekt-Blueprint im Contao-Projekt-Root: `CURSOR_BLUEPRINT.md`
 
 ## Console-Commands (contao:zotero:*)
 
-Alle Befehle im Projekt-Root ausführen (dort, wo `bin/console` liegt). Backend-Buttons „Jetzt synchronisieren“ und „Synchronisation zurücksetzen“ nutzen dieselbe Logik über den `ZoteroSyncService` (nicht den CLI-Command), sodass Verhalten und Ergebnis identisch sind. **Ab Contao 5.6:** Backend-Sync läuft asynchron via Messenger + Job-Framework – kein Timeout im HTTP-Request, Fortschritt und Status unter Backend > Jobs sichtbar. Dispatch nutzt `TransportNamesStamp` für zuverlässiges Routing auf `contao_prio_low`. Der Jobs-Service wird per `@?contao.job.jobs` injiziert (explizite Service-ID). Bei Contao 5.3–5.5: synchroner Sync (Fallback).
+Alle Befehle im Projekt-Root ausführen (dort, wo `bin/console` liegt). Backend-Buttons „Jetzt synchronisieren“ und „Synchronisation zurücksetzen“ nutzen dieselbe Logik über den `ZoteroSyncService` (nicht den CLI-Command), sodass Verhalten und Ergebnis identisch sind. **Ab Contao 5.6:** Backend-Sync läuft asynchron via Messenger + Job-Framework – kein Timeout im HTTP-Request, Status unter Backend > Jobs sichtbar. **Contao 5.7:** Fortschrittsbalken (withProgressFromAmounts) und Attachments (Sync-Report, Fehler-Details). Dispatch nutzt `TransportNamesStamp` für zuverlässiges Routing auf `contao_prio_low`. Der Jobs-Service wird per `@?contao.job.jobs` injiziert. Bei Contao 5.3–5.5: synchroner Sync (Fallback).
 
 ### contao:zotero:sync
 

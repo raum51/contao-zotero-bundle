@@ -25,9 +25,9 @@ Stand: 2026-02-18
 | getByUuid(uuid) | Job laden | getByUuid($jobUuid) | ✅ |
 | markPending / persist | Vor Verarbeitung | ✅ | ✅ |
 | markCompleted / persist | Nach Erfolg | ✅ | ✅ |
-| markFailed | **Array** von Fehlern/Keys: `markFailed(['my_error'])` | **String**: markFailed($message) | ⚠️ Anpassung nötig |
+| markFailed | **Array** von Fehlern/Keys: `markFailed(['my_error'])` | markFailed([$message]) | ✅ Erledigt |
 | withMetadata | Serialisierbar | withMetadata(['title' => ...]) | ✅ |
-| Job already completed | `if (!$job \|\| $job->isCompleted()) return;` | Nicht geprüft | Optional |
+| Job already completed | `if (!$job \|\| $job->isCompleted()) return;` | method_exists-Check – isCompleted() ist 5.7-only | ✅ |
 
 ### Contao-Beispiel (Jobs-Doku)
 
@@ -45,23 +45,24 @@ $job = $job->markCompleted();
 
 ## 2. Empfohlene Anpassungen
 
-### 2.1 markFailed – Array statt String
+### 2.1 markFailed – Array statt String ✅ Erledigt
 
 **Doku:** `markFailed(['my_error'])` – Array von Fehlern (Translation Keys oder Anzeigetexte).
 
-**Fix:** `markFailed([$message])` – Fehlermeldung als Array übergeben.
+**Umsetzung:** `markFailed([$message])` – Fehlermeldung als Array übergeben.
 
-### 2.2 Job-bereits-abgeschlossen-Check (optional)
+### 2.2 Job-bereits-abgeschlossen-Check ✅ Erledigt
 
-Vor Verarbeitung prüfen: `if (!$job || $job->isCompleted()) { return; }` – verhindert Doppelverarbeitung bei Retries.
+Vor Verarbeitung prüfen: `if (!$job || $job->isCompleted()) { return; }` – verhindert Doppelverarbeitung bei Retries (mit method_exists für 5.7-only isCompleted).
 
 ### 2.3 Toter Code: runSyncAndRedirect
 
 `runSyncAndRedirect()` wird nie aufgerufen (wir dispatchen immer). Entweder entfernen oder für zukünftigen „Sync-Modus“-Switch behalten. Aktuell: Dead Code.
 
-### 2.4 withProgressFromAmounts (5.7+)
+### 2.4 withProgressFromAmounts + addAttachment (5.7) – umgesetzt
 
-Nicht umgesetzt – würde ZoteroSyncService um Progress-Callback erweitern. Für 5.6 ausreichend; bei Upgrade auf 5.7 sinnvoll.
+- **ZoteroSyncService:** Optionaler `$progressCallback` – wird nach jeder Library mit `(done, total)` aufgerufen.
+- **ZoteroSyncMessageHandler:** Bei Vorhandensein von `withProgressFromAmounts`: Progress-Callback → Fortschrittsbalken. Bei Vorhandensein von `addAttachment`: Erfolgs-Report (`zotero_sync_report.txt`) bzw. Fehler-Details (`zotero_sync_error.txt`) an Job hängen. Laufzeitprüfung via `method_exists()` – in 5.6 keine Side-Effects.
 
 ---
 
@@ -77,9 +78,9 @@ Die Contao-Doku verweist auf `SearchIndexMessage`, `SearchIndexMessageHandler`, 
 
 ## 4. Fazit
 
-| Priorität | Anpassung |
-|-----------|-----------|
-| **Hoch** | markFailed([$message]) statt markFailed($message) |
-| Niedrig | Job-isCompleted-Check |
-| Optional | runSyncAndRedirect entfernen |
-| Später (5.7) | withProgressFromAmounts + Heartbeat |
+| Priorität | Anpassung | Status |
+|-----------|-----------|--------|
+| ~~Hoch~~ | markFailed([$message]) | ✅ Erledigt |
+| ~~Niedrig~~ | Job-isCompleted-Check | ✅ Erledigt |
+| Optional | runSyncAndRedirect entfernen (toter Code) | Offen |
+| ~~Später (5.7)~~ | withProgressFromAmounts + addAttachment | ✅ Erledigt |

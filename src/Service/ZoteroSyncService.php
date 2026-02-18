@@ -38,10 +38,16 @@ final class ZoteroSyncService
      * @param bool $onlyPublished Bei sync(null): nur published Libraries synchronisieren
      * @param string|null $apiLogPath Optional: API-Aufrufe als JSON in diese Datei protokollieren
      * @param array<string, mixed> $apiLogMetadata Metadaten für das API-Log (command, timestamp, options)
+     * @param callable|null $progressCallback Optional: (int $done, int|null $total) => void – für Job-Fortschritt (Contao 5.7)
      * @return array{collections_created: int, collections_updated: int, collections_deleted: int, collections_skipped: int, items_created: int, items_updated: int, items_deleted: int, items_skipped: int, skipped_items: array, items_updated_details: array, items_deleted_details: array, attachments_created: int, attachments_updated: int, attachments_deleted: int, attachments_skipped: int, attachments_updated_details: array, attachments_deleted_details: array, collection_items_created: int, collection_items_deleted: int, collection_items_skipped: int, collection_items_deleted_details: array, item_creators_created: int, item_creators_deleted: int, item_creators_skipped: int, errors: list<string>}
      */
-    public function sync(?int $libraryId = null, bool $onlyPublished = false, ?string $apiLogPath = null, array $apiLogMetadata = []): array
-    {
+    public function sync(
+        ?int $libraryId = null,
+        bool $onlyPublished = false,
+        ?string $apiLogPath = null,
+        array $apiLogMetadata = [],
+        ?callable $progressCallback = null,
+    ): array {
         if ($apiLogPath !== null && $apiLogPath !== '') {
             $this->apiLogCollector->enable($apiLogPath, array_merge(
                 ['timestamp' => date(\DateTimeInterface::ATOM), 'command' => 'contao:zotero:sync'],
@@ -50,7 +56,7 @@ final class ZoteroSyncService
         }
 
         try {
-            return $this->doSync($libraryId, $onlyPublished);
+            return $this->doSync($libraryId, $onlyPublished, $progressCallback);
         } finally {
             if ($apiLogPath !== null && $apiLogPath !== '') {
                 $this->apiLogCollector->flush();
@@ -58,10 +64,14 @@ final class ZoteroSyncService
         }
     }
 
-    private function doSync(?int $libraryId, bool $onlyPublished): array
+    /**
+     * @param callable|null $progressCallback (int $done, int|null $total): void
+     */
+    private function doSync(?int $libraryId, bool $onlyPublished, ?callable $progressCallback = null): array
     {
         $libraries = $this->fetchLibraries($libraryId, $onlyPublished);
-        $this->logger->info('Zotero Sync: {count} Library/Libraries zu synchronisieren', ['count' => \count($libraries)]);
+        $libraryCount = \count($libraries);
+        $this->logger->info('Zotero Sync: {count} Library/Libraries zu synchronisieren', ['count' => $libraryCount]);
 
         $total = [
             'collections_created' => 0,
@@ -100,7 +110,7 @@ final class ZoteroSyncService
             'errors' => [],
         ];
 
-        foreach ($libraries as $library) {
+        foreach ($libraries as $i => $library) {
             try {
                 $result = $this->syncLibrary($library);
                 $total['collections_created'] += $result['collections_created'];
@@ -166,6 +176,9 @@ final class ZoteroSyncService
                 foreach ($result['item_creators_deleted_details'] ?? [] as $d) {
                     $total['item_creators_deleted_details'][] = array_merge($d, ['library' => $library['title'] ?? '']);
                 }
+                if ($progressCallback !== null) {
+                    $progressCallback($i + 1, $libraryCount);
+                }
             } catch (\Throwable $e) {
                 $this->logger->error('Zotero Sync fehlgeschlagen', [
                     'library_id' => $library['id'],
@@ -174,6 +187,9 @@ final class ZoteroSyncService
                 ]);
                 $this->setLibrarySyncError((int) $library['id'], $e->getMessage());
                 $total['errors'][] = $library['title'] . ': ' . $e->getMessage();
+                if ($progressCallback !== null) {
+                    $progressCallback($i + 1, $libraryCount);
+                }
             }
         }
 

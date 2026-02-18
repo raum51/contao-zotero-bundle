@@ -125,15 +125,14 @@ $attachmentsAvailable = $jobsAvailable
     && method_exists(\Contao\CoreBundle\Job\Jobs::class, 'addAttachment');
 ```
 
-### Minimaler Zotero-Sync ohne 5.7-Features (5.6-Fallback)
+### Zotero-Bundle: Umsetzung 5.6 vs. 5.7
 
-In Contao 5.6 könnte man:
-- Einen Job erstellen und persistieren
-- `withProgress($percent)` nutzen (ohne `withProgressFromAmounts`)
-- Keine Attachments
-- Keinen Fortschrittsbalken im Backend (nur Status-Überblick)
-
-Ob das sinnvoll ist, hängt davon ab, ob der synchroner Sync in 5.6 ohnehin ausreicht oder ob die Nutzer den Job-Status sehen wollen.
+| Feature | 5.6 | 5.7 |
+|---------|-----|-----|
+| Job erstellen, markPending/Completed/Failed | ✅ | ✅ |
+| withProgressFromAmounts | ❌ (method_exists false) | ✅ Fortschrittsbalken |
+| addAttachment (Sync-Report, Fehler) | ❌ | ✅ |
+| Keine Side-Effects in 5.6 | – | Laufzeitprüfung via method_exists() |
 
 ---
 

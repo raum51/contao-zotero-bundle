@@ -18,8 +18,8 @@ use Symfony\Component\Messenger\Attribute\AsMessageHandler;
  * Liegt in src/MessageHandler/, da Message-Handler als Teil des Messenger-Patterns
  * die konkrete Verarbeitung durchführen.
  *
- * Ab Contao 5.6: Integration mit Job-Framework (markPending, markCompleted, markFailed).
- * Bei Contao 5.3/5.4/5.5: Jobs-Service fehlt – Sync läuft trotzdem, nur ohne Job-Status.
+ * Contao 5.6: Job-Framework (markPending, markCompleted, markFailed).
+ * Contao 5.7: withProgressFromAmounts (Fortschrittsbalken), addAttachment (Sync-Report).
  */
 #[AsMessageHandler]
 final class ZoteroSyncMessageHandler
@@ -45,7 +45,7 @@ final class ZoteroSyncMessageHandler
             } catch (\Throwable $e) {
                 $this->logger->error('Zotero Sync Job: Job mit UUID {uuid} nicht gefunden', ['uuid' => $jobUuid, 'error' => $e->getMessage()]);
             }
-            if ($job !== null && $job->isCompleted()) {
+            if ($job !== null && method_exists($job, 'isCompleted') && $job->isCompleted()) {
                 return;
             }
             if ($job !== null) {
@@ -74,8 +74,10 @@ final class ZoteroSyncMessageHandler
             }
         }
 
+        $progressCallback = $this->createProgressCallback($job);
+
         try {
-            $result = $this->syncService->sync($libraryId, true, null, []);
+            $result = $this->syncService->sync($libraryId, true, null, [], $progressCallback);
         } catch (\Throwable $e) {
             $this->handleFailure($job, 'Sync fehlgeschlagen: ' . $e->getMessage());
             return;
@@ -89,6 +91,7 @@ final class ZoteroSyncMessageHandler
         }
 
         if ($job !== null && $this->jobs !== null) {
+            $this->addSuccessAttachment($job, $result);
             $job = $job->markCompleted();
             $this->jobs->persist($job);
         }
@@ -103,8 +106,50 @@ final class ZoteroSyncMessageHandler
         $this->logger->error('Zotero Sync (Messenger): {message}', ['message' => $message]);
 
         if ($job !== null && $this->jobs !== null) {
+            $this->addFailureAttachment($job, $message);
             $job = $job->markFailed([$message]);
             $this->jobs->persist($job);
         }
+    }
+
+    /**
+     * Progress-Callback für withProgressFromAmounts (Contao 5.7).
+     * In 5.6: null (kein Fortschrittsbalken).
+     */
+    private function createProgressCallback(?Job $job): ?callable
+    {
+        if ($job === null || $this->jobs === null || !method_exists(Job::class, 'withProgressFromAmounts')) {
+            return null;
+        }
+
+        return function (int $done, ?int $total) use (&$job): void {
+            $job = $job->withProgressFromAmounts($done, $total);
+            $this->jobs->persist($job);
+        };
+    }
+
+    private function addSuccessAttachment(Job $job, array $result): void
+    {
+        if ($this->jobs === null || !method_exists(Jobs::class, 'addAttachment')) {
+            return;
+        }
+
+        $lines = [
+            'Zotero Sync Report',
+            '==================',
+            'Collections: ' . ($result['collections_created'] ?? 0) . ' created, ' . ($result['collections_updated'] ?? 0) . ' updated, ' . ($result['collections_deleted'] ?? 0) . ' deleted',
+            'Items: ' . ($result['items_created'] ?? 0) . ' created, ' . ($result['items_updated'] ?? 0) . ' updated, ' . ($result['items_deleted'] ?? 0) . ' deleted',
+            'Attachments: ' . ($result['attachments_created'] ?? 0) . ' created, ' . ($result['attachments_updated'] ?? 0) . ' updated, ' . ($result['attachments_deleted'] ?? 0) . ' deleted',
+        ];
+        $this->jobs->addAttachment($job, 'zotero_sync_report.txt', implode("\n", $lines));
+    }
+
+    private function addFailureAttachment(Job $job, string $errorMessage): void
+    {
+        if ($this->jobs === null || !method_exists(Jobs::class, 'addAttachment')) {
+            return;
+        }
+
+        $this->jobs->addAttachment($job, 'zotero_sync_error.txt', "Zotero Sync fehlgeschlagen\n\n" . $errorMessage);
     }
 }
