@@ -15,7 +15,7 @@
 
 Contao bietet das Paket **contao/test-case** als Basis für Bundle-Tests:
 
-- **Installation:** `composer require --dev contao/test-case` (im Projekt-Root oder im Bundle)
+- **Installation:** `composer require --dev contao/test-case` (im Root der Contao-Installation oder im Bundle)
 - **Basisklasse:** `Contao\TestCase\ContaoTestCase`
 - **Typische Methoden:**
   - `getContainerWithContaoConfiguration(?string $projectDir)` – Symfony-Container mit Contao-Standard-Konfiguration
@@ -37,7 +37,7 @@ Contao bietet das Paket **contao/test-case** als Basis für Bundle-Tests:
 ### 1.3 Typische Struktur (Contao-Bundles)
 
 ```
-bundles/raum51/contao-zotero-bundle/
+bundles/raum51/contao-zotero-bundle/   # relativ zur Contao-Installation (z.B. contao-zotero-bundle-v56.local/bundles/...)
 ├── src/
 ├── Tests/
 │   ├── Unit/           # Isolierte Logik
@@ -191,11 +191,11 @@ Referenz: [contao/news-bundle](https://github.com/contao/news-bundle), [contao/n
 
 ### 4.3 Bootstrap
 
-Tests können vom **Projekt-Root** aus laufen (dort ist der vollständige Contao-Container), oder das Bundle hat eine eigene `Tests/bootstrap.php` für isolierte Unit-Tests (nur Autoload, evtl. minimale Container-Mocks).
+Tests können vom **Root der Contao-Installation** aus laufen (dort ist der vollständige Contao-Container – bei Unterordner-Struktur z.B. `contao-zotero-bundle-v56.local`), oder das Bundle hat eine eigene `Tests/bootstrap.php` für isolierte Unit-Tests (nur Autoload, evtl. minimale Container-Mocks).
 
 **Empfehlung:** 
 - Unit-Tests (ZoteroBibUtil, ZoteroStopwordService): Eigenes Bootstrap mit Composer-Autoload
-- Integration-Tests: Vom Projekt-Root mit `php bin/phpunit -c bundles/raum51/contao-zotero-bundle/phpunit.xml.dist` – nutzt Projekt-Container und DB
+- Integration-Tests: Vom Root der Contao-Installation mit `php bin/phpunit -c bundles/raum51/contao-zotero-bundle/phpunit.xml.dist` – nutzt Projekt-Container und DB
 
 ---
 
@@ -211,7 +211,7 @@ Tests können vom **Projekt-Root** aus laufen (dort ist der vollständige Contao
 
 ## 6. CI/CD (optional)
 
-- **GitHub Actions:** `composer install`, `php bin/phpunit` im Projekt-Root mit Bundle-Pfad
+- **GitHub Actions:** `composer install`, `php bin/phpunit` im Root der Contao-Installation mit Bundle-Pfad
 - **Vor Commit:** `composer test` oder `./vendor/bin/phpunit` als Script in composer.json
 
 ---
