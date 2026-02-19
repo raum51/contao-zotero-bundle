@@ -37,7 +37,7 @@ Contao bietet das Paket **contao/test-case** als Basis für Bundle-Tests:
 ### 1.3 Typische Struktur (Contao-Bundles)
 
 ```
-bundles/raum51/contao-zotero-bundle/   # relativ zur Contao-Installation (z.B. contao-zotero-bundle-v56.local/bundles/...)
+bundles/raum51/contao-zotero-bundle/
 ├── src/
 ├── Tests/
 │   ├── Unit/           # Isolierte Logik
@@ -191,7 +191,7 @@ Referenz: [contao/news-bundle](https://github.com/contao/news-bundle), [contao/n
 
 ### 4.3 Bootstrap
 
-Tests können vom **Root der Contao-Installation** aus laufen (dort ist der vollständige Contao-Container – bei Unterordner-Struktur z.B. `contao-zotero-bundle-v56.local`), oder das Bundle hat eine eigene `Tests/bootstrap.php` für isolierte Unit-Tests (nur Autoload, evtl. minimale Container-Mocks).
+Tests können vom **Root der Contao-Installation** aus laufen (dort ist der vollständige Contao-Container), oder das Bundle hat eine eigene `Tests/bootstrap.php` für isolierte Unit-Tests (nur Autoload, evtl. minimale Container-Mocks).
 
 **Empfehlung:** 
 - Unit-Tests (ZoteroBibUtil, ZoteroStopwordService): Eigenes Bootstrap mit Composer-Autoload

@@ -197,7 +197,7 @@ Das Feld **`sync_interval`** existiert bereits in `tl_zotero_library`:
 
 #### 4.4.1 Neue Klasse: `ZoteroSyncCron`
 
-**Pfad:** `bundles/raum51/contao-zotero-bundle/src/Cron/ZoteroSyncCron.php` (relativ zur Contao-Installation, z.B. `contao-zotero-bundle-v56.local/bundles/...`)
+**Pfad:** `src/Cron/ZoteroSyncCron.php` (im Bundle)
 
 | Aspekt | Entscheidung |
 |--------|--------------|
