@@ -54,7 +54,7 @@ php bin/console contao:zotero:sync --show-details
 php bin/console contao:zotero:sync -l 1 --debug
 ```
 
-Bei großen Bibliotheken (und Contao 5.3–5.5): Sync im Backend kann zu Timeouts führen; dann per CLI ausführen. **Contao 5.6+:** Backend-Sync läuft asynchron, kein Request-Timeout.
+Bei großen Bibliotheken (und Contao 5.3–5.5): Sync im Backend kann zu Timeouts führen; dann per CLI ausführen. **Contao 5.6+:** Backend-Sync läuft asynchron, kein Request-Timeout. Der Sync setzt während der Ausführung periodisch `set_time_limit(120)`, um Abbrüche bei sehr großen Bibliotheken (5+ Min pro Library) zu vermeiden; gleichzeitig werden Fortschritts-Updates ans Job-Framework gesendet (Contao 5.7). **Servern mit blockiertem set_time_limit** (z. B. `disable_functions`): Der Aufruf wird übersprungen, es treten keine Fehler auf.
 
 ### Automatischer Sync (System-Cronjob)
 

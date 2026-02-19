@@ -137,10 +137,27 @@ final class ZoteroSyncMessageHandler
         $lines = [
             'Zotero Sync Report',
             '==================',
-            'Collections: ' . ($result['collections_created'] ?? 0) . ' created, ' . ($result['collections_updated'] ?? 0) . ' updated, ' . ($result['collections_deleted'] ?? 0) . ' deleted',
-            'Items: ' . ($result['items_created'] ?? 0) . ' created, ' . ($result['items_updated'] ?? 0) . ' updated, ' . ($result['items_deleted'] ?? 0) . ' deleted',
-            'Attachments: ' . ($result['attachments_created'] ?? 0) . ' created, ' . ($result['attachments_updated'] ?? 0) . ' updated, ' . ($result['attachments_deleted'] ?? 0) . ' deleted',
+            '',
+            'Gesamt:',
+            '  Collections: ' . ($result['collections_created'] ?? 0) . ' created, ' . ($result['collections_updated'] ?? 0) . ' updated, ' . ($result['collections_deleted'] ?? 0) . ' deleted',
+            '  Items: ' . ($result['items_created'] ?? 0) . ' created, ' . ($result['items_updated'] ?? 0) . ' updated, ' . ($result['items_deleted'] ?? 0) . ' deleted',
+            '  Attachments: ' . ($result['attachments_created'] ?? 0) . ' created, ' . ($result['attachments_updated'] ?? 0) . ' updated, ' . ($result['attachments_deleted'] ?? 0) . ' deleted',
         ];
+
+        $libraryStats = $result['library_stats'] ?? [];
+        if ($libraryStats !== []) {
+            $lines[] = '';
+            $lines[] = 'Je Library:';
+            foreach ($libraryStats as $stats) {
+                $title = $stats['title'] ?? 'Unbekannt';
+                $lines[] = '';
+                $lines[] = '  ' . $title;
+                $lines[] = '    Collections: ' . ($stats['collections_created'] ?? 0) . ' created, ' . ($stats['collections_updated'] ?? 0) . ' updated, ' . ($stats['collections_deleted'] ?? 0) . ' deleted';
+                $lines[] = '    Items: ' . ($stats['items_created'] ?? 0) . ' created, ' . ($stats['items_updated'] ?? 0) . ' updated, ' . ($stats['items_deleted'] ?? 0) . ' deleted';
+                $lines[] = '    Attachments: ' . ($stats['attachments_created'] ?? 0) . ' created, ' . ($stats['attachments_updated'] ?? 0) . ' updated, ' . ($stats['attachments_deleted'] ?? 0) . ' deleted';
+            }
+        }
+
         $this->jobs->addAttachment($job, 'zotero_sync_report.txt', implode("\n", $lines));
     }
 

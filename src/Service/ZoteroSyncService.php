@@ -22,6 +22,12 @@ final class ZoteroSyncService
     /** Max Items pro API-Seite (Zotero-API-Limit 100). Weniger Requests durch Batch-Abruf. */
     private const ITEMS_PAGE_SIZE = 100;
 
+    /** Ausführungslimit pro Reset (Sekunden). Bei blockiertem set_time_limit passiert nichts. */
+    private const EXECUTION_LIMIT_SECONDS = 120;
+
+    /** API-Phasen pro Library: fetchDeletedObjects, syncCollections, syncItems Pass 1, syncItems Pass 2, syncCollectionItems. */
+    private const STEPS_PER_LIBRARY = 5;
+
     public function __construct(
         private readonly ZoteroClient $zoteroClient,
         private readonly Connection $connection,
@@ -29,6 +35,40 @@ final class ZoteroSyncService
         private readonly Slug $slug,
         private readonly ApiLogCollector $apiLogCollector,
     ) {
+    }
+
+    /**
+     * Setzt die Ausführungszeit zurück (ohne Fortschritts-Update).
+     * Für Schleifen, wo wir den Timer resetten wollen, aber kein Job-Update senden.
+     */
+    private function resetTimeLimit(): void
+    {
+        if (function_exists('set_time_limit')) {
+            @set_time_limit(self::EXECUTION_LIMIT_SECONDS);
+        }
+    }
+
+    /**
+     * Setzt die Ausführungszeit zurück und meldet Fortschritt ans Job-Framework.
+     * Nur an den 5 definierten Phasen pro Library: fetchDeletedObjects, syncCollections,
+     * syncItems Pass 1, syncItems Pass 2, syncCollectionItems.
+     *
+     * @param int $libraryIndex Index der aktuellen Library (0-basiert)
+     * @param int $libraryCount Gesamtzahl der Libraries
+     * @param int $stepIndex 0–4: welcher der 5 Phasen-Schritte abgeschlossen ist
+     * @param callable|null $progressCallback (int $done, int|null $total): void
+     */
+    private function resetExecutionLimitAndReportProgress(int $libraryIndex, int $libraryCount, int $stepIndex, ?callable $progressCallback): void
+    {
+        if (function_exists('set_time_limit')) {
+            @set_time_limit(self::EXECUTION_LIMIT_SECONDS);
+        }
+
+        if ($progressCallback !== null) {
+            $done = $libraryIndex * self::STEPS_PER_LIBRARY + $stepIndex + 1;
+            $total = $libraryCount * self::STEPS_PER_LIBRARY;
+            $progressCallback($done, $total);
+        }
     }
 
     /**
@@ -108,11 +148,12 @@ final class ZoteroSyncService
             'item_creators_created_details' => [],
             'item_creators_deleted_details' => [],
             'errors' => [],
+            'library_stats' => [],
         ];
 
         foreach ($libraries as $i => $library) {
             try {
-                $result = $this->syncLibrary($library);
+                $result = $this->syncLibrary($library, $i, $libraryCount, $progressCallback);
                 $total['collections_created'] += $result['collections_created'];
                 $total['collections_updated'] += $result['collections_updated'];
                 $total['collections_deleted'] += $result['collections_deleted'] ?? 0;
@@ -176,8 +217,21 @@ final class ZoteroSyncService
                 foreach ($result['item_creators_deleted_details'] ?? [] as $d) {
                     $total['item_creators_deleted_details'][] = array_merge($d, ['library' => $library['title'] ?? '']);
                 }
+                $total['library_stats'][] = [
+                    'title' => $library['title'] ?? '',
+                    'collections_created' => $result['collections_created'],
+                    'collections_updated' => $result['collections_updated'],
+                    'collections_deleted' => $result['collections_deleted'] ?? 0,
+                    'items_created' => $result['items_created'],
+                    'items_updated' => $result['items_updated'],
+                    'items_deleted' => $result['items_deleted'],
+                    'attachments_created' => $result['attachments_created'] ?? 0,
+                    'attachments_updated' => $result['attachments_updated'] ?? 0,
+                    'attachments_deleted' => $result['attachments_deleted'] ?? 0,
+                ];
                 if ($progressCallback !== null) {
-                    $progressCallback($i + 1, $libraryCount);
+                    $done = ($i + 1) * self::STEPS_PER_LIBRARY;
+                    $progressCallback($done, $libraryCount * self::STEPS_PER_LIBRARY);
                 }
             } catch (\Throwable $e) {
                 $this->logger->error('Zotero Sync fehlgeschlagen', [
@@ -188,7 +242,8 @@ final class ZoteroSyncService
                 $this->setLibrarySyncError((int) $library['id'], $e->getMessage());
                 $total['errors'][] = $library['title'] . ': ' . $e->getMessage();
                 if ($progressCallback !== null) {
-                    $progressCallback($i + 1, $libraryCount);
+                    $done = ($i + 1) * self::STEPS_PER_LIBRARY;
+                    $progressCallback($done, $libraryCount * self::STEPS_PER_LIBRARY);
                 }
             }
         }
@@ -223,10 +278,15 @@ final class ZoteroSyncService
     }
 
     /**
+     * @param callable|null $progressCallback (int $done, int|null $total): void
      * @return array{collections_created: int, collections_updated: int, collections_deleted: int, collections_skipped: int, items_created: int, items_updated: int, items_deleted: int, items_skipped: int, skipped_items: array, attachments_created: int, attachments_updated: int, attachments_deleted: int, attachments_skipped: int, collection_items_created: int, collection_items_deleted: int, collection_items_skipped: int, item_creators_created: int, item_creators_deleted: int, item_creators_skipped: int}
      */
-    private function syncLibrary(array $library): array
+    private function syncLibrary(array $library, int $libraryIndex, int $libraryCount, ?callable $progressCallback): array
     {
+        $reportProgressForStep = function (int $stepIndex) use ($libraryIndex, $libraryCount, $progressCallback): void {
+            $this->resetExecutionLimitAndReportProgress($libraryIndex, $libraryCount, $stepIndex, $progressCallback);
+        };
+
         $pid = (int) $library['id'];
         $this->recordSyncAttempt($pid);
 
@@ -274,23 +334,27 @@ final class ZoteroSyncService
             'item_creators_deleted_details' => [],
         ];
 
-        // 1) Zuerst GET /deleted?since= – gelöschte Collections/Items holen und lokal entfernen
-        //    (vor syncCollections, damit gelöschte Objekte nicht versehentlich wieder angelegt werden)
+        // 1) fetchDeletedObjects – gelöschte Collections/Items holen und lokal entfernen
         $deletedObjects = $this->fetchDeletedObjects($prefix, $apiKey, $lastVersion);
+        $reportProgressForStep(0);
         $this->syncDeletedCollections($pid, $deletedObjects, $result);
         $this->syncDeletedItems($pid, $deletedObjects, $result);
 
-        // 2) Collections (inkl. Löschen nicht mehr in API vorhandener; überspringt Keys aus /deleted)
+        // 2) syncCollections
         $collectionKeyToId = $this->syncCollections($prefix, $apiKey, $pid, $result, $deletedObjects);
 
-        // 3) Items (mit since für inkrementell; bei 0 lokalen Items Vollabzug)
+        $reportProgressForStep(1);
+
+        // 3) syncItems Pass 1 + Pass 2 (Items, danach Attachments)
         $localItemCount = (int) $this->connection->fetchOne('SELECT COUNT(*) FROM tl_zotero_item WHERE pid = ?', [$pid]);
         $effectiveSince = $localItemCount > 0 ? $lastVersion : 0;
         $citeContentMarkup = (string) ($library['cite_content_markup'] ?? '');
-        $itemKeyToId = $this->syncItems($prefix, $apiKey, $pid, $citationStyle, $citationLocale, $citeContentMarkup, $effectiveSince, $deletedObjects, $result);
+        $itemKeyToId = $this->syncItems($prefix, $apiKey, $pid, $citationStyle, $citationLocale, $citeContentMarkup, $effectiveSince, $deletedObjects, $result, $reportProgressForStep);
 
-        // 4) Collection-Item-Verknüpfungen
+        // 4) syncCollectionItems
         $this->syncCollectionItems($prefix, $apiKey, $pid, $collectionKeyToId, $itemKeyToId, $result);
+
+        $reportProgressForStep(4);
 
         // 5) Library-Metadaten (last_sync_*, Version aus letztem Items-Request)
         $newVersion = $this->getLastModifiedVersionFromCache();
@@ -403,6 +467,7 @@ final class ZoteroSyncService
                 }
             }
             $start += $limit;
+            $this->resetTimeLimit();
         } while (\count($collections) === $limit);
 
         // Parent-IDs setzen (zweiter Durchlauf)
@@ -591,9 +656,10 @@ final class ZoteroSyncService
      * Items pro Seite gebündelt laden (2 Requests pro Seite statt 2 pro Item).
      *
      * @param array{collections: list<string>, items: list<string>} $deletedObjects Von fetchDeletedObjects()
+     * @param callable|null $reportProgressForStep (int $stepIndex): void – Schritt 2 nach Pass 1, Schritt 3 nach Pass 2
      * @return array<string, int> zotero_key -> unsere item id
      */
-    private function syncItems(string $prefix, string $apiKey, int $pid, string $citationStyle, string $citationLocale, string $citeContentMarkup, int $since, array $deletedObjects, array &$result): array
+    private function syncItems(string $prefix, string $apiKey, int $pid, string $citationStyle, string $citationLocale, string $citeContentMarkup, int $since, array $deletedObjects, array &$result, ?callable $reportProgressForStep = null): array
     {
         $keyToId = [];
         $path = $prefix . '/items';
@@ -640,7 +706,12 @@ final class ZoteroSyncService
                 }
             }
             $start += $limit;
+            $this->resetTimeLimit();
         } while (\count($items) === $limit);
+
+        if ($reportProgressForStep !== null) {
+            $reportProgressForStep(2);
+        }
 
         // Pass 2: Alle Attachments (itemType=attachment)
         // Zuerst alle Attachments sammeln, dann in Runden verarbeiten – damit auch Attachments
@@ -673,7 +744,12 @@ final class ZoteroSyncService
                 $allAttachments[] = $item;
             }
             $start += $limit;
+            $this->resetTimeLimit();
         } while (\count($items) === $limit);
+
+        if ($reportProgressForStep !== null) {
+            $reportProgressForStep(3);
+        }
 
         // Attachments topologisch sortieren: Eltern vor Kindern (parentItem = anderes Attachment)
         $allAttachments = $this->sortAttachmentsByParentChild($allAttachments, $keyToId);
@@ -1095,6 +1171,7 @@ final class ZoteroSyncService
         $limit = 100;
 
         foreach ($collectionKeyToId as $collKey => $collectionId) {
+            $this->resetTimeLimit();
             $path = $prefix . '/collections/' . $collKey . '/items';
             $items = [];
             $start = 0;
@@ -1108,6 +1185,7 @@ final class ZoteroSyncService
                 }
                 $items = array_merge($items, $page);
                 $start += $limit;
+                $this->resetTimeLimit();
             } while (\count($page) >= $limit);
 
             if ($items === null) {
