@@ -35,13 +35,15 @@ $GLOBALS['TL_DCA']['tl_zotero_item'] = [
     'list' => [
         'sorting' => [
             'mode' => 4,
+            'flag' => 1,
             'fields' => ['title'],
             'headerFields' => ['title'],
             'panelLayout' => 'filter;search,limit',
+            'filter' => [['title!=?', '']],
         ],
         'label' => [
-            'fields' => ['title', 'year'],
-            'format' => '%s (%s)',
+            'fields' => ['title', 'year', 'item_type'],
+            'format' => '%s (%s) - %s',
         ],
         'global_operations' => [
             'all' => [
@@ -56,13 +58,20 @@ $GLOBALS['TL_DCA']['tl_zotero_item'] = [
                 'icon' => 'visible.svg',
                 'primary' => true,
             ],
+            'download' => [
+                'href' => 'act=toggle&amp;field=download_attachments',
+                'icon' => 'bundles/raum51contaozotero/icons/cloud-download.svg',
+                'primary' => true,
+            ],
             'edit' => [
                 'href' => 'act=edit',
                 'icon' => 'edit.svg',
+                'primary' => false,
             ],
             'show' => [
                 'href' => 'act=show',
                 'icon' => 'show.svg',
+                'primary' => false,
             ],
         ],
     ],
@@ -182,6 +191,7 @@ $GLOBALS['TL_DCA']['tl_zotero_item'] = [
         'download_attachments' => [
             'label' => &$GLOBALS['TL_LANG']['tl_zotero_item']['download_attachments'],
             'exclude' => true,
+            'toggle' => true,
             'inputType' => 'checkbox',
             'eval' => ['tl_class' => 'w50'],
             'sql' => "char(1) NOT NULL default ''",
@@ -189,8 +199,10 @@ $GLOBALS['TL_DCA']['tl_zotero_item'] = [
         'published' => [
             'label' => &$GLOBALS['TL_LANG']['tl_zotero_item']['published'],
             'exclude' => true,
+            'filter' => true,
+            'toggle' => true,
             'inputType' => 'checkbox',
-            'eval' => ['tl_class' => 'w50', 'toggle' => true],
+            'eval' => ['tl_class' => 'w50'],
             'sql' => "char(1) NOT NULL default '1'",
         ],
     ],

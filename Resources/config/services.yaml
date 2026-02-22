@@ -62,6 +62,8 @@ services:
         public: true
     Raum51\ContaoZoteroBundle\EventListener\DataContainer\CreatorMapLabelCallback:
         public: true
+    Raum51\ContaoZoteroBundle\EventListener\DataContainer\ZoteroLibraryLabelCallback:
+        public: true
     Raum51\ContaoZoteroBundle\EventListener\DataContainer\CreatorMapMemberOptionsCallback:
         public: true
     Raum51\ContaoZoteroBundle\EventListener\DataContainer\ZoteroItemTypesOptionsCallback:

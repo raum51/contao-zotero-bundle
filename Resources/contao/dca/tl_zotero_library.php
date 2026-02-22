@@ -28,6 +28,7 @@ $GLOBALS['TL_DCA']['tl_zotero_library'] = [
         'label' => [
             'fields' => ['title'],
             'format' => '%s',
+            'label_callback' => [\Raum51\ContaoZoteroBundle\EventListener\DataContainer\ZoteroLibraryLabelCallback::class, '__invoke'],
         ],
         'global_operations' => [
             'all' => [
@@ -54,40 +55,46 @@ $GLOBALS['TL_DCA']['tl_zotero_library'] = [
             'toggle' => [
                 'href' => 'act=toggle&amp;field=published',
                 'icon' => 'visible.svg',
-                'showInHeader' => true,
                 'primary' => true,
             ],
             'edit' => [
                 'href' => 'act=edit',
                 'icon' => 'edit.svg',
-            ],
-            'sync' => [
-                'href' => 'key=zotero_sync',
-                'icon' => 'sync.svg',
-                'label' => &$GLOBALS['TL_LANG']['tl_zotero_library']['sync'],
-            ],
-            'collections' => [
-                'href' => 'table=tl_zotero_collection',
-                'icon' => 'folderC.svg',
-                'label' => &$GLOBALS['TL_LANG']['tl_zotero_library']['collections'],
+                'primary' => true,
             ],
             'items' => [
                 'href' => 'table=tl_zotero_item',
                 'icon' => 'article.svg',
                 'label' => &$GLOBALS['TL_LANG']['tl_zotero_library']['items'],
+                'primary' => true,
+            ],
+            'sync' => [
+                'href' => 'key=zotero_sync',
+                'icon' => 'sync.svg',
+                'label' => &$GLOBALS['TL_LANG']['tl_zotero_library']['sync'],
+                'primary' => false,
+            ],
+            'collections' => [
+                'href' => 'table=tl_zotero_collection',
+                'icon' => 'folderC.svg',
+                'label' => &$GLOBALS['TL_LANG']['tl_zotero_library']['collections'],
+                'primary' => true,
             ],
             'copy' => [
                 'href' => 'act=copy',
                 'icon' => 'copy.svg',
+                'primary' => false,
             ],
             'delete' => [
                 'href' => 'act=delete',
                 'icon' => 'delete.svg',
                 'attributes' => 'onclick="if(!confirm(\'' . ($GLOBALS['TL_LANG']['MSC']['deleteConfirm'] ?? '') . '\'))return false;Backend.getScrollOffset()"',
+                'primary' => false,
             ],
             'show' => [
                 'href' => 'act=show',
                 'icon' => 'show.svg',
+                'primary' => false,
             ],
         ],
     ],
