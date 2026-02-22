@@ -1,0 +1,10 @@
+/**
+ * Zotero Bundle – Backend-Styles
+ * raum51/contao-zotero-bundle
+ *
+ * Icon für die Menü-Kategorie „Literaturverwaltung“ (BE_MOD['zotero']).
+ * Contao setzt die Klasse group-{BE_MOD-Key} automatisch (BackendUser::navigation).
+ */
+#tl_navigation .group-zotero {
+    background: url("../icons/library.svg") 3px 2px no-repeat;
+}

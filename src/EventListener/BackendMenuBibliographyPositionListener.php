@@ -6,18 +6,18 @@ namespace Raum51\ContaoZoteroBundle\EventListener;
 
 use Contao\CoreBundle\Event\ContaoCoreEvents;
 use Contao\CoreBundle\Event\MenuEvent;
+use Knp\Menu\Util\MenuManipulator;
 use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
 
 /**
- * Gruppiert die Zotero-Backend-Menüeinträge unter "Literaturverwaltung".
- *
- * Bibliotheken, Autoren-Zuordnung und Locales werden als Kinder eines
- * übergeordneten Menüpunkts "Literaturverwaltung" angezeigt.
+ * Positioniert die Backend-Menü-Kategorie "Literaturverwaltung" (BE_MOD['zotero'])
+ * direkt nach "Inhalte" (Content).
  */
-#[AsEventListener(ContaoCoreEvents::BACKEND_MENU_BUILD, priority: -255)]
+#[AsEventListener(ContaoCoreEvents::BACKEND_MENU_BUILD, priority: -512)]
 class BackendMenuBibliographyPositionListener
 {
-    private const ZOTERO_MENU_IDS = ['bibliography', 'tl_zotero_creator_map', 'tl_zotero_locales'];
+    /** Position 2 = nach "Inhalte" (Content), 0 = Favorites, 1 = Content */
+    private const TARGET_POSITION = 2;
 
     public function __invoke(MenuEvent $event): void
     {
@@ -26,37 +26,12 @@ class BackendMenuBibliographyPositionListener
             return;
         }
 
-        if (!$tree->getChild('content')) {
+        $node = $tree->getChild('zotero');
+        if ($node === null) {
             return;
         }
 
-        $contentNode = $tree->getChild('content');
-
-        $children = [];
-        foreach (self::ZOTERO_MENU_IDS as $menuId) {
-            $child = $contentNode->getChild($menuId);
-            if ($child !== null) {
-                $contentNode->removeChild($menuId);
-                $children[] = $child;
-            }
-        }
-
-        if ($children === []) {
-            return;
-        }
-
-        $factory = $event->getFactory();
-        $groupLabel = $GLOBALS['TL_LANG']['MOD']['bibliography_group'][0] ?? 'Literaturverwaltung';
-
-        $groupNode = $factory
-            ->createItem('literaturverwaltung')
-            ->setLabel($groupLabel)
-            ->setUri('#');
-
-        foreach ($children as $child) {
-            $groupNode->addChild($child);
-        }
-
-        $contentNode->addChild($groupNode);
+        $manipulator = new MenuManipulator();
+        $manipulator->moveToPosition($node, self::TARGET_POSITION);
     }
 }
