@@ -20,4 +20,5 @@ $GLOBALS['TL_LANG']['tl_zotero_item_attachment'] = [
     'md5' => ['MD5', ''],
     'json_data' => ['JSON-Daten', 'Vollständiges Zotero-Attachment-JSON'],
     'published' => ['Veröffentlicht', ''],
+    'trash' => ['Im Zotero-Papierkorb', 'Wird vom Sync gesetzt.'],
 ];

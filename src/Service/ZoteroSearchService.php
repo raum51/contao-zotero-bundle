@@ -55,8 +55,10 @@ final class ZoteroSearchService
             ->from('tl_zotero_item', 'i')
             ->where($qb->expr()->in('i.pid', ':pids'))
             ->andWhere('i.published = :published')
+            ->andWhere('i.trash = :trash')
             ->setParameter('pids', $libraryIds, ArrayParameterType::INTEGER)
-            ->setParameter('published', '1');
+            ->setParameter('published', 1)
+            ->setParameter('trash', 0);
 
         if ($requireCiteContent) {
             $qb->andWhere('i.cite_content IS NOT NULL')
@@ -143,8 +145,8 @@ final class ZoteroSearchService
     public function getItemTypesWithPublishedItems(): array
     {
         $rows = $this->connection->fetchFirstColumn(
-            'SELECT DISTINCT item_type FROM tl_zotero_item WHERE published = ? AND item_type != ? ORDER BY item_type',
-            ['1', '']
+            'SELECT DISTINCT item_type FROM tl_zotero_item WHERE published = ? AND trash = ? AND item_type != ? ORDER BY item_type',
+            [1, 0, '']
         );
 
         return \is_array($rows) ? array_values(array_filter($rows, static fn ($v) => \is_string($v) && $v !== '')) : [];

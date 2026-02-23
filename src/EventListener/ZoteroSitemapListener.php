@@ -110,8 +110,10 @@ final class ZoteroSitemapListener
             ->from('tl_zotero_item', 'i')
             ->where('i.pid = :pid')
             ->andWhere('i.published = :published')
+            ->andWhere('i.trash = :trash')
             ->setParameter('pid', $libraryId)
-            ->setParameter('published', '1');
+            ->setParameter('published', 1)
+            ->setParameter('trash', 0);
 
         if ($collectionIds !== []) {
             $qb->innerJoin('i', 'tl_zotero_collection_item', 'ci', 'ci.item_id = i.id')

@@ -8,11 +8,6 @@ declare(strict_types=1);
  */
 
 use Contao\Backend;
-use Contao\DataContainer;
-use Contao\Database;
-use Contao\System;
-use Exception;
-use Raum51\ContaoZoteroBundle\Service\ZoteroBibUtil;
 
 $GLOBALS['TL_DCA']['tl_zotero_item'] = [
     'config' => [
@@ -29,6 +24,7 @@ $GLOBALS['TL_DCA']['tl_zotero_item'] = [
                 'zotero_key' => 'index',
                 'alias' => 'unique',
                 'published' => 'index',
+                'trash' => 'index',
             ],
         ],
     ],
@@ -76,7 +72,7 @@ $GLOBALS['TL_DCA']['tl_zotero_item'] = [
         ],
     ],
     'palettes' => [
-        'default' => '{zotero_legend},zotero_key,alias,zotero_version,title,item_type,year,date,publication_title;{content_legend},cite_content,bib_content,abstract;{data_legend},json_data,tags;{options_legend},download_attachments,published',
+        'default' => '{zotero_legend},zotero_key,alias,zotero_version,title,item_type,year,date,publication_title;{content_legend},cite_content,bib_content,abstract;{data_legend},json_data,tags;{options_legend},download_attachments,published,trash',
     ],
     'fields' => [
         'id' => [
@@ -104,10 +100,7 @@ $GLOBALS['TL_DCA']['tl_zotero_item'] = [
             'exclude' => true,
             'search' => true,
             'inputType' => 'text',
-            'eval' => ['rgxp' => 'alias', 'doNotCopy' => true, 'unique' => true, 'maxlength' => 255, 'tl_class' => 'w50'],
-            'save_callback' => [
-                ['tl_zotero_item', 'generateAlias'],
-            ],
+            'eval' => ['rgxp' => 'alias', 'doNotCopy' => true, 'unique' => true, 'maxlength' => 255, 'readonly' => true, 'tl_class' => 'w50'],
             'sql' => "varchar(255) BINARY NOT NULL default ''",
         ],
         'zotero_version' => [
@@ -122,7 +115,7 @@ $GLOBALS['TL_DCA']['tl_zotero_item'] = [
             'exclude' => true,
             'search' => true,
             'inputType' => 'text',
-            'eval' => ['maxlength' => 512, 'tl_class' => 'long'],
+            'eval' => ['maxlength' => 512, 'readonly' => true, 'tl_class' => 'long'],
             'sql' => "varchar(512) NOT NULL default ''",
         ],
         'item_type' => [
@@ -194,7 +187,7 @@ $GLOBALS['TL_DCA']['tl_zotero_item'] = [
             'toggle' => true,
             'inputType' => 'checkbox',
             'eval' => ['tl_class' => 'w50'],
-            'sql' => "char(1) NOT NULL default ''",
+            'sql' => ['type' => 'boolean', 'default' => false],
         ],
         'published' => [
             'label' => &$GLOBALS['TL_LANG']['tl_zotero_item']['published'],
@@ -203,7 +196,15 @@ $GLOBALS['TL_DCA']['tl_zotero_item'] = [
             'toggle' => true,
             'inputType' => 'checkbox',
             'eval' => ['tl_class' => 'w50'],
-            'sql' => "char(1) NOT NULL default '1'",
+            'sql' => ['type' => 'boolean', 'default' => true],
+        ],
+        'trash' => [
+            'label' => &$GLOBALS['TL_LANG']['tl_zotero_item']['trash'],
+            'exclude' => true,
+            'filter' => true,
+            'inputType' => 'checkbox',
+            'eval' => ['tl_class' => 'w50', 'disabled' => true],
+            'sql' => ['type' => 'boolean', 'default' => false],
         ],
     ],
 ];
@@ -215,50 +216,4 @@ $GLOBALS['TL_DCA']['tl_zotero_item'] = [
  */
 class tl_zotero_item extends Backend
 {
-    /**
-     * Auto-generate the item alias if it has not been set yet (cite_key from bib_content or title).
-     * Uses Contao slug service for URL-safe string and aliasExists for duplicate check.
-     *
-     * @param mixed $varValue
-     *
-     * @throws Exception
-     */
-    public function generateAlias($varValue, DataContainer $dc): string
-    {
-        $aliasExists = static function (string $alias) use ($dc): bool {
-            $result = Database::getInstance()
-                ->prepare('SELECT id FROM tl_zotero_item WHERE alias=? AND id!=?')
-                ->execute($alias, $dc->id);
-
-            return $result->numRows > 0;
-        };
-
-        $varValue = trim((string) $varValue);
-
-        if ($varValue === '') {
-            $source = '';
-            if (!empty($dc->activeRecord->bib_content)) {
-                $source = ZoteroBibUtil::extractCiteKeyFromBib((string) $dc->activeRecord->bib_content);
-            }
-            if ($source === '' && !empty($dc->activeRecord->title)) {
-                $source = (string) $dc->activeRecord->title;
-            }
-            if ($source === '') {
-                $source = 'item-' . $dc->id;
-            }
-            $varValue = System::getContainer()->get('contao.slug')->generate($source, [], $aliasExists);
-
-            return $varValue;
-        }
-
-        if (preg_match('/^[1-9]\d*$/', $varValue)) {
-            throw new Exception(sprintf($GLOBALS['TL_LANG']['ERR']['aliasNumeric'] ?? 'Alias "%s" is numeric.', $varValue));
-        }
-
-        if ($aliasExists($varValue)) {
-            throw new Exception(sprintf($GLOBALS['TL_LANG']['ERR']['aliasExists'] ?? 'Alias "%s" already exists.', $varValue));
-        }
-
-        return $varValue;
-    }
 }

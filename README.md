@@ -72,6 +72,8 @@ Ersetzen Sie `/pfad/zum/contao/projekt` durch den tatsächlichen Projektpfad. Un
 
 **Übersprungene Items:** Nicht importierbare Items (z. B. Attachment ohne Parent, API-Fehler) werden protokolliert: im Contao-Systemlog (Kanal `contao.general`), im Result-Array und – bei CLI-Ausführung mit `--show-details` – als Tabelle mit Key, Typ, Grund und Library. Mit `--log-skipped=PATH` werden sie zusätzlich in eine JSON-Datei geschrieben (Format: `synced_at`, `count`, `skipped_items`).
 
+**Sync-Ablauf:** Detaillierte Beschreibung der 5 Sync-Phasen, trash vs. published, inkrementell vs. Voll-Sync: [`docs/sync-ablauf.md`](docs/sync-ablauf.md).
+
 ### contao:zotero:fetch-locales
 
 Lädt lokalisierte Zotero-Schema-Daten (Item-Typen und Item-Felder) von der API und speichert sie pro Locale in `tl_zotero_locales`. Kein API-Key nötig. Wird bei jedem Sync automatisch mit aufgerufen.
@@ -327,7 +329,7 @@ Die folgenden Erweiterungen sind geplant bzw. in Konzepten beschrieben:
 | *~~Legacy-CE bereinigen~~* | *Erledigt (16.02.2026)* | – |
 | **download_attachments** | Einstellung pro CE/Modul für Attachment-Downloads (3 Ebenen: Library, Modul/CE, Item) | Blueprint |
 | **PHPUnit-Tests** | ZoteroBibUtil, ZoteroStopwordService, ZoteroSearchService etc. | [`docs/phpunit-test-konzept.md`](docs/phpunit-test-konzept.md) |
-| **Cronjob** | ZoteroSyncCron (hourly, CLI-only); Backend-Sync via Messenger + Jobs (5.6+) bzw. synchron (Fallback) | Implementiert. Konzept: [`docs/cronjob-konzept.md`](docs/cronjob-konzept.md) |
+| **Cronjob** | ZoteroSyncCron (hourly, CLI-only); Backend-Sync via Messenger + Jobs (5.6+) bzw. synchron (Fallback) | Implementiert. Konzept: [`docs/cronjob-konzept.md`](docs/cronjob-konzept.md). Sync-Ablauf: [`docs/sync-ablauf.md`](docs/sync-ablauf.md) |
 | **Streaming API** (optional) | WebSocket für push-basierte Benachrichtigungen bei Library-Änderungen | Blueprint 4.1 |
 
 ---

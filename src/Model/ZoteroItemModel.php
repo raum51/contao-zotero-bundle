@@ -28,8 +28,8 @@ class ZoteroItemModel extends Model
         $alias = is_numeric($val) ? null : $val;
         $id = is_numeric($val) ? (int) $val : null;
 
-        $columns = ["$t.pid = ?", "$t.published = ?"];
-        $values = [$pid, '1'];
+        $columns = ["$t.pid = ?", "$t.published = ?", "$t.trash = ?"];
+        $values = [$pid, '1', '0'];
 
         if ($alias !== null) {
             $columns[] = "$t.alias = ?";

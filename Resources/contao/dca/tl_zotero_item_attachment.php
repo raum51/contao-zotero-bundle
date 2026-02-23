@@ -20,6 +20,7 @@ $GLOBALS['TL_DCA']['tl_zotero_item_attachment'] = [
                 'pid' => 'index',
                 'zotero_key' => 'index',
                 'published' => 'index',
+                'trash' => 'index',
             ],
         ],
     ],
@@ -42,7 +43,7 @@ $GLOBALS['TL_DCA']['tl_zotero_item_attachment'] = [
         ],
     ],
     'palettes' => [
-        'default' => '{zotero_legend},zotero_key,zotero_version,link_mode,title,filename,content_type,url;{data_legend},charset,md5,json_data;{options_legend},published',
+        'default' => '{zotero_legend},zotero_key,zotero_version,link_mode,title,filename,content_type,url;{data_legend},charset,md5,json_data;{options_legend},published,trash',
     ],
     'fields' => [
         'id' => [
@@ -88,21 +89,21 @@ $GLOBALS['TL_DCA']['tl_zotero_item_attachment'] = [
             'exclude' => true,
             'search' => true,
             'inputType' => 'text',
-            'eval' => ['maxlength' => 512, 'tl_class' => 'long'],
+            'eval' => ['maxlength' => 512, 'readonly' => true, 'tl_class' => 'long'],
             'sql' => "varchar(512) NOT NULL default ''",
         ],
         'filename' => [
             'label' => &$GLOBALS['TL_LANG']['tl_zotero_item_attachment']['filename'],
             'exclude' => true,
             'inputType' => 'text',
-            'eval' => ['maxlength' => 512, 'tl_class' => 'long'],
+            'eval' => ['maxlength' => 512, 'readonly' => true, 'tl_class' => 'long'],
             'sql' => "varchar(512) NOT NULL default ''",
         ],
         'content_type' => [
             'label' => &$GLOBALS['TL_LANG']['tl_zotero_item_attachment']['content_type'],
             'exclude' => true,
             'inputType' => 'text',
-            'eval' => ['maxlength' => 255, 'tl_class' => 'w50'],
+            'eval' => ['maxlength' => 255, 'readonly' => true, 'tl_class' => 'w50'],
             'sql' => "varchar(255) NOT NULL default ''",
         ],
         'url' => [
@@ -137,8 +138,16 @@ $GLOBALS['TL_DCA']['tl_zotero_item_attachment'] = [
             'label' => &$GLOBALS['TL_LANG']['tl_zotero_item_attachment']['published'],
             'exclude' => true,
             'inputType' => 'checkbox',
-            'eval' => ['tl_class' => 'w50', 'toggle' => true],
-            'sql' => "char(1) NOT NULL default '1'",
+            'eval' => ['tl_class' => 'w50', 'toggle' => true, 'disabled' => true],
+            'sql' => ['type' => 'boolean', 'default' => true],
+        ],
+        'trash' => [
+            'label' => &$GLOBALS['TL_LANG']['tl_zotero_item_attachment']['trash'],
+            'exclude' => true,
+            'filter' => true,
+            'inputType' => 'checkbox',
+            'eval' => ['tl_class' => 'w50', 'disabled' => true],
+            'sql' => ['type' => 'boolean', 'default' => false],
         ],
     ],
 ];

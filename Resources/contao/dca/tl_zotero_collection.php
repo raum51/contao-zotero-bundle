@@ -103,7 +103,7 @@ $GLOBALS['TL_DCA']['tl_zotero_collection'] = [
             'toggle' => true,
             'inputType' => 'checkbox',
             'eval' => ['tl_class' => 'w50'],
-            'sql' => "char(1) NOT NULL default '1'",
+            'sql' => ['type' => 'boolean', 'default' => true],
         ],
     ],
 ];

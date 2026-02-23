@@ -935,11 +935,12 @@ final class ZoteroSyncService
             'charset' => (string) ($data['charset'] ?? ''),
             'md5' => (string) ($data['md5'] ?? ''),
             'json_data' => $jsonData,
-            'published' => $inTrash ? '0' : '1',
+            'published' => 1,
+            'trash' => $inTrash ? 1 : 0,
         ];
 
         if ($existing !== false) {
-            unset($row['pid'], $row['sorting']);
+            unset($row['pid'], $row['sorting'], $row['published']);
             $this->connection->update('tl_zotero_item_attachment', $row, ['id' => $existing]);
             $result['attachments_updated']++;
             $result['attachments_updated_details'][] = [
@@ -1062,13 +1063,14 @@ final class ZoteroSyncService
             'abstract' => $abstract !== '' ? $abstract : null,
             'json_data' => $jsonData,
             'tags' => $tagsStored,
-            'download_attachments' => '',
-            'published' => $inTrash ? '0' : '1',
             'alias' => $alias,
+            'download_attachments' => 0,
+            'published' => 1,
+            'trash' => $inTrash ? 1 : 0,
         ];
 
         if ($existing !== false) {
-            unset($row['pid']);
+            unset($row['pid'], $row['download_attachments'], $row['published']);
             $this->connection->update('tl_zotero_item', $row, ['id' => $existing]);
             $result['items_updated']++;
             $result['items_updated_details'][] = ['key' => $key, 'title' => (string) $title];
@@ -1231,8 +1233,8 @@ final class ZoteroSyncService
             // Depublizierte Items (Papierkorb) nicht entfernen – Zotero liefert sie evtl. nicht in /collections/{key}/items; bei Wiederherstellung sind sie wieder in der Collection
             $toDelete = array_diff($existingItemIds, $expectedItemIds);
             foreach ($toDelete as $itemId) {
-                $itemRow = $this->connection->fetchAssociative('SELECT zotero_key, title, published FROM tl_zotero_item WHERE id = ?', [$itemId]);
-                if (\is_array($itemRow) && ((string) ($itemRow['published'] ?? '1')) === '0') {
+                $itemRow = $this->connection->fetchAssociative('SELECT zotero_key, title, trash FROM tl_zotero_item WHERE id = ?', [$itemId]);
+                if (\is_array($itemRow) && ((int) ($itemRow['trash'] ?? 0)) === 1) {
                     continue;
                 }
                 try {

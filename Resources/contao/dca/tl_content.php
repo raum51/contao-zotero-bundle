@@ -116,7 +116,7 @@ $GLOBALS['TL_DCA']['tl_content']['fields']['zotero_download_attachments'] = [
     'exclude' => true,
     'inputType' => 'checkbox',
     'eval' => ['submitOnChange' => true, 'tl_class' => 'w50 m12'],
-    'sql' => "char(1) NOT NULL default '1'",
+    'sql' => ['type' => 'boolean', 'default' => true],
 ];
 $GLOBALS['TL_DCA']['tl_content']['fields']['zotero_download_content_types'] = [
     'label' => &$GLOBALS['TL_LANG']['tl_content']['zotero_download_content_types'],

@@ -23,5 +23,6 @@ $GLOBALS['TL_LANG']['tl_zotero_item'] = [
     'json_data' => ['JSON-Daten', 'Rohe Zotero-Metadaten'],
     'tags' => ['Tags', 'Von Zotero (z. B. JSON)'],
     'download_attachments' => ['Attachments herunterladbar', ''],
-    'published' => ['Veröffentlicht', ''],
+    'published' => ['Veröffentlicht', 'Im Frontend anzeigen (Contao-seitig)'],
+    'trash' => ['Im Zotero-Papierkorb', 'Wird vom Sync gesetzt; nicht manuell änderbar.'],
 ];

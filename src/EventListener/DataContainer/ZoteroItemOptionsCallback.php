@@ -29,8 +29,8 @@ final class ZoteroItemOptionsCallback
     public function __invoke(DataContainer|null $dc = null): array
     {
         $items = $this->connection->fetchAllAssociative(
-            'SELECT id, title, year, json_data FROM tl_zotero_item WHERE published = ?',
-            ['1']
+            'SELECT id, title, year, json_data FROM tl_zotero_item WHERE published = ? AND trash = ?',
+            [1, 0]
         );
 
         $itemIds = array_map(static fn (array $r) => (int) $r['id'], $items);

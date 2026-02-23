@@ -68,6 +68,7 @@ $GLOBALS['TL_DCA']['tl_zotero_item_creator'] = [
         'item_id' => [
             'label' => &$GLOBALS['TL_LANG']['tl_zotero_item_creator']['item_id'],
             'foreignKey' => 'tl_zotero_item.title',
+            'eval' => ['readonly' => true],
             'sql' => 'int(10) unsigned NOT NULL default 0',
             'relation' => ['type' => 'belongsTo', 'load' => 'lazy'],
         ],
@@ -78,6 +79,7 @@ $GLOBALS['TL_DCA']['tl_zotero_item_creator'] = [
             'eval' => [
                 'mandatory' => true,
                 'chosen' => true,
+                'readonly' => true,
                 'tl_class' => 'w50',
             ],
             'sql' => 'int(10) unsigned NOT NULL default 0',
@@ -87,7 +89,7 @@ $GLOBALS['TL_DCA']['tl_zotero_item_creator'] = [
             'label' => &$GLOBALS['TL_LANG']['tl_zotero_item_creator']['sorting'],
             'exclude' => true,
             'inputType' => 'text',
-            'eval' => ['rgxp' => 'natural', 'tl_class' => 'w50'],
+            'eval' => ['rgxp' => 'natural', 'readonly' => true, 'tl_class' => 'w50'],
             'sql' => 'int(10) unsigned NOT NULL default 0',
         ],
     ],

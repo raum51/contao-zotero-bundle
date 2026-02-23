@@ -207,7 +207,7 @@ $GLOBALS['TL_DCA']['tl_zotero_library'] = [
             'exclude' => true,
             'inputType' => 'checkbox',
             'eval' => ['tl_class' => 'w50'],
-            'sql' => "char(1) NOT NULL default ''",
+            'sql' => ['type' => 'boolean', 'default' => false],
         ],
         'published' => [
             'label' => &$GLOBALS['TL_LANG']['tl_zotero_library']['published'],
@@ -216,7 +216,7 @@ $GLOBALS['TL_DCA']['tl_zotero_library'] = [
             'toggle' => true,
             'inputType' => 'checkbox',
             'eval' => ['tl_class' => 'w50'],
-            'sql' => "char(1) NOT NULL default '1'",
+            'sql' => ['type' => 'boolean', 'default' => true],
         ],
         'jumpTo' => [
             'label' => &$GLOBALS['TL_LANG']['tl_zotero_library']['jumpTo'],
@@ -231,7 +231,7 @@ $GLOBALS['TL_DCA']['tl_zotero_library'] = [
             'exclude' => true,
             'inputType' => 'checkbox',
             'eval' => ['submitOnChange' => true, 'tl_class' => 'w50'],
-            'sql' => "char(1) NOT NULL default ''",
+            'sql' => ['type' => 'boolean', 'default' => false],
         ],
         'sitemap_collections' => [
             'label' => &$GLOBALS['TL_LANG']['tl_zotero_library']['sitemap_collections'],

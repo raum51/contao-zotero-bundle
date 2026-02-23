@@ -35,16 +35,16 @@ final class BibExportController
                 'SELECT i.bib_content, i.title
                  FROM tl_zotero_item i
                  INNER JOIN tl_zotero_library l ON l.id = i.pid
-                 WHERE i.id = ? AND i.published = ? AND l.published = ?',
-                [(int) $id, '1', '1']
+                 WHERE i.id = ? AND i.published = ? AND i.trash = ? AND l.published = ?',
+                [(int) $id, 1, 0, 1]
             );
         } else {
             $row = $this->connection->fetchAssociative(
                 'SELECT i.bib_content, i.title
                  FROM tl_zotero_item i
                  INNER JOIN tl_zotero_library l ON l.id = i.pid
-                 WHERE i.alias = ? AND i.published = ? AND l.published = ?',
-                [$id, '1', '1']
+                 WHERE i.alias = ? AND i.published = ? AND i.trash = ? AND l.published = ?',
+                [$id, 1, 0, 1]
             );
         }
 
@@ -76,7 +76,7 @@ final class BibExportController
             "SELECT i.bib_content
              FROM tl_zotero_item i
              INNER JOIN tl_zotero_library l ON l.id = i.pid
-             WHERE i.id IN ($placeholders) AND i.published = '1' AND l.published = '1'",
+             WHERE i.id IN ($placeholders) AND i.published = 1 AND i.trash = 0 AND l.published = 1",
             $ids
         );
 
@@ -117,8 +117,8 @@ final class BibExportController
                 'SELECT ci.item_id FROM tl_zotero_collection_item ci
                  INNER JOIN tl_zotero_item i ON i.id = ci.item_id
                  INNER JOIN tl_zotero_library l ON l.id = i.pid
-                 WHERE ci.collection_id = ? AND i.published = ? AND l.published = ?',
-                [$collectionId, '1', '1']
+                 WHERE ci.collection_id = ? AND i.published = ? AND i.trash = ? AND l.published = ?',
+                [$collectionId, 1, 0, 1]
             );
             return array_map('intval', $rows);
         }
@@ -128,8 +128,8 @@ final class BibExportController
             $rows = $this->connection->fetchFirstColumn(
                 'SELECT i.id FROM tl_zotero_item i
                  INNER JOIN tl_zotero_library l ON l.id = i.pid
-                 WHERE i.pid = ? AND i.published = ? AND l.published = ?',
-                [$libraryId, '1', '1']
+                 WHERE i.pid = ? AND i.published = ? AND i.trash = ? AND l.published = ?',
+                [$libraryId, 1, 0, 1]
             );
             return array_map('intval', $rows);
         }

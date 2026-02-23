@@ -35,10 +35,10 @@ final class ZoteroAuthorOptionsCallback
              FROM tl_member m
              INNER JOIN tl_zotero_creator_map cm ON cm.member_id = m.id
              INNER JOIN tl_zotero_item_creator ic ON ic.creator_map_id = cm.id
-             INNER JOIN tl_zotero_item i ON i.id = ic.item_id AND i.published = ?
+             INNER JOIN tl_zotero_item i ON i.id = ic.item_id AND i.published = ? AND i.trash = ?
              GROUP BY m.id
              ORDER BY m.lastname, m.firstname',
-            ['1']
+            [1, 0]
         );
 
         $options = [];

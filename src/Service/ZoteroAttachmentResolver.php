@@ -37,13 +37,13 @@ final class ZoteroAttachmentResolver
         }
 
         $placeholders = implode(',', array_fill(0, \count($itemIds), '?'));
-        $params = ['1', '1', '1', '1', ...$itemIds];
+        $params = [1, 1, 0, 1, 1, 0, ...$itemIds, 0];
 
         $contentTypeCondition = '';
         if ($contentTypesFilter !== null && $contentTypesFilter !== []) {
             $ctPlaceholders = implode(',', array_fill(0, \count($contentTypesFilter), '?'));
             $contentTypeCondition = ' AND a.content_type IN (' . $ctPlaceholders . ')';
-            $params = array_merge($params, $contentTypesFilter);
+            $params = array_merge(array_slice($params, 0, -1), $contentTypesFilter, [0]);
         }
 
         $rows = $connection->fetchAllAssociative(
@@ -52,10 +52,11 @@ final class ZoteroAttachmentResolver
              INNER JOIN tl_zotero_item i ON i.id = a.pid
                AND i.download_attachments = ?
                AND i.published = ?
+               AND i.trash = ?
              INNER JOIN tl_zotero_library l ON l.id = i.pid
                AND l.download_attachments = ?
                AND l.published = ?
-             WHERE a.pid IN (' . $placeholders . ')' . $contentTypeCondition . '
+             WHERE a.pid IN (' . $placeholders . ') AND a.trash = ?' . $contentTypeCondition . '
              ORDER BY a.sorting ASC, a.id ASC',
             $params
         );

@@ -68,18 +68,18 @@ final class AttachmentProxyController
              FROM tl_zotero_item_attachment a
              INNER JOIN tl_zotero_item i ON i.id = a.pid
              INNER JOIN tl_zotero_library l ON l.id = i.pid
-             WHERE a.id = ? AND i.published = ? AND l.published = ?',
-            [$id, '1', '1']
+             WHERE a.id = ? AND i.published = ? AND i.trash = ? AND a.trash = ? AND l.published = ?',
+            [$id, 1, 0, 0, 1]
         );
 
         if ($item === false) {
             throw new NotFoundHttpException('Attachment not found or not published.');
         }
 
-        if (($item['library_download_attachments'] ?? '') !== '1') {
+        if ((int) ($item['library_download_attachments'] ?? 0) !== 1) {
             throw new NotFoundHttpException('Downloads not allowed for this library.');
         }
-        if (($item['item_download_attachments'] ?? '') !== '1') {
+        if ((int) ($item['item_download_attachments'] ?? 0) !== 1) {
             throw new NotFoundHttpException('Downloads not allowed for this item.');
         }
 

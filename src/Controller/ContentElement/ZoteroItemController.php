@@ -74,7 +74,7 @@ final class ZoteroItemController extends AbstractContentElementController
             $itemId = (int) ($model->zotero_item_id ?? 0);
             if ($itemId > 0) {
                 $item = ZoteroItemModel::findByPk($itemId);
-                if ($item !== null && $item->published !== '1') {
+                if ($item !== null && ((int) ($item->published ?? 0) !== 1 || (int) ($item->trash ?? 0) === 1)) {
                     $item = null;
                 }
             }
