@@ -12,6 +12,7 @@ $GLOBALS['TL_DCA']['tl_zotero_item_attachment'] = [
         'dataContainer' => \Contao\DC_Table::class,
         'ptable' => 'tl_zotero_item',
         'doNotCopyRecords' => true,
+        'notCreatable' => true,
         'notDeletable' => true,
         'enableVersioning' => true,
         'sql' => [

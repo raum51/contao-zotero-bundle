@@ -15,6 +15,7 @@ $GLOBALS['TL_DCA']['tl_zotero_item'] = [
         'ptable' => 'tl_zotero_library',
         'ctable' => ['tl_zotero_item_creator', 'tl_zotero_item_attachment'],
         'doNotCopyRecords' => true,
+        'notCreatable' => true,
         'notDeletable' => true,
         'enableVersioning' => true,
         'sql' => [
@@ -41,13 +42,7 @@ $GLOBALS['TL_DCA']['tl_zotero_item'] = [
             'fields' => ['title', 'year', 'item_type'],
             'format' => '%s (%s) - %s',
         ],
-        'global_operations' => [
-            'all' => [
-                'href' => 'act=select',
-                'class' => 'header_edit_all',
-                'attributes' => 'onclick="Backend.getScrollOffset()"',
-            ],
-        ],
+        'global_operations' => ['all'],
         'operations' => [
             'toggle' => [
                 'href' => 'act=toggle&amp;field=published',

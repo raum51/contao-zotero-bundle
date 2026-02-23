@@ -13,6 +13,7 @@ $GLOBALS['TL_DCA']['tl_zotero_collection'] = [
         'ptable' => 'tl_zotero_library',
         'ctable' => ['tl_zotero_collection_item'],
         'doNotCopyRecords' => true,
+        'notCreatable' => true,
         'enableVersioning' => true,
         'sql' => [
             'keys' => [
@@ -34,13 +35,7 @@ $GLOBALS['TL_DCA']['tl_zotero_collection'] = [
             'fields' => ['title'],
             'format' => '%s',
         ],
-        'global_operations' => [
-            'all' => [
-                'href' => 'act=select',
-                'class' => 'header_edit_all',
-                'attributes' => 'onclick="Backend.getScrollOffset()"',
-            ],
-        ],
+        'global_operations' => ['all'],
         'operations' => [
             'toggle' => [
                 'href' => 'act=toggle&amp;field=published',

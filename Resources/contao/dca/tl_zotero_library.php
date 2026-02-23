@@ -31,11 +31,7 @@ $GLOBALS['TL_DCA']['tl_zotero_library'] = [
             'label_callback' => [\Raum51\ContaoZoteroBundle\EventListener\DataContainer\ZoteroLibraryLabelCallback::class, '__invoke'],
         ],
         'global_operations' => [
-            'all' => [
-                'href' => 'act=select',
-                'class' => 'header_edit_all',
-                'attributes' => 'onclick="Backend.getScrollOffset()"',
-            ],
+            'all',
             'sync_all' => [
                 'href' => 'key=zotero_sync_all',
                 'class' => 'header_sync',

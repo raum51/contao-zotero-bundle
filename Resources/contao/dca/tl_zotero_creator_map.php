@@ -10,6 +10,7 @@ declare(strict_types=1);
 $GLOBALS['TL_DCA']['tl_zotero_creator_map'] = [
     'config' => [
         'dataContainer' => \Contao\DC_Table::class,
+        'notCreatable' => true,
         'sql' => [
             'keys' => [
                 'id' => 'primary',
