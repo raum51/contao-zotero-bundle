@@ -21,7 +21,8 @@ $GLOBALS['TL_DCA']['tl_zotero_creator_map'] = [
     'list' => [
         'sorting' => [
             'mode' => 1,
-            'fields' => ['zotero_lastname', 'zotero_firstname'],
+            'fields' => ['member_id', 'zotero_lastname', 'zotero_firstname'],
+            'flag' => \Contao\DataContainer::SORT_DESC,
             'panelLayout' => 'filter;search,limit',
         ],
         'label' => [
@@ -83,7 +84,8 @@ $GLOBALS['TL_DCA']['tl_zotero_creator_map'] = [
                 'tl_class' => 'w50',
             ],
             'options_callback' => [\Raum51\ContaoZoteroBundle\EventListener\DataContainer\CreatorMapMemberOptionsCallback::class, '__invoke'],
-            'sql' => 'int(10) unsigned NOT NULL default 0',
+            'save_callback' => [\Raum51\ContaoZoteroBundle\EventListener\DataContainer\CreatorMapMemberIdSaveCallback::class, '__invoke'],
+            'sql' => 'int(10) unsigned NULL DEFAULT NULL',
         ],
     ],
 ];

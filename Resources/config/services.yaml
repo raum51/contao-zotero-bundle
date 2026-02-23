@@ -78,3 +78,6 @@ services:
     Raum51\ContaoZoteroBundle\Migration\ZoteroTrashAndBooleanMigration:
         tags:
             - { name: contao.migration, priority: 0 }
+    Raum51\ContaoZoteroBundle\Migration\ZoteroCreatorMapMemberIdNullMigration:
+        tags:
+            - { name: contao.migration, priority: 0 }

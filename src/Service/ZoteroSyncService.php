@@ -1334,7 +1334,7 @@ final class ZoteroSyncService
                         'tstamp' => time(),
                         'zotero_firstname' => $firstName,
                         'zotero_lastname' => $lastName,
-                        'member_id' => 0,
+                        'member_id' => null,
                     ]);
                     $creatorMapId = (int) $this->connection->lastInsertId();
                 } else {

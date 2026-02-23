@@ -28,11 +28,12 @@ final class CreatorMapLabelCallback
             ? trim($first . ' ' . $last)
             : 'ID ' . ($row['id'] ?? '');
 
-        $memberId = (int) ($row['member_id'] ?? 0);
-        if ($memberId < 1) {
+        $memberId = $row['member_id'] ?? null;
+        if ($memberId === null || $memberId === '' || (int) $memberId < 1) {
             return $creatorName . ' → – nicht zugeordnet –';
         }
 
+        $memberId = (int) $memberId;
         $member = $this->connection->fetchAssociative(
             'SELECT firstname, lastname FROM tl_member WHERE id = ?',
             [$memberId]
