@@ -37,13 +37,13 @@ final class ZoteroAttachmentResolver
         }
 
         $placeholders = implode(',', array_fill(0, \count($itemIds), '?'));
-        $params = [1, 1, 0, 1, 1, 0, ...$itemIds, 0];
+        $params = [1, 1, 0, 1, 1, ...$itemIds, 0];
 
         $contentTypeCondition = '';
         if ($contentTypesFilter !== null && $contentTypesFilter !== []) {
             $ctPlaceholders = implode(',', array_fill(0, \count($contentTypesFilter), '?'));
             $contentTypeCondition = ' AND a.content_type IN (' . $ctPlaceholders . ')';
-            $params = array_merge(array_slice($params, 0, -1), $contentTypesFilter, [0]);
+            $params = array_merge(array_slice($params, 0, -1), [0], $contentTypesFilter);
         }
 
         $rows = $connection->fetchAllAssociative(
