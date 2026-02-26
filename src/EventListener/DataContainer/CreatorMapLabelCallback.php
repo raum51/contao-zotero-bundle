@@ -28,8 +28,8 @@ final class CreatorMapLabelCallback
             ? trim($first . ' ' . $last)
             : 'ID ' . ($row['id'] ?? '');
 
-        $memberId = $row['member_id'] ?? null;
-        if ($memberId === null || $memberId === '' || (int) $memberId < 1) {
+        $memberId = $row['member_id'] ?? 0;
+        if ((int) $memberId < 1) {
             return $creatorName . ' → – nicht zugeordnet –';
         }
 

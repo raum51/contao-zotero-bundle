@@ -24,7 +24,7 @@ Der Sync überträgt Daten von der Zotero-API in die lokalen Contao-Tabellen. **
 - `tl_zotero_item_attachment` – Attachments als Kind von tl_zotero_item
 - `tl_zotero_item_creator` – M:N Item ↔ Creator
 - `tl_zotero_collection_item` – M:N Collection ↔ Item
-- `tl_zotero_creator_map` – Sync legt neue Creators an (zotero_firstname, zotero_lastname, member_id=null); Redaktion ordnet member_id (tl_member) zu
+- `tl_zotero_creator_map` – Sync legt neue Creators an (zotero_firstname, zotero_lastname, member_id=0); Redaktion ordnet member_id (tl_member) zu
 
 ---
 

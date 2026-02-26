@@ -10,7 +10,7 @@ use Doctrine\DBAL\Connection;
 
 /**
  * Liefert tl_member für tl_zotero_creator_map.member_id.
- * Format: „Vorname Nachname (E-Mail)“. Leerer Wert für „nicht zugeordnet“ (speichert NULL).
+ * Format: „Vorname Nachname (E-Mail)“. 0 für „nicht zugeordnet“ (Contao-typisch).
  */
 #[AsCallback(table: 'tl_zotero_creator_map', target: 'fields.member_id.options')]
 final class CreatorMapMemberOptionsCallback
@@ -25,7 +25,7 @@ final class CreatorMapMemberOptionsCallback
      */
     public function __invoke(DataContainer|null $dc = null): array
     {
-        $options = ['' => '– nicht zugeordnet –'];
+        $options = [0 => '– nicht zugeordnet –'];
 
         $rows = $this->connection->fetchAllAssociative(
             'SELECT id, firstname, lastname, email FROM tl_member ORDER BY lastname, firstname'

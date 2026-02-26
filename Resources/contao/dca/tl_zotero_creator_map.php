@@ -85,7 +85,7 @@ $GLOBALS['TL_DCA']['tl_zotero_creator_map'] = [
             ],
             'options_callback' => [\Raum51\ContaoZoteroBundle\EventListener\DataContainer\CreatorMapMemberOptionsCallback::class, '__invoke'],
             'save_callback' => [\Raum51\ContaoZoteroBundle\EventListener\DataContainer\CreatorMapMemberIdSaveCallback::class, '__invoke'],
-            'sql' => 'int(10) unsigned NULL DEFAULT NULL',
+            'sql' => 'int(10) unsigned NOT NULL default 0',
         ],
     ],
 ];

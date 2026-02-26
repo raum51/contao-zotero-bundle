@@ -79,9 +79,9 @@
 | tstamp | Nein | Ja |
 | zotero_firstname | Ja | Nein – nur beim Insert vom Sync gesetzt |
 | zotero_lastname | Ja | Nein – nur beim Insert vom Sync gesetzt |
-| member_id | Ja (Select) | **Nein** – ausschließlich Redaktion; Sync setzt bei neuem Creator null |
+| member_id | Ja (Select) | **Nein** – ausschließlich Redaktion; Sync setzt bei neuem Creator 0 |
 
-**Hinweis:** Sync legt neue Creator-Einträge an (zotero_firstname, zotero_lastname, member_id=null). Backend: Nur member_id zuordnen (tl_member). notCreatable – Einträge kommen vom Sync.
+**Hinweis:** Sync legt neue Creator-Einträge an (zotero_firstname, zotero_lastname, member_id=0). Backend: Nur member_id zuordnen (tl_member). notCreatable – Einträge kommen vom Sync.
 
 ---
 
@@ -91,4 +91,4 @@
 - **download_attachments:** Insert = 0; bei Update unverändert.
 - **published:** Nicht mehr vom Sync überschrieben – ausschließlich Redaktion.
 - **trash:** Zotero-Papierkorb (deleted); nur vom Sync gesetzt. Frontend: published=1 AND trash=0.
-- **tl_zotero_creator_map:** Sync legt Einträge an (member_id=null); nur member_id von Redaktion bearbeitbar. notCreatable.
+- **tl_zotero_creator_map:** Sync legt Einträge an (member_id=0); nur member_id von Redaktion bearbeitbar. notCreatable.
