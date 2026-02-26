@@ -75,9 +75,3 @@ services:
         tags:
             - { name: contao.cronjob, interval: hourly }
 
-    Raum51\ContaoZoteroBundle\Migration\ZoteroTrashAndBooleanMigration:
-        tags:
-            - { name: contao.migration, priority: 0 }
-    Raum51\ContaoZoteroBundle\Migration\ZoteroCreatorMapMemberIdRevertToZeroMigration:
-        tags:
-            - { name: contao.migration, priority: 0 }
